@@ -1,0 +1,10 @@
+{
+	"id": "tars",
+	"name": "Tars",
+	"version": "0.1.0",
+	"minAppVersion": "1.5.8",
+	"description": "Triggered by tag suggestions, use Kimi and other Chinese large language models to generate text.",
+	"author": "Tarslab",
+	"authorUrl": "https://github.com/tarslab",
+	"isDesktopOnly": false
+}
