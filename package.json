@@ -1,7 +1,7 @@
 {
 	"name": "obsidian-tars",
 	"version": "0.1.0",
-	"description": "Triggered by tag suggestions, use Kimi and other Chinese large language models to generate text.",
+	"description": "Use Kimi and other Chinese LLMs for text generation based on tag suggestions.",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
