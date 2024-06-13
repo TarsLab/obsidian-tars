@@ -21,6 +21,16 @@ interface TagEntry {
 // 冒号前面加空格，对中文输入更友好。中文输入#tag后需要空格，才能输入中文的冒号
 const toSpeakMark = (tag: string) => `#${tag} : `
 
+const toNewChatMark = (tag: string) => `#${tag} `
+
+// “#tag” 触发会有问题，可能会被 obsidian的标签补全拦截
+const toTriggerPhrase = (w: string) => [
+	w.toLowerCase(),
+	`#${w.toLowerCase()} `,
+	`#${w.toLowerCase()} :`, // 英文冒号
+	`#${w.toLowerCase()} ：` // 中文冒号
+]
+
 export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 	settings: PluginSettings
 
@@ -31,44 +41,48 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 	}
 
 	onTrigger(cursor: EditorPosition, editor: Editor, file: TFile): EditorSuggestTriggerInfo | null {
-		// 为了避免干扰，基于新的段落，开头不允许其他无关的字符，包括空格
-
-		// 确保是新的段落
+		// 为了避免干扰，基于新的段落触发
 		if (cursor.line >= 1) {
 			// 如果前面有一行，那么前面那行必须是空行
 			if (editor.getLine(cursor.line - 1).trim()) return null
 		}
+		let ch = 0
+		const rawLine = editor.getLine(cursor.line)
+		// 如果前面是 newChatTags, 把 newChatTag 截断
+		const newTagsText = this.settings.newChatTags.map(toNewChatMark)
+		for (const t of newTagsText) {
+			if (rawLine.startsWith(t)) {
+				ch = t.length
+				break
+			}
+		}
+		let selected = rawLine.slice(ch, cursor.ch)
+		const indexOfFirstNonWhitespace = selected.search(/\S/)
+		if (indexOfFirstNonWhitespace === -1) return null
+		ch += indexOfFirstNonWhitespace
+		selected = rawLine.slice(ch, cursor.ch)
 
-		const userTag = this.settings.userTags.first()
-		if (!userTag) throw new Error('No user tag found')
-
-		const selectedLineInLowerCase = editor.getLine(cursor.line).toLowerCase()
-		// “#tag” 触发会有问题，可能会被 obsidian的标签补全拦截
-		const toTriggerPhrase = (w: string) => [
-			w.toLowerCase(),
-			`#${w.toLowerCase()} `,
-			`#${w.toLowerCase()} :`, // 英文冒号
-			`#${w.toLowerCase()} ：` // 中文冒号
-		]
+		const selectedInLowerCase = selected.toLowerCase()
 		const triggerInfo = {
-			start: { line: cursor.line, ch: 0 },
+			start: { line: cursor.line, ch: ch },
 			end: { line: cursor.line, ch: cursor.ch }
 		}
+
 		for (const t of this.settings.newChatTags) {
-			if (toTriggerPhrase(t).includes(selectedLineInLowerCase)) {
+			if (toTriggerPhrase(t).includes(selectedInLowerCase)) {
 				return {
 					...triggerInfo,
 					query: JSON.stringify({
 						type: 'newChat',
 						tag: t,
-						replacement: `#${t} #${userTag} : `
+						replacement: toNewChatMark(t)
 					} as TagEntry)
 				}
 			}
 		}
 
 		for (const t of this.settings.userTags) {
-			if (toTriggerPhrase(t).includes(selectedLineInLowerCase)) {
+			if (toTriggerPhrase(t).includes(selectedInLowerCase)) {
 				return {
 					...triggerInfo,
 					query: JSON.stringify({
@@ -82,7 +96,7 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 
 		const providerTags = this.settings.providers.map((p) => p.tag)
 		for (const t of providerTags) {
-			if (toTriggerPhrase(t).includes(selectedLineInLowerCase)) {
+			if (toTriggerPhrase(t).includes(selectedInLowerCase)) {
 				return {
 					...triggerInfo,
 					query: JSON.stringify({
@@ -95,7 +109,7 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 		}
 
 		for (const t of this.settings.systemTags) {
-			if (toTriggerPhrase(t).includes(selectedLineInLowerCase)) {
+			if (toTriggerPhrase(t).includes(selectedInLowerCase)) {
 				return {
 					...triggerInfo,
 					query: JSON.stringify({
