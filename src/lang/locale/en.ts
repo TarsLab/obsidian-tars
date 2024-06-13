@@ -5,13 +5,13 @@ export default {
 	Error: 'Error',
 
 	// commands/export.ts
-	'Export conversations to jsonl': 'export conversations to jsonl',
+	'Export conversations to jsonl': 'Export conversations to jsonl',
 	'No conversation found': 'No conversation found',
 	'Exported to the same directory, Obsidian does not display the JSONL format, please open with another software.':
 		'Exported to the same directory, Obsidian does not display the JSONL format, please open with another software.',
 
 	// commands/replaceTag.ts
-	'Replace speaker with tag': 'replace speaker with tag',
+	'Replace speaker with tag': 'Replace speaker with tag',
 	'No speaker found': 'No speaker found',
 	'Replace the names of the two most frequently occurring speakers with tag format.':
 		'Replace the names of the two most frequently occurring speakers with tag format.',

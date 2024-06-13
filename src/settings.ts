@@ -16,7 +16,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	ignoreSectionTypes: ['blockquote', 'callout'],
 	systemTags: ['System', '系统'],
 	newChatTags: ['NewChat', '新对话'],
-	userTags: ['我', 'User']
+	userTags: ['User', '我']
 }
 
 export const availableVendors: Vendor[] = [kimiVendor, zhipuVendor, openAIVendor]
