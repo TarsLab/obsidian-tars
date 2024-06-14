@@ -86,9 +86,11 @@ const countOccurrences = (array: string[]) =>
 	}, {} as { [key: string]: number }) // Add index signature to the accumulator object
 
 const findTwoMostFrequentSpeakers = (fileText: string) => {
-	// (?:^|(?<=\n)) 匹配开头，或者新一行
 	// [\u4e00-\u9fa5a-zA-Z0-9]：这个字符集匹配任何单个中文字符（范围从 \u4e00 到 \u9fa5，覆盖了绝大多数常用汉字）、英文字符（大小写）或数字（0-9）
-	const matchResults = fileText.match(/(?:^|(?<=\n))([\u4e00-\u9fa5a-zA-Z0-9# ]+)([:|：]) /g) || []
+	const lines = fileText.split('\n')
+	const matchResults = lines
+		.map((line) => line.match(/^([\u4e00-\u9fa5a-zA-Z0-9# ]+)([:|：]) /g))
+		.flatMap((match) => match || [])
 	console.debug('allMatches', matchResults)
 	const matchCounts = countOccurrences(matchResults)
 
