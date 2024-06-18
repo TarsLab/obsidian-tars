@@ -6,7 +6,7 @@ import { PluginSettings } from 'src/settings'
 
 export const exportCmd = (app: App, settings: PluginSettings) => ({
 	id: 'export-to-jsonl',
-	name: t('Export conversations to jsonl'),
+	name: t('Export conversations to JSONL'),
 	callback: async () => {
 		await exportConversation(app, settings)
 	}
@@ -42,7 +42,7 @@ const exportConversation = async (app: App, settings: PluginSettings) => {
 		await app.vault.create(filePath, jsonlContent)
 	}
 	new Notice(
-		t('Exported to the same directory, Obsidian does not display the JSONL format, please open with another software.'),
+		t('Exported to the same directory, Obsidian does not display the JSONL format. Please open with another software.'),
 		5 * 1000
 	)
 }

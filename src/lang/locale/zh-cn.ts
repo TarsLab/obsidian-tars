@@ -5,9 +5,9 @@ export default {
 	Error: '异常',
 
 	// commands/export.ts
-	'Export conversations to jsonl': '导出对话到 jsonl',
+	'Export conversations to JSONL': '导出对话到 JSONL',
 	'No conversation found': '没有找到对话',
-	'Exported to the same directory, Obsidian does not display the JSONL format, please open with another software.':
+	'Exported to the same directory, Obsidian does not display the JSONL format. Please open with another software.':
 		'已经导出到同一目录，obsidian 不显示 jsonl 格式，请用其他软件打开',
 
 	// commands/replaceTag.ts
@@ -21,8 +21,8 @@ export default {
 	'API key is required': '请配置对应的 API key',
 
 	// settingTab.ts
-	'AI Assistants': 'AI 助手',
-	'New AI Assistant': '新的AI助手',
+	'AI assistants': 'AI 助手',
+	'New AI assistant': '新的AI助手',
 	"Select assistant from dropdown and click 'Add'.": '从下拉框选择助手类型，点击新增按钮',
 	Add: '新增',
 	'Message tags': '消息标签',
@@ -35,12 +35,12 @@ export default {
 	'Trigger AI generation': '触发AI生成',
 	'Obtain key from ': '获取 key 网站 ',
 	'Enter your key': '输入你的 key',
-	'Keyword for Tag must not contain #': '标签关键字不能包含#',
-	'Keyword for Tag must not contain space': '标签关键字不能包含空格',
-	'Keyword for Tag must be unique': '标签关键字必须唯一',
+	'Keyword for tag must not contain #': '标签关键字不能包含#',
+	'Keyword for tag must not contain space': '标签关键字不能包含空格',
+	'Keyword for tag must be unique': '标签关键字必须唯一',
 	Model: '模型',
 	'Select the model to use': '选择要使用的模型',
-	'Override input Parameters': '覆盖输入参数',
+	'Override input parameters': '覆盖输入参数',
 	'Developer feature, in JSON format, for example, {"model": "gptX"} can override the model input parameter.':
 		'开发者功能，json格式, 比如{"model": "gptX"}可以覆盖model输入参数',
 	'Remove AI assistant': '移除 AI 助手',

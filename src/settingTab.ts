@@ -19,9 +19,10 @@ export class TarsSettingTab extends PluginSettingTab {
 		const vendorNames = availableVendors.map((v) => v.name)
 		let vendorToCreate = vendorNames[0]
 
-		containerEl.createEl('h3', { text: t('AI Assistants') })
+		new Setting(containerEl).setName(t('AI assistants')).setHeading()
+
 		new Setting(containerEl)
-			.setName(t('New AI Assistant'))
+			.setName(t('New AI assistant'))
 			.setDesc(t("Select assistant from dropdown and click 'Add'."))
 			.addDropdown((dropdown) =>
 				dropdown
@@ -59,12 +60,11 @@ export class TarsSettingTab extends PluginSettingTab {
 		}
 
 		containerEl.createEl('br')
-		containerEl.createEl('h3', {
-			text: t('Message tags')
-		})
-		containerEl.createEl('p', {
-			text: t('Keywords for tags in the text box are separated by spaces')
-		})
+		new Setting(containerEl)
+			.setName(t('Message tags'))
+			.setDesc(t('Keywords for tags in the text box are separated by spaces'))
+			.setHeading()
+
 		new Setting(containerEl).setName(t('New chat tags')).addText((text) =>
 			text
 				.setPlaceholder(DEFAULT_SETTINGS.newChatTags.join(' '))
@@ -147,7 +147,7 @@ export class TarsSettingTab extends PluginSettingTab {
 							.filter((e, i) => i !== index)
 							.map((e) => e.tag.toLowerCase())
 						if (otherTags.includes(trimmed.toLowerCase())) {
-							new Notice(t('Keyword for Tag must be unique'))
+							new Notice(t('Keyword for tag must be unique'))
 							return
 						}
 
@@ -191,7 +191,7 @@ export class TarsSettingTab extends PluginSettingTab {
 
 	addParametersSection = (details: HTMLDetailsElement, options: BaseOptions) =>
 		new Setting(details)
-			.setName(t('Override input Parameters'))
+			.setName(t('Override input parameters'))
 			.setDesc(
 				t('Developer feature, in JSON format, for example, {"model": "gptX"} can override the model input parameter.')
 			)
@@ -213,11 +213,11 @@ export class TarsSettingTab extends PluginSettingTab {
 
 const validateTag = (tag: string) => {
 	if (tag.includes('#')) {
-		new Notice(t('Keyword for Tag must not contain #'))
+		new Notice(t('Keyword for tag must not contain #'))
 		return false
 	}
 	if (tag.includes(' ')) {
-		new Notice(t('Keyword for Tag must not contain space'))
+		new Notice(t('Keyword for tag must not contain space'))
 		return false
 	}
 	return true
