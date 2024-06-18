@@ -19,7 +19,14 @@ Tars is an Obsidian plugin that uses Kimi and other Chinese LLMs for text genera
 
 ![Internal link support](docs/images/writer%20prompt.png)
 
-- Export conversations to jsonl dataset, supports [ms-swift (Scalable lightWeight Infrastructure for Fine-Tuning)](https://github.com/modelscope/swift)
+- Export conversations to JSONL dataset, supports [ms-swift (Scalable lightWeight Infrastructure for Fine-Tuning)](https://github.com/modelscope/swift)
+
+## AI providers
+
+- [x] [Kimi](https://www.moonshot.cn)
+- [x] [Zhipu](https://open.bigmodel.cn/)
+- [x] [OpenAI](https://platform.openai.com/api-keys)
+- [ ] [Doubao](https://www.volcengine.com/product/doubao)
 
 ## How to use
 
@@ -30,6 +37,9 @@ Add an AI assistant in the settings page, set the API key, and then use the corr
 A paragraph cannot contain multiple messages. Messages should be separated by blank lines.
 
 ![Conversations syntax](docs/images/syntax.png)
+
+- The conversation messages will send to the configured AI assistant.
+- Blockquote and callout sections are ignored. You can make annotations without sending them to the AI assistant.
 
 ## Recommended
 
