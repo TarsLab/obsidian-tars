@@ -1,48 +1,48 @@
 <h4 align="center">
-    <p>
-        <b>English</b> |
-        <a href="README_zh.md">中文</a>
-    </p>
+	<p>
+		<a href="README_en.md">English</a> |
+			<b>中文</b>
+	<p>
 </h4>
 
-# Introduction
+# 简介
 
-Tars is an Obsidian plugin that uses Kimi and other Chinese LLMs for text generation based on tag suggestions. The name Tars comes from the robot Tars in Interstellar.
+Tars 是一个 Obsidian 插件，它使用 Kimi 和其他中文大型语言模型（LLMs）基于标签建议进行文本生成。Tars 这个名字来源于电影《星际穿越》中的机器人 Tars。
 
-## Features
+## 特性
 
-- Text generation AI assistant triggered by tags
+- 通过标签触发，AI 助手生成文本
 
-![Text generation triggered by tag](docs/images/write%20a%20story%20with%20Kimi.gif)
+![通过标签触发文本生成](docs/images/zh/用Kimi写故事.gif)
 
-- Support for internal links
+- 支持内部链接
 
-![Internal link support](docs/images/writer%20prompt.png)
+![内部链接支持](docs/images/zh/作家提示词.png)
 
-- Export conversations to JSONL dataset, supports [ms-swift (Scalable lightWeight Infrastructure for Fine-Tuning)](https://github.com/modelscope/swift)
+- 将对话导出为 JSONL 数据集，支持 [ms-swift（Scalable lightWeight Infrastructure for Fine-Tuning）](https://github.com/modelscope/swift)
 
-## AI providers
+## AI 服务提供商
 
 - [x] [Kimi](https://www.moonshot.cn)
 - [x] [Zhipu](https://open.bigmodel.cn/)
 - [x] [OpenAI](https://platform.openai.com/api-keys)
 - [ ] [Doubao](https://www.volcengine.com/product/doubao)
 
-## How to use
+## 如何使用
 
-Add an AI assistant in the settings page, set the API key, and then use the corresponding tag in the editor to trigger the AI assistant.
+在设置页面添加一个 AI 助手，设置 API 密钥，然后在编辑器中使用相应的标签来触发 AI 助手。
 
-## Conversations syntax
+## 对话语法
 
-A paragraph cannot contain multiple messages. Messages should be separated by blank lines.
+一个段落不能包含多条消息。多条消息应该通过空行分隔开来。
 
-![Conversations syntax](docs/images/syntax.png)
+![Conversations syntax](docs/images/zh/语法.png)
 
-- The conversation messages will send to the configured AI assistant.
-- Blockquote and callout sections are ignored. You can make annotations without sending them to the AI assistant.
+- 对话消息将发送到配置的 AI 服务提供商。
+- 块引用和 callout 部分将被忽略。你可以利用块引用写注释，而不将其发送到 AI 助手。
 
-## Recommended
+## 建议
 
-For better appearance, it is recommended to use the [colored tags plugin](https://github.com/pfrankov/obsidian-colored-tags).
+为了更好的外观，建议使用 [colored tags 插件](https://github.com/pfrankov/obsidian-colored-tags).
 
 ![Colored tags plugin](docs/images/coloredTags.png)
