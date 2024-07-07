@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-tars",
-	"version": "0.1.2",
+	"version": "0.2.0",
 	"description": "Use Kimi and other Chinese LLMs for text generation based on tag suggestions.",
 	"main": "main.js",
 	"scripts": {
@@ -12,15 +12,16 @@
 	"author": "C Jack<https://github.com/ae86jack>",
 	"license": "MIT",
 	"devDependencies": {
-		"@types/node": "^16.11.6",
+		"@types/node": "^16.18.101",
 		"@typescript-eslint/eslint-plugin": "^6.19.1",
 		"@typescript-eslint/parser": "^6.19.1",
 		"builtin-modules": "3.3.0",
 		"esbuild": "0.17.3",
 		"jose": "^5.2.4",
+		"node-fetch": "^3.3.2",
 		"obsidian": "latest",
 		"openai": "^4.33.0",
 		"tslib": "^2.4.0",
-		"typescript": "5.4"
+		"typescript": "^5.5.2"
 	}
 }
