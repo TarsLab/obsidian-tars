@@ -1,6 +1,9 @@
 import { ProviderSettings, Vendor } from './providers'
+import { doubaoVendor } from './providers/doubao'
 import { kimiVendor } from './providers/kimi'
 import { openAIVendor } from './providers/openAI'
+import { qianFanVendor } from './providers/qianFan'
+import { qwenVendor } from './providers/qwen'
 import { zhipuVendor } from './providers/zhipu'
 
 export interface PluginSettings {
@@ -19,4 +22,11 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	userTags: ['User', '我']
 }
 
-export const availableVendors: Vendor[] = [kimiVendor, zhipuVendor, openAIVendor]
+export const availableVendors: Vendor[] = [
+	doubaoVendor,
+	kimiVendor,
+	openAIVendor,
+	qianFanVendor,
+	qwenVendor,
+	zhipuVendor
+]
