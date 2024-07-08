@@ -1,7 +1,7 @@
 import { App, Notice, PluginSettingTab, Setting } from 'obsidian'
 import { t } from './lang/helper'
 import TarsPlugin from './main'
-import { BaseOptions, ProviderSettings } from './providers'
+import { BaseOptions, ProviderSettings, SecretOptions } from './providers'
 import { DEFAULT_SETTINGS, availableVendors } from './settings'
 
 export class TarsSettingTab extends PluginSettingTab {
@@ -115,10 +115,18 @@ export class TarsSettingTab extends PluginSettingTab {
 			settings.options,
 			vendor.websiteToObtainKey ? t('Obtain key from ') + vendor.websiteToObtainKey : ''
 		)
-		this.addModelSection(details, settings.options, vendor.models)
+
+		if ('apiSecret' in settings.options) {
+			this.addAPISecretSection(details, settings.options as SecretOptions)
+		}
+		if (vendor.models.length > 0) {
+			this.addModelDropDownSection(details, settings.options, vendor.models)
+		} else {
+			this.addModelTextSection(details, settings.options)
+		}
 		this.addParametersSection(details, settings.options)
 
-		new Setting(details).setName(t('Remove AI assistant')).addButton((btn) => {
+		new Setting(details).setName(t('Remove') + ' ' + vendor.name).addButton((btn) => {
 			btn
 				.setWarning()
 				.setButtonText(t('Remove'))
@@ -170,7 +178,21 @@ export class TarsSettingTab extends PluginSettingTab {
 					})
 			)
 
-	addModelSection = (details: HTMLDetailsElement, options: BaseOptions, models: string[]) =>
+	addAPISecretSection = (details: HTMLDetailsElement, options: SecretOptions, desc: string = '') =>
+		new Setting(details)
+			.setName('API Secret')
+			.setDesc(desc)
+			.addText((text) =>
+				text
+					.setPlaceholder('')
+					.setValue(options.apiSecret)
+					.onChange(async (value) => {
+						options.apiSecret = value
+						await this.plugin.saveSettings()
+					})
+			)
+
+	addModelDropDownSection = (details: HTMLDetailsElement, options: BaseOptions, models: string[]) =>
 		new Setting(details)
 			.setName(t('Model'))
 			.setDesc(t('Select the model to use'))
@@ -182,6 +204,20 @@ export class TarsSettingTab extends PluginSettingTab {
 							return acc
 						}, {})
 					)
+					.setValue(options.model)
+					.onChange(async (value) => {
+						options.model = value
+						await this.plugin.saveSettings()
+					})
+			)
+
+	addModelTextSection = (details: HTMLDetailsElement, options: BaseOptions) =>
+		new Setting(details)
+			.setName(t('Model'))
+			.setDesc(t('Input the model to use'))
+			.addText((text) =>
+				text
+					.setPlaceholder('')
 					.setValue(options.model)
 					.onChange(async (value) => {
 						options.model = value

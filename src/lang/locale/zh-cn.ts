@@ -19,6 +19,8 @@ export default {
 
 	// providers
 	'API key is required': '请配置对应的 API key',
+	'API secret is required': '请配置对应的 API secret',
+	'Model is required': '请配置对应的模型',
 
 	// settingTab.ts
 	'AI assistants': 'AI 助手',
@@ -40,9 +42,10 @@ export default {
 	'Keyword for tag must be unique': '标签关键字必须唯一',
 	Model: '模型',
 	'Select the model to use': '选择要使用的模型',
+	'Input the model to use': '输入要使用的模型',
 	'Override input parameters': '覆盖输入参数',
 	'Developer feature, in JSON format, for example, {"model": "gptX"} can override the model input parameter.':
-		'开发者功能，json格式, 比如{"model": "gptX"}可以覆盖model输入参数',
+		'开发者功能，json格式, 比如{"model": "gptX"}可以覆盖model输入参数，如果model下拉框没有对应的模型，想要使用新的模型，可以在这里输入',
 	'Remove AI assistant': '移除 AI 助手',
 	Remove: '移除',
 

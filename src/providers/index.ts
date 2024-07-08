@@ -24,3 +24,7 @@ export interface ProviderSettings {
 	readonly vendor: string
 	options: BaseOptions
 }
+
+export interface SecretOptions extends BaseOptions {
+	apiSecret: string
+}

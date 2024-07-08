@@ -7,7 +7,7 @@
 
 # Introduction
 
-Tars is an Obsidian plugin that uses Kimi and other Chinese LLMs for text generation based on tag suggestions. The name Tars comes from the robot Tars in Interstellar.
+Tars is an Obsidian plugin that supports text generation by Kimi, Doubao, Ali Qianwen, Baidu Qianfan, Zhipu, and other Chinese large language models (LLMs) based on tag suggestions. The name Tars comes from the robot Tars in the movie "Interstellar".
 
 ## Features
 
@@ -23,14 +23,20 @@ Tars is an Obsidian plugin that uses Kimi and other Chinese LLMs for text genera
 
 ## AI providers
 
-- [x] [Kimi](https://www.moonshot.cn)
-- [x] [Zhipu](https://open.bigmodel.cn/)
-- [x] [OpenAI](https://platform.openai.com/api-keys)
-- [ ] [Doubao](https://www.volcengine.com/product/doubao)
+- [Kimi](https://www.moonshot.cn)
+- [Doubao](https://www.volcengine.com/product/doubao)
+- [OpenAI](https://platform.openai.com/api-keys)
+- [Qianfan](https://qianfan.cloud.baidu.com)
+- [Qwen](https://dashscope.console.aliyun.com)
+- [Zhipu](https://open.bigmodel.cn/)
+
+If the AI provider you want is not in the list above, you can propose a specific plan in the issue.
 
 ## How to use
 
 Add an AI assistant in the settings page, set the API key, and then use the corresponding tag in the editor to trigger the AI assistant.
+
+If the model type you want is not in the AI assistant on the settings page, you can configure it in the "Override input parameters" in the settings, input JSON format, for example `{"model":"your desired model"}`.
 
 ## Conversations syntax
 
@@ -40,6 +46,7 @@ A paragraph cannot contain multiple messages. Messages should be separated by bl
 
 - The conversation messages will send to the configured AI assistant.
 - Blockquote and callout sections are ignored. You can make annotations without sending them to the AI assistant.
+- Start a new conversation with `new conversation tag`.
 
 ## Recommended
 

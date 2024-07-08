@@ -19,6 +19,8 @@ export default {
 
 	// providers
 	'API key is required': 'API key is required',
+	'API secret is required': 'API secret is required',
+	'Model is required': 'Model is required',
 
 	// settingTab.ts
 	'AI assistants': 'AI assistants',
@@ -41,6 +43,7 @@ export default {
 	'Keyword for tag must be unique': 'Keyword for tag must be unique',
 	Model: 'Model',
 	'Select the model to use': 'Select the model to use',
+	'Input the model to use': 'Input the model to use',
 	'Override input parameters': 'Override input parameters',
 	'Developer feature, in JSON format, for example, {"model": "gptX"} can override the model input parameter.':
 		'Developer feature, in JSON format, for example, {"model": "gptX"} can override the model input parameter.',
