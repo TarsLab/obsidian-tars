@@ -26,22 +26,21 @@ const createToken = async (apiKey: string, apiSecret: string) => {
 		client_id: apiKey,
 		client_secret: apiSecret
 	}
-
 	const queryString = new URLSearchParams(queryParams).toString()
-
 	const res = await fetch(`https://aip.baidubce.com/oauth/2.0/token?${queryString}`)
 
 	const result = (await res.json()) as TokenResponse
 	console.debug('create new token', result)
+	const accessToken = result.access_token
 	const now = Date.now()
 	const exp = now + result.expires_in
 
 	return {
-		accessToken: result.access_token,
-		exp: exp,
-		apiKey: apiKey,
-		apiSecret: apiSecret
-	}
+		accessToken,
+		exp,
+		apiKey,
+		apiSecret
+	} as Token
 }
 
 const validOrCreate = async (currentToken: Token | undefined, apiKey: string, apiSecret: string) => {
@@ -58,7 +57,6 @@ const validOrCreate = async (currentToken: Token | undefined, apiKey: string, ap
 		}
 	}
 	const newToken = await createToken(apiKey, apiSecret)
-	console.debug('create new token', newToken)
 	return {
 		isValid: false,
 		token: newToken
@@ -77,11 +75,9 @@ const getLines = (buffer: string[], text: string): string[] => {
 		lines = [buffer.join('') + lines[0], ...lines.slice(1)]
 		buffer = []
 	}
-
 	if (!trailingNewline) {
 		buffer = [lines.pop() || '']
 	}
-
 	return lines
 }
 
@@ -121,7 +117,6 @@ const sendRequestFunc = (settings: QianFanOptions): SendRequest =>
 			for (const line of lines) {
 				if (line.startsWith('data: ')) {
 					const rawStr = line.slice('data: '.length)
-
 					const data = JSON.parse(rawStr)
 					const content = data.result
 					if (content) {
