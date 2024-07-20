@@ -29,6 +29,7 @@ Tars is an Obsidian plugin that supports text generation by Kimi, Doubao, Ali Qi
 - [Qianfan](https://qianfan.cloud.baidu.com)
 - [Qwen](https://dashscope.console.aliyun.com)
 - [Zhipu](https://open.bigmodel.cn/)
+- [DeepSeek](https://www.deepseek.com)
 
 If the AI provider you want is not in the list above, you can propose a specific plan in the issue.
 

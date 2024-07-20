@@ -29,6 +29,7 @@ Tars 是一个 Obsidian 插件，支持 Kimi、豆包、阿里千问、百度千
 - [Qianfan 百度千帆](https://qianfan.cloud.baidu.com)
 - [Qwen 阿里千问](https://dashscope.console.aliyun.com)
 - [Zhipu 智谱](https://open.bigmodel.cn/)
+- [DeepSeek 深度求索](https://www.deepseek.com)
 
 如果上面列表没有你想要的 AI 服务提供商，可以在 issue 中提出具体方案。
 
