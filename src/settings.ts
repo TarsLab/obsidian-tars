@@ -1,4 +1,5 @@
 import { ProviderSettings, Vendor } from './providers'
+import { deepSeekVendor } from './providers/deepSeek'
 import { doubaoVendor } from './providers/doubao'
 import { kimiVendor } from './providers/kimi'
 import { openAIVendor } from './providers/openAI'
@@ -28,5 +29,6 @@ export const availableVendors: Vendor[] = [
 	openAIVendor,
 	qianFanVendor,
 	qwenVendor,
-	zhipuVendor
+	zhipuVendor,
+	deepSeekVendor
 ]
