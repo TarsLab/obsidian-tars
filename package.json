@@ -12,6 +12,7 @@
 	"author": "C Jack<https://github.com/ae86jack>",
 	"license": "MIT",
 	"devDependencies": {
+		"@anthropic-ai/sdk": "^0.25.1",
 		"@types/node": "^16.18.101",
 		"@typescript-eslint/eslint-plugin": "^6.19.1",
 		"@typescript-eslint/parser": "^6.19.1",

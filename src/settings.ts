@@ -6,6 +6,7 @@ import { openAIVendor } from './providers/openAI'
 import { qianFanVendor } from './providers/qianFan'
 import { qwenVendor } from './providers/qwen'
 import { zhipuVendor } from './providers/zhipu'
+import { claudeVendor } from './providers/claude'
 
 export interface PluginSettings {
 	providers: ProviderSettings[]
@@ -30,5 +31,6 @@ export const availableVendors: Vendor[] = [
 	qianFanVendor,
 	qwenVendor,
 	zhipuVendor,
-	deepSeekVendor
+	deepSeekVendor,
+	claudeVendor
 ]
