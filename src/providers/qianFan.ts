@@ -96,7 +96,7 @@ const sendRequestFunc = (settings: QianFanOptions): SendRequest =>
 		const data = {
 			messages,
 			stream: true,
-			remains
+			...remains
 		}
 		const response = await fetch(baseURL + `/${model}?access_token=${token.accessToken}`, {
 			method: 'POST',

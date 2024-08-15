@@ -17,7 +17,7 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 			parameters: {
 				incremental_output: 'true'
 			},
-			remains
+			...remains
 		}
 		const response = await fetch(baseURL, {
 			method: 'POST',
