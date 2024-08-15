@@ -53,15 +53,7 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 		}
 	}
 
-const models = [
-	'qwen-turbo',
-	'qwen-plus',
-	'qwen-max',
-	'qwen-max-0428',
-	'qwen-max-0403',
-	'qwen-max-0107',
-	'qwen-max-longcontext'
-]
+const models = ['qwen-turbo', 'qwen-plus', 'qwen-max', 'qwen-max-longcontext']
 
 export const qwenVendor: Vendor = {
 	name: 'Qwen',
