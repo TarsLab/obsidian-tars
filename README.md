@@ -1,6 +1,6 @@
 <h4 align="center">
 	<p>
-		<a href="README_en.md">English</a> |
+		<a href="https://github.com/TarsLab/obsidian-tars/blob/main/README_en.md">English</a> |
 			<b>中文</b>
 	<p>
 </h4>

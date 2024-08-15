@@ -17,6 +17,10 @@ export default {
 		'用标签格式替换两个最常出现的说话者的名字',
 	Replace: '替换',
 
+	// commands/select.ts
+	'Select message at cursor': '选择光标处的消息',
+	'No message found at cursor': '光标处没有找到消息',
+
 	// providers
 	'API key is required': '请配置对应的 API key',
 	'API secret is required': '请配置对应的 API secret',

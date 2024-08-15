@@ -17,6 +17,10 @@ export default {
 		'Replace the names of the two most frequently occurring speakers with tag format.',
 	Replace: 'Replace',
 
+	// commands/select.ts
+	'Select message at cursor': 'Select message at cursor',
+	'No message found at cursor': 'No message found at cursor',
+
 	// providers
 	'API key is required': 'API key is required',
 	'API secret is required': 'API secret is required',

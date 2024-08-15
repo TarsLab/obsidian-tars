@@ -219,9 +219,7 @@ export const fetchConversation = async (env: RunEnv, startOffset: number, endOff
 	)
 	const conversationStart = lastNewChatTag ? lastNewChatTag.position.end.offset : startOffset
 
-	console.debug('newChatTagStart', conversationStart)
-
-	const tagsWithSections = fetchTagsWithSections(env, startOffset, endOffset)
+	const tagsWithSections = fetchTagsWithSections(env, conversationStart, endOffset)
 	const conversation = await Promise.all(
 		tagsWithSections.map(async (tag) => ({
 			...tag,
@@ -263,15 +261,12 @@ export const getSectionsWithRefer = (fileMeta: CachedMetadata, ignoreSectionType
 export const fetchAllConversations = async (env: RunEnv) => {
 	const {
 		tagsInMeta,
-		sectionsWithRefer,
 		options: { newChatTags }
 	} = env
 
 	const conversationTags = tagsInMeta.filter((t) =>
 		newChatTags.some((n) => t.tag.slice(1).split('/')[0].toLowerCase() === n.toLowerCase())
 	) // support Nested tags
-
-	console.debug('sectionsWithRefer', sectionsWithRefer)
 
 	const positionOffsets = conversationTags.flatMap((tag) => [
 		tag.position.start.offset - 1,
@@ -298,4 +293,34 @@ export const fetchAllConversations = async (env: RunEnv) => {
 	)
 
 	return conversations.filter((arr) => arr.length > 0)
+}
+
+export const getMsgPositionByLine = (env: RunEnv, line: number) => {
+	const {
+		tagsInMeta,
+		sectionsWithRefer,
+		options: { systemTags, userTags, assistantTags }
+	} = env
+	const msgTags = [...systemTags, ...userTags, ...assistantTags]
+	const msgTagsInMeta = tagsInMeta.filter((t) =>
+		msgTags.some((n) => t.tag.slice(1).split('/')[0].toLowerCase() === n.toLowerCase())
+	)
+	console.debug('msgTagsInMeta', msgTagsInMeta)
+	const msgIndex = msgTagsInMeta.findLastIndex((t) => t.position.start.line <= line)
+	if (msgIndex < 0) return [-1, -1]
+
+	console.debug('msgTag', msgTagsInMeta[msgIndex])
+	const startOffset = msgTagsInMeta[msgIndex].position.end.offset + 2
+	const nextMsgIndex = msgIndex + 1
+	const nextMsgStartOffset =
+		nextMsgIndex < msgTagsInMeta.length ? msgTagsInMeta[nextMsgIndex].position.start.offset : Infinity
+	console.debug('nextTag', msgTagsInMeta[nextMsgIndex])
+	const lastSection = sectionsWithRefer.findLast(
+		(section) => section.position.end.offset <= nextMsgStartOffset && section.position.start.line >= line
+	)
+	if (!lastSection) return [-1, -1]
+
+	const endOffset = lastSection.position.end.offset
+	console.debug('startOff', startOffset, 'endOffset', endOffset)
+	return [startOffset, endOffset]
 }
