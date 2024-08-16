@@ -53,8 +53,8 @@ export default {
 	'Proxy URL': 'Proxy URL',
 	'Invalid URL': 'Invalid URL',
 	'Override input parameters': 'Override input parameters',
-	'Developer feature, in JSON format, for example, {"model": "gptX"} can override the model input parameter.':
-		'Developer feature, in JSON format, for example, {"model": "gptX"} can override the model input parameter.',
+	'Developer feature, in JSON format. e.g. {"model": "your model", "baseURL": "your url"}':
+		'Developer feature, in JSON format. e.g. {"model": "your model", "baseURL": "your url"}',
 	'Remove AI assistant': 'Remove AI assistant',
 	Remove: 'Remove',
 

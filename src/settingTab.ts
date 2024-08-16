@@ -282,9 +282,7 @@ export class TarsSettingTab extends PluginSettingTab {
 	addParametersSection = (details: HTMLDetailsElement, options: BaseOptions) =>
 		new Setting(details)
 			.setName(t('Override input parameters'))
-			.setDesc(
-				t('Developer feature, in JSON format, for example, {"model": "gptX"} can override the model input parameter.')
-			)
+			.setDesc(t('Developer feature, in JSON format. e.g. {"model": "your model", "baseURL": "your url"}'))
 			.addTextArea((text) =>
 				text
 					.setPlaceholder('{}')
