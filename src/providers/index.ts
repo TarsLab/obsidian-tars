@@ -25,6 +25,8 @@ export interface ProviderSettings {
 	options: BaseOptions
 }
 
-export interface SecretOptions extends BaseOptions {
+export interface Optional {
 	apiSecret: string
+	proxyUrl: string
+	max_tokens: number
 }

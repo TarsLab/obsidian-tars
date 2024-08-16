@@ -1,6 +1,6 @@
 import fetch from 'node-fetch'
 import { t } from 'src/lang/helper'
-import { Message, SecretOptions, SendRequest, Vendor } from '.'
+import { Message, SendRequest, Vendor, BaseOptions, Optional } from '.'
 
 interface TokenResponse {
 	access_token: string
@@ -14,9 +14,7 @@ interface Token {
 	apiSecret: string
 }
 
-export interface QianFanOptions extends SecretOptions {
-	token?: Token
-}
+type QianFanOptions = BaseOptions & Pick<Optional, 'apiSecret'> & { token?: Token }
 
 const createToken = async (apiKey: string, apiSecret: string) => {
 	if (!apiKey || !apiSecret) throw new Error('Invalid API key secret')
@@ -147,7 +145,7 @@ export const qianFanVendor: Vendor = {
 		baseURL: 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat',
 		model: models[0],
 		parameters: {}
-	} as SecretOptions,
+	} as QianFanOptions,
 	sendRequestFunc,
 	models: models,
 	websiteToObtainKey: 'https://qianfan.cloud.baidu.com'

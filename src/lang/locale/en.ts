@@ -48,6 +48,10 @@ export default {
 	Model: 'Model',
 	'Select the model to use': 'Select the model to use',
 	'Input the model to use': 'Input the model to use',
+	'Please enter a number': 'Please enter a number',
+	'Minimum value is 256': 'Minimum value is 256',
+	'Proxy URL': 'Proxy URL',
+	'Invalid URL': 'Invalid URL',
 	'Override input parameters': 'Override input parameters',
 	'Developer feature, in JSON format, for example, {"model": "gptX"} can override the model input parameter.':
 		'Developer feature, in JSON format, for example, {"model": "gptX"} can override the model input parameter.',
