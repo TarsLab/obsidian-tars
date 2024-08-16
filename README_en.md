@@ -7,7 +7,7 @@
 
 # Introduction
 
-Tars is an Obsidian plugin that supports text generation by Kimi, Doubao, Ali Qianwen, Baidu Qianfan, Zhipu, and other Chinese large language models (LLMs) based on tag suggestions. The name Tars comes from the robot Tars in the movie "Interstellar".
+Tars is an Obsidian plugin that supports text generation based on tag suggestions, using services like Claude, OpenAI, Kimi, Doubao, Qwen, Zhipu, DeepSeek, QianFan & more. The name Tars comes from the robot Tars in the movie "Interstellar".
 
 ## Features
 
@@ -23,9 +23,10 @@ Tars is an Obsidian plugin that supports text generation by Kimi, Doubao, Ali Qi
 
 ## AI providers
 
+- [Claude](https://claude.ai)
+- [OpenAI](https://platform.openai.com/api-keys)
 - [Kimi](https://www.moonshot.cn)
 - [Doubao](https://www.volcengine.com/product/doubao)
-- [OpenAI](https://platform.openai.com/api-keys)
 - [Qianfan](https://qianfan.cloud.baidu.com)
 - [Qwen](https://dashscope.console.aliyun.com)
 - [Zhipu](https://open.bigmodel.cn/)
@@ -35,9 +36,15 @@ If the AI provider you want is not in the list above, you can propose a specific
 
 ## How to use
 
-Add an AI assistant in the settings page, set the API key, and then use the corresponding tag in the editor to trigger the AI assistant.
+Add an AI assistant in the settings page, set the API key, and then use the corresponding tag in the editor to trigger the AI assistant. Trigger through a conversation form, with user messages first, then trigger the AI assistant to answer questions.
 
-If the model type you want is not in the AI assistant on the settings page, you can configure it in the "Override input parameters" in the settings, input JSON format, for example `{"model":"your desired model"}`.
+```text
+#User : 1+1=?（user message）
+(blank line)
+#Claude :（trigger）
+```
+
+If the model type you want is not in the AI assistant in the settings page, or the server address needs to be customized, you can configure it in the "Override input parameters" in the settings, input JSON format, for example `{"model":"your model", "baseURL": "your url"}`.
 
 ## Conversations syntax
 
