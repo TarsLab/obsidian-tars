@@ -7,7 +7,7 @@
 
 # 简介
 
-Tars 是一个 Obsidian 插件，支持 Kimi、豆包、阿里千问、百度千帆、智谱 等等中文大型语言模型（LLMs）基于标签建议进行文本生成。Tars 这个名字来源于电影《星际穿越》中的机器人 Tars。
+Tars 是一个 Obsidian 插件，基于标签建议进行文本生成，支持 Claude、OpenAI、Kimi、豆包、阿里千问、智谱、深度求索、百度千帆等。Tars 这个名字来源于电影《星际穿越》中的机器人 Tars。
 
 ## 特性
 
@@ -23,9 +23,10 @@ Tars 是一个 Obsidian 插件，支持 Kimi、豆包、阿里千问、百度千
 
 ## AI 服务提供商
 
+- [Claude](https://claude.ai)
+- [OpenAI](https://platform.openai.com/api-keys)
 - [Kimi](https://www.moonshot.cn)
 - [Doubao 豆包](https://www.volcengine.com/product/doubao)
-- [OpenAI](https://platform.openai.com/api-keys)
 - [Qianfan 百度千帆](https://qianfan.cloud.baidu.com)
 - [Qwen 阿里千问](https://dashscope.console.aliyun.com)
 - [Zhipu 智谱](https://open.bigmodel.cn/)
@@ -35,9 +36,15 @@ Tars 是一个 Obsidian 插件，支持 Kimi、豆包、阿里千问、百度千
 
 ## 如何使用
 
-在设置页面添加一个 AI 助手，设置 API 密钥，然后在编辑器中使用相应的标签来触发 AI 助手。
+在设置页面添加一个 AI 助手，设置 API 密钥，然后在编辑器中使用相应的标签来触发 AI 助手。通过对话形式来触发，先有用户消息，然后才能触发 AI 助手回答问题。
 
-如果在设置页面的 AI 助手中没有你想要的 model 类型，服务器地址需要中转，可以在设置中的“覆盖输入参数”进行配置，输入 JSON 格式，例如 `{"model":"你想要的model", "baseURL": "中转地址"}`。
+```text
+#我 : 1+1=?（用户消息）
+(隔开一个空行)
+#Claude : （触发）
+```
+
+如果在设置页面的 AI 助手中没有你想要的 model 类型，或者服务器地址需要自定义，可以在设置中的“覆盖输入参数”进行配置，输入 JSON 格式，例如 `{"model":"你想要的model", "baseURL": "自定义地址"}`。
 
 ## 对话语法
 

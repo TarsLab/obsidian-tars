@@ -1,7 +1,7 @@
 import { App, Notice, PluginSettingTab, Setting } from 'obsidian'
 import { t } from './lang/helper'
 import TarsPlugin from './main'
-import { BaseOptions, ProviderSettings, SecretOptions } from './providers'
+import { BaseOptions, ProviderSettings, Optional } from './providers'
 import { DEFAULT_SETTINGS, availableVendors } from './settings'
 
 export class TarsSettingTab extends PluginSettingTab {
@@ -116,14 +116,20 @@ export class TarsSettingTab extends PluginSettingTab {
 			vendor.websiteToObtainKey ? t('Obtain key from ') + vendor.websiteToObtainKey : ''
 		)
 
-		if ('apiSecret' in settings.options) {
-			this.addAPISecretSection(details, settings.options as SecretOptions)
-		}
+		if ('apiSecret' in settings.options)
+			this.addAPISecretOptional(details, settings.options as BaseOptions & Pick<Optional, 'apiSecret'>)
+
 		if (vendor.models.length > 0) {
 			this.addModelDropDownSection(details, settings.options, vendor.models)
 		} else {
 			this.addModelTextSection(details, settings.options)
 		}
+		if ('max_tokens' in settings.options)
+			this.addMaxTokensOptional(details, settings.options as BaseOptions & Pick<Optional, 'max_tokens'>)
+
+		if ('proxyUrl' in settings.options)
+			this.addProxyUrlOptional(details, settings.options as BaseOptions & Pick<Optional, 'proxyUrl'>)
+
 		this.addParametersSection(details, settings.options)
 
 		new Setting(details).setName(t('Remove') + ' ' + vendor.name).addButton((btn) => {
@@ -178,7 +184,11 @@ export class TarsSettingTab extends PluginSettingTab {
 					})
 			)
 
-	addAPISecretSection = (details: HTMLDetailsElement, options: SecretOptions, desc: string = '') =>
+	addAPISecretOptional = (
+		details: HTMLDetailsElement,
+		options: BaseOptions & Pick<Optional, 'apiSecret'>,
+		desc: string = ''
+	) =>
 		new Setting(details)
 			.setName('API Secret')
 			.setDesc(desc)
@@ -225,12 +235,54 @@ export class TarsSettingTab extends PluginSettingTab {
 					})
 			)
 
+	addMaxTokensOptional = (details: HTMLDetailsElement, options: BaseOptions & Pick<Optional, 'max_tokens'>) =>
+		new Setting(details).setName('Max tokens').addText((text) =>
+			text
+				.setPlaceholder('')
+				.setValue(options.max_tokens.toString())
+				.onChange(async (value) => {
+					const number = parseInt(value)
+					if (isNaN(number)) {
+						new Notice(t('Please enter a number'))
+						return
+					}
+					if (number < 1024) {
+						new Notice(t('Minimum value is 256'))
+						return
+					}
+					options.max_tokens = number
+					await this.plugin.saveSettings()
+				})
+		)
+
+	addProxyUrlOptional = (details: HTMLDetailsElement, options: BaseOptions & Pick<Optional, 'proxyUrl'>) =>
+		new Setting(details)
+			.setName(t('Proxy URL'))
+			.setDesc('e.g. http://127.0.0.1:7890')
+			.addText((text) =>
+				text
+					.setPlaceholder('')
+					.setValue(options.proxyUrl)
+					.onChange(async (value) => {
+						const url = value.trim()
+						if (url.length === 0) {
+							// 空字符串是合法的，清空proxyUrl
+							options.proxyUrl = ''
+							await this.plugin.saveSettings()
+						} else if (!isValidUrl(url)) {
+							new Notice(t('Invalid URL'))
+							return
+						} else {
+							options.proxyUrl = url
+							await this.plugin.saveSettings()
+						}
+					})
+			)
+
 	addParametersSection = (details: HTMLDetailsElement, options: BaseOptions) =>
 		new Setting(details)
 			.setName(t('Override input parameters'))
-			.setDesc(
-				t('Developer feature, in JSON format, for example, {"model": "gptX"} can override the model input parameter.')
-			)
+			.setDesc(t('Developer feature, in JSON format. e.g. {"model": "your model", "baseURL": "your url"}'))
 			.addTextArea((text) =>
 				text
 					.setPlaceholder('{}')
@@ -268,4 +320,13 @@ const validateTagList = (tags: string[]) => {
 		if (!validateTag(tag)) return false
 	}
 	return true
+}
+
+const isValidUrl = (url: string) => {
+	try {
+		new URL(url)
+		return true
+	} catch (e) {
+		return false
+	}
 }
