@@ -60,7 +60,7 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 			...remains
 		}
 		console.debug('proxyUrl', proxyUrl)
-		console.debug('claude api body', JSON.stringify(body))
+		// console.debug('claude api body', JSON.stringify(body))
 
 		const response = await fetch(baseURL, {
 			method: 'POST',
