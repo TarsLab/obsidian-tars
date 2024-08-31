@@ -29,4 +29,5 @@ export interface Optional {
 	apiSecret: string
 	proxyUrl: string
 	max_tokens: number
+	endpoint: string
 }

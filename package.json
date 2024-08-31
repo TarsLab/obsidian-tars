@@ -21,7 +21,7 @@
 		"jose": "^5.2.4",
 		"node-fetch": "^3.3.2",
 		"obsidian": "latest",
-		"openai": "^4.33.0",
+		"openai": "^4.41.0",
 		"tslib": "^2.4.0",
 		"typescript": "^5.5.2"
 	}

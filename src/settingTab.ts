@@ -130,6 +130,9 @@ export class TarsSettingTab extends PluginSettingTab {
 		if ('proxyUrl' in settings.options)
 			this.addProxyUrlOptional(details, settings.options as BaseOptions & Pick<Optional, 'proxyUrl'>)
 
+		if ('endpoint' in settings.options)
+			this.addEndpointOptional(details, settings.options as BaseOptions & Pick<Optional, 'endpoint'>)
+
 		this.addParametersSection(details, settings.options)
 
 		new Setting(details).setName(t('Remove') + ' ' + vendor.name).addButton((btn) => {
@@ -274,6 +277,30 @@ export class TarsSettingTab extends PluginSettingTab {
 							return
 						} else {
 							options.proxyUrl = url
+							await this.plugin.saveSettings()
+						}
+					})
+			)
+
+	addEndpointOptional = (details: HTMLDetailsElement, options: BaseOptions & Pick<Optional, 'endpoint'>) =>
+		new Setting(details)
+			.setName(t('Endpoint'))
+			.setDesc('e.g. https://docs-test-001.openai.azure.com/')
+			.addText((text) =>
+				text
+					.setPlaceholder('')
+					.setValue(options.endpoint)
+					.onChange(async (value) => {
+						const url = value.trim()
+						if (url.length === 0) {
+							// 空字符串是合法的，清空endpoint
+							options.endpoint = ''
+							await this.plugin.saveSettings()
+						} else if (!isValidUrl(url)) {
+							new Notice(t('Invalid URL'))
+							return
+						} else {
+							options.endpoint = url
 							await this.plugin.saveSettings()
 						}
 					})

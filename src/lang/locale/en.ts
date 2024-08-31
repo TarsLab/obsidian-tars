@@ -25,6 +25,7 @@ export default {
 	'API key is required': 'API key is required',
 	'API secret is required': 'API secret is required',
 	'Model is required': 'Model is required',
+    'API URL is required': 'API URL is required',
 
 	// settingTab.ts
 	'AI assistants': 'AI assistants',
@@ -57,6 +58,7 @@ export default {
 		'Developer feature, in JSON format. e.g. {"model": "your model", "baseURL": "your url"}',
 	'Remove AI assistant': 'Remove AI assistant',
 	Remove: 'Remove',
+	Endpoint: 'Endpoint',
 
 	// suggest.ts
 	'AI generate': 'AI generate',
