@@ -25,6 +25,7 @@ export default {
 	'API key is required': '请配置对应的 API key',
 	'API secret is required': '请配置对应的 API secret',
 	'Model is required': '请配置对应的模型',
+	'API URL is required': '请配置对应的 API URL',
 
 	// settingTab.ts
 	'AI assistants': 'AI 助手',
@@ -56,6 +57,7 @@ export default {
 		'开发者功能，以 JSON 格式。例如 {"model": "你想要的model", "baseURL": "自定义地址"}',
 	'Remove AI assistant': '移除 AI 助手',
 	Remove: '移除',
+	Endpoint: '终结点',
 
 	// suggest.ts
 	'AI generate': 'AI 生成',
