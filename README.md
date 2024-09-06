@@ -31,6 +31,7 @@ Tars 是一个 Obsidian 插件，基于标签建议进行文本生成，支持 C
 - [Qwen 阿里千问](https://dashscope.console.aliyun.com)
 - [Zhipu 智谱](https://open.bigmodel.cn/)
 - [DeepSeek 深度求索](https://www.deepseek.com)
+- [Azure OpenAI](https://azure.microsoft.com)
 
 如果上面列表没有你想要的 AI 服务提供商，可以在 issue 中提出具体方案。
 
