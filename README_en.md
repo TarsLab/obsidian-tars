@@ -25,6 +25,7 @@ Tars is an Obsidian plugin that supports text generation based on tag suggestion
 
 - [Claude](https://claude.ai)
 - [OpenAI](https://platform.openai.com/api-keys)
+- [Ollama](https://www.ollama.com)
 - [Kimi](https://www.moonshot.cn)
 - [Doubao](https://www.volcengine.com/product/doubao)
 - [Qianfan](https://qianfan.cloud.baidu.com)

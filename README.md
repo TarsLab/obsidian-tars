@@ -25,6 +25,7 @@ Tars 是一个 Obsidian 插件，基于标签建议进行文本生成，支持 C
 
 - [Claude](https://claude.ai)
 - [OpenAI](https://platform.openai.com/api-keys)
+- [Ollama](https://www.ollama.com)
 - [Kimi](https://www.moonshot.cn)
 - [Doubao 豆包](https://www.volcengine.com/product/doubao)
 - [Qianfan 百度千帆](https://qianfan.cloud.baidu.com)
