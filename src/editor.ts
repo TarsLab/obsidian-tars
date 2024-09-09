@@ -47,6 +47,8 @@ interface TagWithSections extends Tag {
 	readonly sections: SectionCacheWithRefer[]
 }
 
+const ignoreSectionTypes: readonly string[] = ['callout']
+
 export const buildRunEnv = async (app: App, settings: PluginSettings) => {
 	const activeFile = app.workspace.getActiveFile()
 	if (!activeFile) {
@@ -62,8 +64,16 @@ export const buildRunEnv = async (app: App, settings: PluginSettings) => {
 		throw new Error('No cached metadata found')
 	}
 
-	const tagsInMeta = fileMeta.tags || []
-	const sectionsWithRefer = getSectionsWithRefer(fileMeta, settings.ignoreSectionTypes)
+	const ignoreSections = fileMeta.sections?.filter((s) => ignoreSectionTypes.includes(s.type)) || []
+	const tagsInMeta = (fileMeta.tags || []).filter(
+		(t) =>
+			!ignoreSections.some(
+				(s) => s.position.start.offset <= t.position.start.offset && t.position.end.offset <= s.position.end.offset
+			)
+	)
+	console.debug('tagsInMeta', tagsInMeta)
+
+	const sectionsWithRefer = getSectionsWithRefer(fileMeta)
 	const assistantTags = settings.providers.map((p) => p.tag)
 
 	const options = {
@@ -241,20 +251,22 @@ export const insertText = (editor: Editor, text: string) => {
 	editor.scrollIntoView({ from: newPos, to: newPos })
 }
 
-export const getSectionsWithRefer = (fileMeta: CachedMetadata, ignoreSectionTypes: readonly string[]) => {
+export const getSectionsWithRefer = (fileMeta: CachedMetadata) => {
 	if (!fileMeta.sections) return []
 	const refersCache: ReferenceCache[] = [...(fileMeta.links || []), ...(fileMeta.embeds || [])].sort(
 		(a, b) => a.position.start.offset - b.position.start.offset // keep the order
 	)
-	const sectionsWithRefer: SectionCacheWithRefer[] = fileMeta.sections.map((section) => {
-		const refers = refersCache.filter(
-			(ref) =>
-				section.position.start.offset <= ref.position.start.offset &&
-				ref.position.end.offset <= section.position.end.offset &&
-				!ignoreSectionTypes.includes(section.type)
-		)
-		return { ...section, refers }
-	})
+	const sectionsWithRefer: SectionCacheWithRefer[] = fileMeta.sections
+		.filter((s) => !ignoreSectionTypes.includes(s.type))
+		.map((section) => {
+			const refers = refersCache.filter(
+				(ref) =>
+					section.position.start.offset <= ref.position.start.offset &&
+					ref.position.end.offset <= section.position.end.offset
+			)
+			return { ...section, refers }
+		})
+	console.debug('sectionsWithRefer', sectionsWithRefer)
 	return sectionsWithRefer
 }
 
