@@ -110,11 +110,16 @@ export class TarsSettingTab extends PluginSettingTab {
 		details.createEl('summary', { text: vendor.name, cls: 'tars-setting-h4' })
 
 		this.addTagSection(details, settings, index, vendor.name)
-		this.addAPIkeySection(
-			details,
-			settings.options,
-			vendor.websiteToObtainKey ? t('Obtain key from ') + vendor.websiteToObtainKey : ''
-		)
+		if (settings.vendor === 'Ollama') {
+			// Ollama 没有apiKey可配置，主要是配置 baseURL
+			this.addBaseURLSection(details, settings.options as BaseOptions, 'e.g. http://127.0.0.1:11434')
+		} else {
+			this.addAPIkeySection(
+				details,
+				settings.options,
+				vendor.websiteToObtainKey ? t('Obtain key from ') + vendor.websiteToObtainKey : ''
+			)
+		}
 
 		if ('apiSecret' in settings.options)
 			this.addAPISecretOptional(details, settings.options as BaseOptions & Pick<Optional, 'apiSecret'>)
@@ -171,6 +176,17 @@ export class TarsSettingTab extends PluginSettingTab {
 						settings.tag = trimmed
 						await this.plugin.saveSettings()
 					})
+			)
+
+	addBaseURLSection = (details: HTMLDetailsElement, options: BaseOptions, desc: string = '') =>
+		new Setting(details)
+			.setName('baseURL')
+			.setDesc(desc)
+			.addText((text) =>
+				text.setValue(options.baseURL).onChange(async (value) => {
+					options.baseURL = value
+					await this.plugin.saveSettings()
+				})
 			)
 
 	addAPIkeySection = (details: HTMLDetailsElement, options: BaseOptions, desc: string = '') =>
