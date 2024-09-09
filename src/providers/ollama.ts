@@ -10,7 +10,6 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 		const ollama = new Ollama({ host: baseURL })
 		const response = await ollama.chat({ model, messages, stream: true, ...remains })
 		for await (const part of response) {
-			console.log(part.message.content)
 			yield part.message.content
 		}
 	}
