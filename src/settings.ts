@@ -12,7 +12,6 @@ import { ollamaVendor } from './providers/ollama'
 
 export interface PluginSettings {
 	providers: ProviderSettings[]
-	ignoreSectionTypes: string[]
 	systemTags: string[]
 	newChatTags: string[]
 	userTags: string[]
@@ -20,7 +19,6 @@ export interface PluginSettings {
 
 export const DEFAULT_SETTINGS: PluginSettings = {
 	providers: [],
-	ignoreSectionTypes: ['blockquote', 'callout'],
 	systemTags: ['System', '系统'],
 	newChatTags: ['NewChat', '新对话'],
 	userTags: ['User', '我']
