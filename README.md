@@ -57,7 +57,7 @@ Tars 是一个 Obsidian 插件，基于标签建议进行文本生成，支持 C
 ![Conversations syntax](docs/images/zh/语法.png)
 
 - 对话消息将发送到配置的 AI 服务提供商。
-- 块引用和 callout 部分将被忽略。你可以利用块引用写注释，而不将其发送到 AI 助手。
+- 标注部分 (callout) 将被忽略。你可以在标注里写内容，不将其发送到 AI 助手。callout 不是 markdown 语法，是 obsidian 的扩展语法。
 - 开始新对话，使用 `新对话标签`。
 
 ## 建议
