@@ -1,6 +1,6 @@
 import fetch from 'node-fetch'
 import { t } from 'src/lang/helper'
-import { Message, SendRequest, Vendor, BaseOptions, Optional } from '.'
+import { BaseOptions, Message, Optional, SendRequest, Vendor } from '.'
 
 interface TokenResponse {
 	access_token: string
