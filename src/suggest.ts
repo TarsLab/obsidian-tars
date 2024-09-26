@@ -1,3 +1,4 @@
+import * as fs from 'fs'
 import {
 	App,
 	Editor,
@@ -8,6 +9,7 @@ import {
 	Notice,
 	TFile
 } from 'obsidian'
+import path from 'path'
 import { buildRunEnv, fetchConversation, insertText } from './editor'
 import { t } from './lang/helper'
 import { PluginSettings, availableVendors } from './settings'
@@ -16,6 +18,17 @@ interface TagEntry {
 	readonly type: 'user' | 'assistant' | 'system' | 'newChat'
 	readonly tag: string
 	readonly replacement: string
+}
+
+interface TextWithTime {
+	readonly text: string
+	readonly time: number
+}
+
+interface ResponseWithTime {
+	readonly lastMsg: string
+	readonly createdAt: string
+	readonly texts: TextWithTime[]
 }
 
 // 冒号前面加空格，对中文输入更友好。中文输入#tag后需要空格，才能输入中文的冒号
@@ -163,15 +176,54 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 			throw new Error('No vendor found ' + provider.vendor)
 		}
 		const sendRequest = vendor.sendRequestFunc(provider.options)
+
+		if (this.settings.isAuto) {
+			this.close()
+			return
+		}
+
+		const texts: TextWithTime[] = []
+
 		try {
+			const startTime = Date.now()
 			for await (const text of sendRequest(messages)) {
 				insertText(editor, text)
+
+				if (this.settings.isLog) {
+					const diffTime = Date.now() - startTime
+					texts.push({ text: text, time: diffTime })
+				}
 			}
 			new Notice(t('Text generated successfully'))
 		} catch (error) {
 			console.error('error', error)
 			new Notice(`🔴${t('Error')}: ${error}`, 10 * 1000)
 		}
+
+		if (this.settings.isLog && texts.length > 0 && this.settings.logPath) {
+			const lastMsg = messages[messages.length - 1]
+			const brief = lastMsg.content.length > 20 ? lastMsg.content.slice(0, 20) + '...' : lastMsg.content
+
+			const filePath = path.join(this.settings.logPath, `${formatDate(new Date())}-${brief}.json`)
+			const response: ResponseWithTime = {
+				lastMsg: messages[messages.length - 1].content,
+				createdAt: new Date().toISOString(),
+				texts
+			}
+
+			await fs.promises.writeFile(filePath, JSON.stringify(response, null, 2))
+		}
 		this.close()
 	}
+}
+
+const formatDate = (date: Date): string => {
+	const pad = (num: number) => num.toString().padStart(2, '0')
+
+	const month = pad(date.getMonth() + 1) // 月份从0开始，所以需要加1
+	const day = pad(date.getDate())
+	const hours = pad(date.getHours())
+	const minutes = pad(date.getMinutes())
+
+	return `${month}${day}-${hours}:${minutes}`
 }
