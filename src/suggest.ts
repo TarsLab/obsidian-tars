@@ -178,6 +178,7 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 		const sendRequest = vendor.sendRequestFunc(provider.options)
 
 		if (this.settings.isAuto) {
+			console.debug('Auto mode. Skip the generation...........')
 			this.close()
 			return
 		}
