@@ -35,21 +35,34 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 		const decoder = new TextDecoder('utf-8')
 		let isError = false
 		let _statusCode = 500
-		for await (const chunk of response.body) {
-			const lines = decoder.decode(Buffer.from(chunk))
-			for (const line of lines.split('\n')) {
-				if (line.startsWith('event:error')) {
-					isError = true
-				} else if (line.startsWith('status:')) {
-					_statusCode = parseInt(line.slice('status:'.length).trim(), 10)
-				} else if (line.startsWith('data:')) {
-					const data = line.slice('data:'.length)
-					const msg = JSON.parse(data)
-					const text = msg.output.text
-					yield text
-					if (isError) break
+		// 参考 python 版本的 dashscope 代码
+		if (response.status === 200 && response.headers.get('content-type')?.contains('text/event-stream')) {
+			for await (const chunk of response.body) {
+				const lines = decoder.decode(Buffer.from(chunk))
+				for (const line of lines.split('\n')) {
+					if (line.startsWith('event:error')) {
+						isError = true
+					} else if (line.startsWith('status:')) {
+						_statusCode = parseInt(line.slice('status:'.length).trim(), 10)
+					} else if (line.startsWith('data:')) {
+						const data = line.slice('data:'.length)
+						const msg = JSON.parse(data)
+						const text = msg.output.text
+						yield text
+						if (isError) break
+					}
 				}
 			}
+		} else if (response.status === 200) {
+			const data = await response.json()
+			throw new Error(JSON.stringify(data))
+		} else {
+			if (response.headers.get('content-type')?.contains('application/json')) {
+				const data = await response.json()
+				throw new Error(JSON.stringify(data))
+			}
+			console.error('response', response)
+			throw new Error(`${response.statusText}}`)
 		}
 	}
 
