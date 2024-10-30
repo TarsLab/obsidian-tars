@@ -1,14 +1,14 @@
 import { ProviderSettings, Vendor } from './providers'
+import { azureVendor } from './providers/azure'
+import { claudeVendor } from './providers/claude'
 import { deepSeekVendor } from './providers/deepSeek'
 import { doubaoVendor } from './providers/doubao'
 import { kimiVendor } from './providers/kimi'
+import { ollamaVendor } from './providers/ollama'
 import { openAIVendor } from './providers/openAI'
 import { qianFanVendor } from './providers/qianFan'
 import { qwenVendor } from './providers/qwen'
 import { zhipuVendor } from './providers/zhipu'
-import { claudeVendor } from './providers/claude'
-import { azureVendor } from './providers/azure'
-import { ollamaVendor } from './providers/ollama'
 
 export interface PluginSettings {
 	providers: ProviderSettings[]
