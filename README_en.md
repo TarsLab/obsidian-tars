@@ -58,7 +58,7 @@ A paragraph cannot contain multiple messages. Messages should be separated by bl
 
 - The conversation messages will send to the configured AI assistant.
 - Callout sections will be ignored. You can write content in the callout without sending it to the AI assistant. Callout is not markdown syntax, it is an obsidian extension syntax.
-- Start a new conversation with `new conversation tag`.
+- Start a new conversation with `NewChat` tag.
 
 ## Recommended
 
