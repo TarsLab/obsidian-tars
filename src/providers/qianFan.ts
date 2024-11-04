@@ -107,6 +107,11 @@ const sendRequestFunc = (settings: QianFanOptions): SendRequest =>
 		if (!response || !response.body) {
 			throw new Error('No response')
 		}
+		if (!response.ok) {
+			console.error('response', response)
+			throw new Error(`Unexpected response status: ${response.status} ${response.statusText}`)
+		}
+
 		const buffer: string[] = []
 		const decoder = new TextDecoder('utf-8')
 		for await (const chunk of response.body) {

@@ -28,6 +28,10 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 		if (!response || !response.body) {
 			throw new Error('No response')
 		}
+		if (!response.ok) {
+			console.error('response', response)
+			throw new Error(`Unexpected response status: ${response.status} ${response.statusText}`)
+		}
 		const decoder = new TextDecoder('utf-8')
 		for await (const chunk of response.body) {
 			const lines = decoder.decode(Buffer.from(chunk))

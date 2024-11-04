@@ -69,6 +69,14 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 			agent: proxyUrl ? new HttpsProxyAgent(proxyUrl) : undefined
 		})
 
+		if (!response || !response.body) {
+			throw new Error('No response')
+		}
+		if (!response.ok) {
+			console.error('response', response)
+			throw new Error(`Unexpected response status: ${response.status} ${response.statusText}`)
+		}
+
 		// @ts-ignore
 		const stream = Stream.fromSSEResponse<PartialEvent>(response, new AbortController())
 
