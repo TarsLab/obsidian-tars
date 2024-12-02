@@ -100,7 +100,7 @@ export const claudeVendor: Vendor = {
 		apiKey: '',
 		baseURL: 'https://api.anthropic.com/v1/messages',
 		model: models[0],
-		max_tokens: 1024,
+		max_tokens: 8192,
 		proxyUrl: '',
 		parameters: {}
 	} as ClaudeOptions,
