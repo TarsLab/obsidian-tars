@@ -23,7 +23,11 @@ export class TarsSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName(t('New AI assistant'))
-			.setDesc(t("Select assistant from dropdown and click 'Add'."))
+			.setDesc(
+				t(
+					"Select assistant from dropdown and click 'Add'. For those compatible with the OpenAI protocol, you can select OpenAI."
+				)
+			)
 			.addDropdown((dropdown) =>
 				dropdown
 					.addOptions(
@@ -43,10 +47,11 @@ export class TarsSettingTab extends PluginSettingTab {
 					if (!options) {
 						throw new Error('No default options found for ' + vendorToCreate)
 					}
+					const deepCopiedOptions = JSON.parse(JSON.stringify(options))
 					this.plugin.settings.providers.push({
 						tag: vendorToCreate,
 						vendor: vendorToCreate,
-						options: options
+						options: deepCopiedOptions
 					})
 					// 初始时，vendor和tag是一样的, 但是vendor只读，标记vendor类型，而tag是用户可以修改的
 					// TODO, tag 可能会重复，需要检查
@@ -107,13 +112,11 @@ export class TarsSettingTab extends PluginSettingTab {
 		if (!vendor) throw new Error('No vendor found ' + settings.vendor)
 		const { containerEl } = this
 		const details = containerEl.createEl('details')
-		details.createEl('summary', { text: vendor.name, cls: 'tars-setting-h4' })
+		const summary = settings.tag === vendor.name ? vendor.name : settings.tag + ' (' + vendor.name + ')'
+		details.createEl('summary', { text: summary, cls: 'tars-setting-h4' })
 
 		this.addTagSection(details, settings, index, vendor.name)
-		if (settings.vendor === 'Ollama') {
-			// Ollama 没有apiKey可配置，主要是配置 baseURL
-			this.addBaseURLSection(details, settings.options as BaseOptions, 'e.g. http://127.0.0.1:11434')
-		} else {
+		if (settings.vendor !== 'Ollama') {
 			this.addAPIkeySection(
 				details,
 				settings.options,
@@ -129,6 +132,9 @@ export class TarsSettingTab extends PluginSettingTab {
 		} else {
 			this.addModelTextSection(details, settings.options)
 		}
+
+		this.addBaseURLSection(details, settings.options as BaseOptions, t('Refer to the technical documentation'))
+
 		if ('max_tokens' in settings.options)
 			this.addMaxTokensOptional(details, settings.options as BaseOptions & Pick<Optional, 'max_tokens'>)
 
@@ -140,7 +146,7 @@ export class TarsSettingTab extends PluginSettingTab {
 
 		this.addParametersSection(details, settings.options)
 
-		new Setting(details).setName(t('Remove') + ' ' + vendor.name).addButton((btn) => {
+		new Setting(details).setName(t('Remove') + ' ' + summary).addButton((btn) => {
 			btn
 				.setWarning()
 				.setButtonText(t('Remove'))
@@ -255,24 +261,27 @@ export class TarsSettingTab extends PluginSettingTab {
 			)
 
 	addMaxTokensOptional = (details: HTMLDetailsElement, options: BaseOptions & Pick<Optional, 'max_tokens'>) =>
-		new Setting(details).setName('Max tokens').addText((text) =>
-			text
-				.setPlaceholder('')
-				.setValue(options.max_tokens.toString())
-				.onChange(async (value) => {
-					const number = parseInt(value)
-					if (isNaN(number)) {
-						new Notice(t('Please enter a number'))
-						return
-					}
-					if (number < 1024) {
-						new Notice(t('Minimum value is 256'))
-						return
-					}
-					options.max_tokens = number
-					await this.plugin.saveSettings()
-				})
-		)
+		new Setting(details)
+			.setName('Max tokens')
+			.setDesc(t('Refer to the technical documentation'))
+			.addText((text) =>
+				text
+					.setPlaceholder('')
+					.setValue(options.max_tokens.toString())
+					.onChange(async (value) => {
+						const number = parseInt(value)
+						if (isNaN(number)) {
+							new Notice(t('Please enter a number'))
+							return
+						}
+						if (number < 256) {
+							new Notice(t('Minimum value is 256'))
+							return
+						}
+						options.max_tokens = number
+						await this.plugin.saveSettings()
+					})
+			)
 
 	addProxyUrlOptional = (details: HTMLDetailsElement, options: BaseOptions & Pick<Optional, 'proxyUrl'>) =>
 		new Setting(details)

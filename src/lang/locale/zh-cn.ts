@@ -30,7 +30,8 @@ export default {
 	// settingTab.ts
 	'AI assistants': 'AI 助手',
 	'New AI assistant': '新的AI助手',
-	"Select assistant from dropdown and click 'Add'.": '从下拉框选择助手类型，点击新增按钮',
+	"Select assistant from dropdown and click 'Add'. For those compatible with the OpenAI protocol, you can select OpenAI.":
+		'从下拉框选择助手类型，点击新增按钮。对于兼容OpenAI协议的，可以选择OpenAI.',
 	Add: '新增',
 	'Message tags': '消息标签',
 	'Keywords for tags in the text box are separated by spaces': '在文本框中的标签关键字用空格分隔',
@@ -42,6 +43,7 @@ export default {
 	'Trigger AI generation': '触发AI生成',
 	'Obtain key from ': '获取 key 网站 ',
 	'Enter your key': '输入你的 key',
+	'Refer to the technical documentation': '参考技术文档',
 	'Keyword for tag must not contain #': '标签关键字不能包含#',
 	'Keyword for tag must not contain space': '标签关键字不能包含空格',
 	'Keyword for tag must be unique': '标签关键字必须唯一',

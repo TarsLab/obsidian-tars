@@ -25,9 +25,9 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 }
 
 export const availableVendors: Vendor[] = [
+	openAIVendor,
 	doubaoVendor,
 	kimiVendor,
-	openAIVendor,
 	qianFanVendor,
 	qwenVendor,
 	zhipuVendor,

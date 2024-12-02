@@ -25,12 +25,13 @@ export default {
 	'API key is required': 'API key is required',
 	'API secret is required': 'API secret is required',
 	'Model is required': 'Model is required',
-    'API URL is required': 'API URL is required',
+	'API URL is required': 'API URL is required',
 
 	// settingTab.ts
 	'AI assistants': 'AI assistants',
 	'New AI assistant': 'New AI assistant',
-	"Select assistant from dropdown and click 'Add'.": "Select assistant from dropdown and click 'Add'.",
+	"Select assistant from dropdown and click 'Add'. For those compatible with the OpenAI protocol, you can select OpenAI.":
+		"Select assistant from dropdown and click 'Add'. For those compatible with the OpenAI protocol, you can select OpenAI.",
 	Add: 'Add',
 	'Message tags': 'Message tags',
 	'Keywords for tags in the text box are separated by spaces':
@@ -43,6 +44,7 @@ export default {
 	'Trigger AI generation': 'Trigger AI generation',
 	'Obtain key from ': 'Obtain key from ',
 	'Enter your key': 'Enter your key',
+	'Refer to the technical documentation': 'Refer to the technical documentation',
 	'Keyword for tag must not contain #': 'Keyword for tag must not contain #',
 	'Keyword for tag must not contain space': 'Keyword for tag must not contain space',
 	'Keyword for tag must be unique': 'Keyword for tag must be unique',
