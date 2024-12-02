@@ -133,7 +133,7 @@ export class TarsSettingTab extends PluginSettingTab {
 			this.addModelTextSection(details, settings.options)
 		}
 
-		this.addBaseURLSection(details, settings.options as BaseOptions, t('Refer to the technical documentation'))
+		this.addBaseURLSection(details, settings.options as BaseOptions, 'e.g. ' + vendor.defaultOptions.baseURL)
 
 		if ('max_tokens' in settings.options)
 			this.addMaxTokensOptional(details, settings.options as BaseOptions & Pick<Optional, 'max_tokens'>)
