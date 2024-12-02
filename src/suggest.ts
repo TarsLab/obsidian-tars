@@ -147,23 +147,25 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 		if (element.type === 'user' || element.type === 'system' || element.type === 'newChat') {
 			return
 		}
-		const env = await buildRunEnv(this.app, this.settings)
-		const conversation = await fetchConversation(env, 0, editor.posToOffset(this.context.start))
-		const messages = conversation.map((c) => ({ role: c.role, content: c.content }))
 
-		console.debug('messages', messages)
-		console.debug('generate text: ')
-		console.debug('element', element)
-		const provider = this.settings.providers.find((p) => p.tag === element.tag)
-		if (!provider) {
-			throw new Error('No provider found ' + element.tag)
-		}
-		const vendor = availableVendors.find((v) => v.name === provider.vendor)
-		if (!vendor) {
-			throw new Error('No vendor found ' + provider.vendor)
-		}
-		const sendRequest = vendor.sendRequestFunc(provider.options)
 		try {
+			const env = await buildRunEnv(this.app, this.settings)
+			const conversation = await fetchConversation(env, 0, editor.posToOffset(this.context.start))
+			const messages = conversation.map((c) => ({ role: c.role, content: c.content }))
+
+			console.debug('messages', messages)
+			console.debug('generate text: ')
+			console.debug('element', element)
+			const provider = this.settings.providers.find((p) => p.tag === element.tag)
+			if (!provider) {
+				throw new Error('No provider found ' + element.tag)
+			}
+			const vendor = availableVendors.find((v) => v.name === provider.vendor)
+			if (!vendor) {
+				throw new Error('No vendor found ' + provider.vendor)
+			}
+			const sendRequest = vendor.sendRequestFunc(provider.options)
+
 			for await (const text of sendRequest(messages)) {
 				insertText(editor, text)
 			}
