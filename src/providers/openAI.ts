@@ -33,18 +33,16 @@ const sendRequestFunc = (settings: OpenAIOptions): SendRequest =>
 		}
 	}
 
-const models = ['gpt-4o', 'gpt-4-turbo', 'gpt-4', 'gpt-4-32k', 'gpt-3.5-turbo', 'gpt-3.5-turbo-16k']
-
 export const openAIVendor: Vendor = {
 	name: 'OpenAI',
 	defaultOptions: {
 		apiKey: '',
 		baseURL: 'https://api.openai.com/v1',
-		model: models[0],
+		model: 'gpt-4',
 		proxyUrl: '',
 		parameters: {}
 	} as OpenAIOptions,
 	sendRequestFunc,
-	models,
+	models: [],
 	websiteToObtainKey: 'https://platform.openai.com/api-keys'
 }
