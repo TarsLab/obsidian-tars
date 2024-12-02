@@ -144,9 +144,7 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 		const editor = this.context.editor
 		editor.replaceRange(element.replacement, this.context.start, this.context.end)
 
-		if (element.type === 'user' || element.type === 'system' || element.type === 'newChat') {
-			return
-		}
+		if (element.type !== 'assistant') return
 
 		try {
 			const env = await buildRunEnv(this.app, this.settings)
