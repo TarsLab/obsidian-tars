@@ -49,7 +49,7 @@ interface TagWithSections extends Tag {
 
 const ignoreSectionTypes: readonly string[] = ['callout']
 
-export const buildRunEnv = async (app: App, settings: PluginSettings) => {
+export const buildRunEnv = async (app: App, settings: PluginSettings): Promise<RunEnv> => {
 	const activeFile = app.workspace.getActiveFile()
 	if (!activeFile) {
 		throw new Error('No active file')
