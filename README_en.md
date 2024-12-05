@@ -7,7 +7,7 @@
 
 # Introduction
 
-Tars is an Obsidian plugin that supports text generation based on tag suggestions, using services like Claude, OpenAI, Kimi, Doubao, Qwen, Zhipu, DeepSeek, QianFan & more. The name Tars comes from the robot Tars in the movie "Interstellar".
+Tars is an Obsidian plugin that supports text generation based on tag suggestions, using services like Claude, OpenAI, Gemini, Ollama, Kimi, Doubao, Qwen, Zhipu, DeepSeek, QianFan & more. The name Tars comes from the robot Tars in the movie "Interstellar".
 
 ## Features
 
