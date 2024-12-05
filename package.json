@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-tars",
-	"version": "0.6.4",
+	"version": "0.7.0",
 	"description": "Text generation based on tag suggestions, using Claude, OpenAI, Ollama, Kimi, Doubao, Qwen, Zhipu, DeepSeek, QianFan & more.",
 	"main": "main.js",
 	"scripts": {
@@ -12,6 +12,7 @@
 	"author": "C Jack<https://github.com/ae86jack>",
 	"license": "MIT",
 	"devDependencies": {
+		"@google/generative-ai": "^0.21.0",
 		"@types/node": "^16.18.101",
 		"@typescript-eslint/eslint-plugin": "^6.19.1",
 		"@typescript-eslint/parser": "^6.19.1",
