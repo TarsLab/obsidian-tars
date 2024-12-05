@@ -3,6 +3,7 @@ import { azureVendor } from './providers/azure'
 import { claudeVendor } from './providers/claude'
 import { deepSeekVendor } from './providers/deepSeek'
 import { doubaoVendor } from './providers/doubao'
+import { geminiVendor } from './providers/gemini'
 import { kimiVendor } from './providers/kimi'
 import { ollamaVendor } from './providers/ollama'
 import { openAIVendor } from './providers/openAI'
@@ -26,13 +27,15 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 
 export const availableVendors: Vendor[] = [
 	openAIVendor,
+	// 以下是按照字母顺序排列的
+	azureVendor,
+	claudeVendor,
+	deepSeekVendor,
 	doubaoVendor,
+	geminiVendor,
 	kimiVendor,
+	ollamaVendor,
 	qianFanVendor,
 	qwenVendor,
-	zhipuVendor,
-	deepSeekVendor,
-	claudeVendor,
-	ollamaVendor,
-	azureVendor
+	zhipuVendor
 ]
