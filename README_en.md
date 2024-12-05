@@ -23,16 +23,17 @@ Tars is an Obsidian plugin that supports text generation based on tag suggestion
 
 ## AI providers
 
+- [Azure OpenAI](https://azure.microsoft.com)
 - [Claude](https://claude.ai)
-- [OpenAI](https://platform.openai.com/api-keys)
-- [Ollama](https://www.ollama.com)
-- [Kimi](https://www.moonshot.cn)
+- [DeepSeek](https://www.deepseek.com)
 - [Doubao](https://www.volcengine.com/product/doubao)
+- [Gemini](https://gemini.google.com)
+- [Kimi](https://www.moonshot.cn)
+- [Ollama](https://www.ollama.com)
+- [OpenAI](https://platform.openai.com/api-keys)
 - [Qianfan](https://qianfan.cloud.baidu.com)
 - [Qwen](https://dashscope.console.aliyun.com)
 - [Zhipu](https://open.bigmodel.cn/)
-- [DeepSeek](https://www.deepseek.com)
-- [Azure OpenAI](https://azure.microsoft.com)
 
 If the AI provider you want is not in the list above, you can propose a specific plan in the issue.
 

@@ -23,16 +23,17 @@ Tars 是一个 Obsidian 插件，基于标签建议进行文本生成，支持 C
 
 ## AI 服务提供商
 
+- [Azure OpenAI](https://azure.microsoft.com)
 - [Claude](https://claude.ai)
-- [OpenAI](https://platform.openai.com/api-keys)
-- [Ollama](https://www.ollama.com)
-- [Kimi](https://www.moonshot.cn)
+- [DeepSeek 深度求索](https://www.deepseek.com)
 - [Doubao 豆包](https://www.volcengine.com/product/doubao)
+- [Gemini](https://gemini.google.com)
+- [Kimi](https://www.moonshot.cn)
+- [Ollama](https://www.ollama.com)
+- [OpenAI](https://platform.openai.com/api-keys)
 - [Qianfan 百度千帆](https://qianfan.cloud.baidu.com)
 - [Qwen 阿里千问](https://dashscope.console.aliyun.com)
 - [Zhipu 智谱](https://open.bigmodel.cn/)
-- [DeepSeek 深度求索](https://www.deepseek.com)
-- [Azure OpenAI](https://azure.microsoft.com)
 
 如果上面列表没有你想要的 AI 服务提供商，可以在 issue 中提出具体方案。
 
