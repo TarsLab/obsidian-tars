@@ -15,6 +15,8 @@ Tars is an Obsidian plugin that supports text generation based on tag suggestion
 
 ![Text generation triggered by tag](docs/images/write%20a%20story%20with%20Kimi.gif)
 
+> ⚠️ **Note**: Do not add "#" in front. It is triggered by entering the "tag", not entering "#tag". In the above picture, the input is "kimi", not "#kimi".
+
 - Support for internal links
 
 ![Internal link support](docs/images/writer%20prompt.png)
