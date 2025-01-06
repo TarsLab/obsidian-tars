@@ -1,6 +1,21 @@
+export interface TextBlock {
+	text: string
+	type: 'text'
+}
+
+export interface ImageBlock {
+	source: {
+		data: string
+		media_type: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'
+		type: 'base64'
+	}
+
+	type: 'image'
+}
+
 export interface Message {
 	readonly role: 'user' | 'assistant' | 'system'
-	readonly content: string
+	readonly content: Array<TextBlock | ImageBlock>
 }
 
 export type SendRequest = (messages: readonly Message[]) => AsyncGenerator<string, void, unknown>

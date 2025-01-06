@@ -100,7 +100,7 @@ const fetchLinkTextContent = async (env: RunEnv, linkText: string) => {
 	const fileMeta = appMeta.getFileCache(targetFile)
 	if (fileMeta === null) throw new Error('no file metadata found')
 
-	const targetFileText = await vault.cachedRead(targetFile)
+	const targetFileText = await vault.cachedRead(targetFile) // 如果是图片？？？
 	if (subpath) {
 		const subPathData = resolveSubpath(fileMeta, subpath)
 		if (subPathData === null) throw new Error('no subpath data found')
@@ -161,7 +161,7 @@ export const fetchTagsWithSections = (env: RunEnv, startOffset: number, endOffse
 	return tagsWithSections
 }
 
-export const fetchTextRange = async (
+export const fetchBlocksRange = async (
 	env: RunEnv,
 	sectionWithRefer: SectionCacheWithRefer,
 	contentRange: readonly [number, number]
@@ -194,10 +194,10 @@ export const fetchTextRange = async (
 	}
 }
 
-export const fetchTextForTag = async (env: RunEnv, tagWithSections: TagWithSections) => {
+export const fetchBlocksForTag = async (env: RunEnv, tagWithSections: TagWithSections) => {
 	const { fileText } = env
 	const textRanges = await Promise.all(
-		tagWithSections.sections.map((section) => fetchTextRange(env, section, tagWithSections.contentRange))
+		tagWithSections.sections.map((section) => fetchBlocksRange(env, section, tagWithSections.contentRange))
 	)
 
 	const startOffset = tagWithSections.contentRange[0]
@@ -233,7 +233,7 @@ export const fetchConversation = async (env: RunEnv, startOffset: number, endOff
 	const conversation = await Promise.all(
 		tagsWithSections.map(async (tag) => ({
 			...tag,
-			content: await fetchTextForTag(env, tag)
+			content: await fetchBlocksForTag(env, tag)
 		}))
 	)
 	return conversation
@@ -297,7 +297,7 @@ export const fetchAllConversations = async (env: RunEnv) => {
 			const conversation = Promise.all(
 				tagsWithSections.map(async (tag) => ({
 					...tag,
-					content: await fetchTextForTag(env, tag)
+					content: await fetchBlocksForTag(env, tag)
 				}))
 			)
 			return conversation
