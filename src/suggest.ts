@@ -201,7 +201,7 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 
 				const filePath = path.join(this.settings.logPath, `${formatDate(new Date())}-${brief}.json`)
 				const response: ResponseWithTime = {
-					lastMsg: messages[messages.length - 1].content,
+					lastMsg: messages[messages.length - 1].content.trim(),
 					createdAt: new Date().toISOString(),
 					texts
 				}
