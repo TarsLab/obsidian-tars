@@ -1,6 +1,21 @@
 import OpenAI from 'openai'
 import { t } from 'src/lang/helper'
-import { BaseOptions, Message, SendRequest, Vendor } from '.'
+import { BaseOptions, Message, Optional, SendRequest, Vendor } from '.'
+
+type DeepSeekOptions = BaseOptions & Pick<Optional, 'reasoningLLMs' | 'ReasoningLLMOptions'>
+
+const models = ['deepseek-chat', 'deepseek-coder', 'deepseek-reasoner']
+
+const deepseekDefaultOptions: DeepSeekOptions = {
+	apiKey: '',
+	baseURL: 'https://api.deepseek.com',
+	model: models[0],
+	parameters: {},
+	reasoningLLMs: ['deepseek-reasoner'],
+	ReasoningLLMOptions: {
+		expend: false
+	}
+}
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 	async function* (messages: Message[]) {
@@ -22,23 +37,46 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 			...remains
 		})
 
-		for await (const part of stream) {
-			const text = part.choices[0]?.delta?.content
-			if (!text) continue
-			yield text
-		}
-	}
+		if (!deepseekDefaultOptions.reasoningLLMs.includes(model)) {
+			// 对话模型
+			for await (const part of stream) {
+				const text = part.choices[0]?.delta?.content
+				if (!text) continue
+				yield text
+			}
+		} else {
+			let isReasoning = true
 
-const models = ['deepseek-chat', 'deepseek-coder']
+			// 推理模型，输出 callout 头部
+			if (remains?.ReasoningLLMOptions?.expend)
+				yield "\n\n> [!info]+ reasoning content\n> "
+			else
+				yield "\n\n> [!info]- reasoning content\n> "
+
+			for await (const chunk of stream) {
+				if (chunk.choices[0]?.delta?.reasoning_content !== null) {
+					const reasoningContent = chunk.choices[0]?.delta?.reasoning_content
+					if (!reasoningContent) continue
+					for (const char of reasoningContent) {
+						yield char === '\n' ? char + '> ' : char
+					}
+				} else {
+					if (isReasoning) {
+						isReasoning = false
+						yield "\n\n"
+					}
+					const text = chunk.choices[0]?.delta?.content
+					if (!text) continue
+					yield text
+				}
+			}
+		}
+
+	}
 
 export const deepSeekVendor: Vendor = {
 	name: 'DeepSeek',
-	defaultOptions: {
-		apiKey: '',
-		baseURL: 'https://api.deepseek.com',
-		model: models[0],
-		parameters: {}
-	},
+	defaultOptions: deepseekDefaultOptions,
 	sendRequestFunc,
 	models,
 	websiteToObtainKey: 'https://platform.deepseek.com'

@@ -19,6 +19,10 @@ export interface BaseOptions {
 	parameters: Record<string, unknown>
 }
 
+export interface ReasoningLLMOptions {
+	expend: boolean
+}
+
 export interface ProviderSettings {
 	tag: string
 	readonly vendor: string
@@ -30,4 +34,6 @@ export interface Optional {
 	proxyUrl: string
 	max_tokens: number
 	endpoint: string
+	reasoningLLMs: string[]
+	ReasoningLLMOptions: ReasoningLLMOptions
 }
