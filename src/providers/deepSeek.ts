@@ -1,6 +1,6 @@
 import OpenAI from 'openai'
 import { t } from 'src/lang/helper'
-import { BaseOptions, Message, Optional, SendRequest, Vendor } from '.'
+import { BaseOptions, Message, Optional, SendRequest, Vendor, createReasoningCallout } from '.'
 
 type DeepSeekOptions = BaseOptions & Pick<Optional, 'reasoningLLMs' | 'ReasoningLLMOptions'>
 
@@ -46,19 +46,19 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 			}
 		} else {
 			let isReasoning = true
+			const reasoningCallout = createReasoningCallout('note', remains?.ReasoningLLMOptions?.expend ? '+' : '-')
 
 			// 推理模型，输出 callout 头部
-			if (remains?.ReasoningLLMOptions?.expend)
-				yield "\n\n> [!info]+ reasoning content\n> "
-			else
-				yield "\n\n> [!info]- reasoning content\n> "
+			yield '\n\n'
+			yield reasoningCallout.header
+			yield '\n' + reasoningCallout.prefix
 
 			for await (const chunk of stream) {
 				if (chunk.choices[0]?.delta?.reasoning_content !== null) {
 					const reasoningContent = chunk.choices[0]?.delta?.reasoning_content
 					if (!reasoningContent) continue
 					for (const char of reasoningContent) {
-						yield char === '\n' ? char + '> ' : char
+						yield char === '\n' ? char + reasoningCallout.prefix : char
 					}
 				} else {
 					if (isReasoning) {

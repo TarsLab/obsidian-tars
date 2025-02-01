@@ -37,3 +37,24 @@ export interface Optional {
 	reasoningLLMs: string[]
 	ReasoningLLMOptions: ReasoningLLMOptions
 }
+
+type CalloutType = 'info' | 'note' 
+type CalloutState = '+' | '-' | ''
+type ReasoningCalloutParts = {
+	header: string
+	prefix: string
+}
+
+export const createReasoningCallout = (
+	type: CalloutType, 
+	state: CalloutState
+): ReasoningCalloutParts => {
+	return {
+		header: `> [!${type}]${state} reasoning content`,
+		prefix: '> '
+	}
+}
+
+export const isReasoningCalloutStart = (line: string): boolean => {
+	return line.startsWith('> [!') && line.includes('reasoning content')
+}
