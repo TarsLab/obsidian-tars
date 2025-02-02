@@ -1,3 +1,5 @@
+import OpenAI from 'openai'
+
 export interface Message {
 	readonly role: 'user' | 'assistant' | 'system'
 	readonly content: string
@@ -40,6 +42,10 @@ export interface Optional {
 export interface ReasoningOptional {
 	reasoningLLMs: string[]
 	ReasoningLLMOptions: ReasoningLLMOptions
+}
+
+export interface ReasoningDelta extends OpenAI.ChatCompletionChunk.Choice.Delta {
+    reasoning_content?: string | null;
 }
 
 export enum CalloutType {

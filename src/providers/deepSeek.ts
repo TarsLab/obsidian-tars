@@ -1,6 +1,6 @@
 import OpenAI from 'openai'
 import { t } from 'src/lang/helper'
-import { BaseOptions, CalloutType, Message, ReasoningOptional, SendRequest, Vendor, createReasoningCallout } from '.'
+import { BaseOptions, CalloutType, Message, ReasoningOptional, SendRequest, Vendor, createReasoningCallout, ReasoningDelta } from '.'
 
 type DeepSeekOptions = BaseOptions & ReasoningOptional
 
@@ -18,7 +18,7 @@ const deepseekDefaultOptions: DeepSeekOptions = {
 	}
 }
 
-const sendRequestFunc = (settings: BaseOptions): SendRequest =>
+const sendRequestFunc = (settings: DeepSeekOptions): SendRequest =>
 	async function* (messages: Message[]) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
@@ -55,8 +55,10 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 			yield '\n' + reasoningCallout.prefix
 
 			for await (const chunk of stream) {
-				if (chunk.choices[0]?.delta?.reasoning_content !== null) {
-					const reasoningContent = chunk.choices[0]?.delta?.reasoning_content
+				const delta = chunk.choices[0]?.delta as ReasoningDelta
+
+				if (delta?.reasoning_content !== null) {
+					const reasoningContent = delta?.reasoning_content
 					if (!reasoningContent) continue
 					for (const char of reasoningContent) {
 						yield char === '\n' ? char + reasoningCallout.prefix : char
