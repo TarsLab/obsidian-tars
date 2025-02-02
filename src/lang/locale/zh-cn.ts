@@ -50,6 +50,7 @@ export default {
 	Model: '模型',
 	'Select the model to use': '选择要使用的模型',
 	'Input the model to use': '输入要使用的模型',
+	'Callout type': '标注类型',
 	'Expand Reasoning Chain by Default': '默认展开思维链',
 	'Please enter a number': '请输入一个数字',
 	'Minimum value is 256': '最小值是256',

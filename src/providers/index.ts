@@ -20,7 +20,8 @@ export interface BaseOptions {
 }
 
 export interface ReasoningLLMOptions {
-	expend: boolean
+	expendCoT: boolean
+	calloutType: CalloutType
 }
 
 export interface ProviderSettings {
@@ -34,16 +35,23 @@ export interface Optional {
 	proxyUrl: string
 	max_tokens: number
 	endpoint: string
+}
+
+export interface ReasoningOptional {
 	reasoningLLMs: string[]
 	ReasoningLLMOptions: ReasoningLLMOptions
 }
 
-type CalloutType = 'info' | 'note' 
-type CalloutState = '+' | '-' | ''
-type ReasoningCalloutParts = {
+export enum CalloutType {
+	Info = 'info',
+	Note = 'note'
+}
+export type CalloutState = '+' | '-' | ''
+export type ReasoningCalloutParts = {
 	header: string
 	prefix: string
 }
+export const CALLOUT_OPTIONS = Object.values(CalloutType)
 
 export const createReasoningCallout = (
 	type: CalloutType, 

@@ -51,6 +51,7 @@ export default {
 	Model: 'Model',
 	'Select the model to use': 'Select the model to use',
 	'Input the model to use': 'Input the model to use',
+	'Callout type': 'Callout type',
 	'Expand Reasoning Chain by Default': 'Expand Reasoning Chain by Default',
 	'Please enter a number': 'Please enter a number',
 	'Minimum value is 256': 'Minimum value is 256',

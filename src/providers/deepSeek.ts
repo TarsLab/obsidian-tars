@@ -1,8 +1,8 @@
 import OpenAI from 'openai'
 import { t } from 'src/lang/helper'
-import { BaseOptions, Message, Optional, SendRequest, Vendor, createReasoningCallout } from '.'
+import { BaseOptions, CalloutType, Message, ReasoningOptional, SendRequest, Vendor, createReasoningCallout } from '.'
 
-type DeepSeekOptions = BaseOptions & Pick<Optional, 'reasoningLLMs' | 'ReasoningLLMOptions'>
+type DeepSeekOptions = BaseOptions & ReasoningOptional
 
 const models = ['deepseek-chat', 'deepseek-coder', 'deepseek-reasoner']
 
@@ -13,7 +13,8 @@ const deepseekDefaultOptions: DeepSeekOptions = {
 	parameters: {},
 	reasoningLLMs: ['deepseek-reasoner'],
 	ReasoningLLMOptions: {
-		expend: false
+		expendCoT: false,
+		calloutType: CalloutType.Note
 	}
 }
 
@@ -46,7 +47,7 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 			}
 		} else {
 			let isReasoning = true
-			const reasoningCallout = createReasoningCallout('note', remains?.ReasoningLLMOptions?.expend ? '+' : '-')
+			const reasoningCallout = createReasoningCallout(remains?.ReasoningLLMOptions?.calloutType, remains?.ReasoningLLMOptions?.expendCoT ? '+' : '-')
 
 			// 推理模型，输出 callout 头部
 			yield '\n\n'

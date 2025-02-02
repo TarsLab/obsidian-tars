@@ -332,7 +332,7 @@ export const fetchAllConversations = async (env: RunEnv) => {
 			const conversation = Promise.all(
 				tagsWithSections.map(async (tag) => ({
 					...tag,
-					content: await fetchTextForTag(env, tag, false)
+					content: await fetchTextForTag(env, tag)
 				}))
 			)
 			return conversation

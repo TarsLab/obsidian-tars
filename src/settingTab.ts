@@ -1,7 +1,7 @@
 import { App, Notice, PluginSettingTab, Setting } from 'obsidian'
 import { t } from './lang/helper'
 import TarsPlugin from './main'
-import { BaseOptions, Optional, ProviderSettings } from './providers'
+import { BaseOptions, CALLOUT_OPTIONS, CalloutType, Optional, ProviderSettings, ReasoningOptional } from './providers'
 import { DEFAULT_SETTINGS, availableVendors } from './settings'
 
 export class TarsSettingTab extends PluginSettingTab {
@@ -141,9 +141,9 @@ export class TarsSettingTab extends PluginSettingTab {
 		let conditionSettings: Setting[] = [];
 		let showReasoningSettings: boolean = false;
 		if ('reasoningLLMs' in settings.options && 'ReasoningLLMOptions' in settings.options) {
-			const reasoningLLMs = (settings.options as BaseOptions & Pick<Optional, 'reasoningLLMs'>).reasoningLLMs;
+			const reasoningLLMs = (settings.options as BaseOptions & ReasoningOptional).reasoningLLMs;
 			showReasoningSettings = reasoningLLMs.includes(settings.options.model);
-			conditionSettings = this.addReasoningLLMSetting(details, settings.options as BaseOptions & Pick<Optional, 'ReasoningLLMOptions'>);
+			conditionSettings = this.addReasoningLLMSetting(details, settings.options as BaseOptions & ReasoningOptional);
 		}
 
 		conditionSettings.forEach(setting => {
@@ -282,18 +282,34 @@ export class TarsSettingTab extends PluginSettingTab {
 					})
 			)
 			
-	addReasoningLLMSetting = (details: HTMLDetailsElement, options: BaseOptions & Pick<Optional, 'ReasoningLLMOptions'>) => {
+	addReasoningLLMSetting = (details: HTMLDetailsElement, options: BaseOptions & ReasoningOptional) => {
 		return [
 			new Setting(details)
-			.setName(t('Expand Reasoning Chain by Default'))
-			.addToggle((toggle) =>
-				toggle
-					.setValue(options.ReasoningLLMOptions.expend)
-					.onChange(async (value) => {
-						options.ReasoningLLMOptions.expend = value;
-						await this.plugin.saveSettings();
-					})
-			),
+				.setName(t('Expand Reasoning Chain by Default'))
+				.addToggle((toggle) =>
+					toggle
+						.setValue(options.ReasoningLLMOptions.expendCoT)
+						.onChange(async (value) => {
+							options.ReasoningLLMOptions.expendCoT = value;
+							await this.plugin.saveSettings();
+						})
+				),
+			new Setting(details)
+				.setName(t('Callout type'))
+				.addDropdown(dropdown => 
+					dropdown
+						.addOptions(
+							CALLOUT_OPTIONS.reduce((acc: Record<string, string>, cur) => {
+								acc[cur] = cur
+								return acc
+							}, {})
+						)
+						.setValue(options.ReasoningLLMOptions.calloutType)
+						.onChange(async (value: CalloutType) => {
+							options.ReasoningLLMOptions.calloutType = value;
+							await this.plugin.saveSettings();
+						})
+				)
 		]
 	}
 
