@@ -66,5 +66,7 @@ export default {
 
 	// suggest.ts
 	'AI generate': 'AI generate',
-	'Text generated successfully': 'Text generated successfully'
+	'Text generated successfully': 'Text generated successfully',
+	', took ': ', took ',
+	' seconds': ' seconds'
 }

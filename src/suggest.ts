@@ -164,10 +164,13 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 			}
 			const sendRequest = vendor.sendRequestFunc(provider.options)
 
+			const startTime = performance.now()
 			for await (const text of sendRequest(messages)) {
 				insertText(editor, text)
 			}
-			new Notice(t('Text generated successfully'))
+			const endTime = performance.now()
+			const duration = ((endTime - startTime) / 1000).toFixed(1)
+			new Notice(t('Text generated successfully') + t(', took ') + duration + t(' seconds'))
 		} catch (error) {
 			console.error('error', error)
 			new Notice(`🔴${t('Error')}: ${error}`, 10 * 1000)
