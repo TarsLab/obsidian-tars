@@ -135,8 +135,8 @@ export class TarsSettingTab extends PluginSettingTab {
 
 		if (settings.vendor === 'Zhipu') {
 			new Setting(details)
-			  .setName('Enable Web Search')
-			  .setDesc('Enable web search for AI')
+				.setName(t('Web Search'))
+				.setDesc(t('Enable web search for AI'))
 			  .addToggle((toggle) =>
 				toggle
 				  .setValue((settings.options as ZhipuOptions).enableWebSearch)
