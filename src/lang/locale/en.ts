@@ -64,6 +64,9 @@ export default {
 	Remove: 'Remove',
 	Endpoint: 'Endpoint',
 
+	'Input tokens: ': 'Input tokens: ',
+	'Output tokens: ': 'Output tokens: ',
+
 	// suggest.ts
 	'AI generate': 'AI generate',
 	'Text generated successfully': 'Text generated successfully',

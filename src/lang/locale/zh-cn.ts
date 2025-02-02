@@ -63,6 +63,9 @@ export default {
 	Remove: '移除',
 	Endpoint: '终结点',
 
+	'Input tokens: ': '输入消耗 token 数：',
+	'Output tokens: ': '输出消耗 token 数：',
+
 	// suggest.ts
 	'AI generate': 'AI 生成',
 	'Text generated successfully': '文本生成成功',

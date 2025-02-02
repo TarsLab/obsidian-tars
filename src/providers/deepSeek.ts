@@ -1,6 +1,7 @@
 import OpenAI from 'openai'
 import { t } from 'src/lang/helper'
 import { BaseOptions, CalloutType, Message, ReasoningOptional, SendRequest, Vendor, createReasoningCallout, ReasoningDelta } from '.'
+import { Notice } from 'obsidian'
 
 type DeepSeekOptions = BaseOptions & ReasoningOptional
 
@@ -69,8 +70,19 @@ const sendRequestFunc = (settings: DeepSeekOptions): SendRequest =>
 						yield "\n\n"
 					}
 					const text = chunk.choices[0]?.delta?.content
-					if (!text) continue
-					yield text
+					if (text) 
+						yield text
+				}
+
+				if (!chunk.usage)
+					continue
+
+				// 统计消耗的 token 数量
+				const promptToken = chunk.usage?.prompt_tokens
+				const completionToken = chunk.usage?.completion_tokens
+
+				if (promptToken && completionToken) {
+					new Notice(t(`Input tokens: `) + promptToken + '\n' + t(`Output tokens: `) + completionToken)
 				}
 			}
 		}
