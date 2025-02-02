@@ -12,38 +12,49 @@ interface Token {
 interface ZhipuOptions extends BaseOptions {
 	token?: Token
 	tokenExpireInMinutes: number
+	enableWebSearch: boolean
 }
 
 const sendRequestFunc = (settings: ZhipuOptions): SendRequest =>
-	async function* (messages: Message[]) {
-		const { parameters, ...optionsExcludingParams } = settings
-		const options = { ...optionsExcludingParams, ...parameters }
-		const { apiKey, baseURL, model, token: currentToken, tokenExpireInMinutes, ...remains } = options
-		if (!apiKey) throw new Error(t('API key is required'))
-		console.debug('zhipu options', { baseURL, apiKey, model, currentToken, tokenExpireInMinutes })
+  async function* (messages: Message[]) {
+    const { parameters, ...optionsExcludingParams } = settings
+    const options = { ...optionsExcludingParams, ...parameters }
+    const { apiKey, baseURL, model, token: currentToken, tokenExpireInMinutes, enableWebSearch, ...remains } = options
+    if (!apiKey) throw new Error(t('API key is required'))
+    console.debug('zhipu options', { baseURL, apiKey, model, currentToken, tokenExpireInMinutes, enableWebSearch })
 
-		const { token } = await validOrCreate(currentToken, apiKey, tokenExpireInMinutes)
-		options.token = token // 这里的token没有保存到磁盘，只是在内存中保存
+    const { token } = await validOrCreate(currentToken, apiKey, tokenExpireInMinutes)
+    options.token = token // 这里的token没有保存到磁盘，只是在内存中保存
 
-		const client = new OpenAI({
-			apiKey: token.id,
-			baseURL,
-			dangerouslyAllowBrowser: true
-		})
+    const client = new OpenAI({
+      apiKey: token.id,
+      baseURL,
+      dangerouslyAllowBrowser: true
+    })
 
-		const stream = await client.chat.completions.create({
-			model,
-			messages,
-			stream: true,
-			...remains
-		})
+    const tools = enableWebSearch ? [
+      {
+        "type": "web_search",
+        "web_search": {
+          "enable": true  // 启用网络搜索
+        }
+      }
+    ] : []
 
-		for await (const part of stream) {
-			const text = part.choices[0]?.delta?.content
-			if (!text) continue
-			yield text
-		}
-	}
+    const stream = await client.chat.completions.create({
+      model,
+      messages,
+      stream: true,
+      tools,
+      ...remains
+    })
+
+    for await (const part of stream) {
+      const text = part.choices[0]?.delta?.content
+      if (!text) continue
+      yield text
+    }
+  }
 
 const createToken = async (apiKeySecret: string, expireInMinutes: number) => {
 	const [apiKey, apiSecret] = apiKeySecret.split('.')
@@ -96,6 +107,7 @@ export const zhipuVendor: Vendor = {
 		baseURL: 'https://open.bigmodel.cn/api/paas/v4/',
 		model: models[0],
 		tokenExpireInMinutes: 60 * 24,
+		enableWebSearch: false, // 启用网络搜索
 		parameters: {}
 	} as ZhipuOptions,
 	sendRequestFunc,

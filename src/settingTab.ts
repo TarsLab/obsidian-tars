@@ -133,6 +133,20 @@ export class TarsSettingTab extends PluginSettingTab {
 			this.addModelTextSection(details, settings.options)
 		}
 
+		if (settings.vendor === 'Zhipu') {
+			new Setting(details)
+			  .setName('Enable Web Search')
+			  .setDesc('Enable web search for AI')
+			  .addToggle((toggle) =>
+				toggle
+				  .setValue((settings.options as ZhipuOptions).enableWebSearch)
+				  .onChange(async (value) => {
+					(settings.options as ZhipuOptions).enableWebSearch = value
+					await this.plugin.saveSettings()
+				  })
+			  )
+		  }
+		  
 		this.addBaseURLSection(details, settings.options as BaseOptions, 'e.g. ' + vendor.defaultOptions.baseURL)
 
 		if ('max_tokens' in settings.options)
