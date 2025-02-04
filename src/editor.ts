@@ -11,7 +11,7 @@ import {
 	parseLinktext,
 	resolveSubpath
 } from 'obsidian'
-import { Message } from './providers'
+import { isReasoningCalloutStart, Message } from './providers'
 import { PluginSettings } from './settings'
 
 export interface RunEnv {
@@ -194,7 +194,42 @@ export const fetchTextRange = async (
 	}
 }
 
-export const fetchTextForTag = async (env: RunEnv, tagWithSections: TagWithSections) => {
+// 添加过滤函数
+const filterReasoningContent = (
+    text: string,
+    includeReasoning = false
+): string => {
+    if (includeReasoning) return text
+
+    const lines = text.split('\n')
+    const filteredLines = []
+    let skipMode = false
+
+    for (const line of lines) {
+        if (isReasoningCalloutStart(line)) {
+            skipMode = true
+            continue
+        }
+        
+        if (skipMode) {
+            if (!line.startsWith('>') && line.trim() !== '') {
+                skipMode = false
+                filteredLines.push(line)
+            }
+            continue
+        }
+        
+        filteredLines.push(line)
+    }
+
+    return filteredLines.join('\n').trimStart()
+}
+
+export const fetchTextForTag = async (
+    env: RunEnv, 
+    tagWithSections: TagWithSections,
+    includeReasoning: boolean = true
+) => {
 	const { fileText } = env
 	const textRanges = await Promise.all(
 		tagWithSections.sections.map((section) => fetchTextRange(env, section, tagWithSections.contentRange))
@@ -212,7 +247,7 @@ export const fetchTextForTag = async (env: RunEnv, tagWithSections: TagWithSecti
 		}
 	)
 	console.debug('accumulated', accumulated)
-	return accumulated.text
+	return filterReasoningContent(accumulated.text, includeReasoning)
 }
 
 export const fetchConversation = async (env: RunEnv, startOffset: number, endOffset: number) => {
@@ -233,7 +268,7 @@ export const fetchConversation = async (env: RunEnv, startOffset: number, endOff
 	const conversation = await Promise.all(
 		tagsWithSections.map(async (tag) => ({
 			...tag,
-			content: await fetchTextForTag(env, tag)
+			content: await fetchTextForTag(env, tag, false)
 		}))
 	)
 	return conversation
