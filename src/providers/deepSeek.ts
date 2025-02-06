@@ -22,6 +22,7 @@ const deepseekDefaultOptions: DeepSeekOptions = {
 const sendRequestFunc = (settings: DeepSeekOptions): SendRequest =>
 	async function* (messages: Message[]) {
 		const { parameters, ...optionsExcludingParams } = settings
+		const originalModel = optionsExcludingParams.model
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, baseURL, model, ...remains } = options
 		if (!apiKey) throw new Error(t('API key is required'))
@@ -39,7 +40,8 @@ const sendRequestFunc = (settings: DeepSeekOptions): SendRequest =>
 			...remains
 		})
 
-		if (!deepseekDefaultOptions.reasoningLLMs.includes(model)) {
+		const isReasoningLLM = deepseekDefaultOptions.reasoningLLMs.includes(model) || deepseekDefaultOptions.reasoningLLMs.includes(originalModel)
+		if (!isReasoningLLM) {
 			// 对话模型
 			for await (const part of stream) {
 				const text = part.choices[0]?.delta?.content
@@ -57,6 +59,7 @@ const sendRequestFunc = (settings: DeepSeekOptions): SendRequest =>
 
 			for await (const chunk of stream) {
 				const delta = chunk.choices[0]?.delta as ReasoningDelta
+				console.debug('delta', delta)
 
 				if (delta?.reasoning_content !== null) {
 					const reasoningContent = delta?.reasoning_content
@@ -74,16 +77,19 @@ const sendRequestFunc = (settings: DeepSeekOptions): SendRequest =>
 						yield text
 				}
 
-				if (!chunk.usage)
-					continue
-
-				// 统计消耗的 token 数量
-				const promptToken = chunk.usage?.prompt_tokens
-				const completionToken = chunk.usage?.completion_tokens
-
-				if (promptToken && completionToken) {
-					new Notice(t(`Input tokens: `) + promptToken + '\n' + t(`Output tokens: `) + completionToken)
+				if (chunk.usage && !chunk.usage.prompt_tokens && !chunk.usage.completion_tokens) {
+					// 当调用结束切存在 usage 字段时，统计消耗的 token 数量
+					const promptToken = chunk.usage?.prompt_tokens
+					const completionToken = chunk.usage?.completion_tokens
+	
+					if (promptToken && completionToken) {
+						console.debug('deepseek-R1 promptToken', promptToken)
+						console.debug('deepseek-R1 completionToken', completionToken)
+						new Notice(t(`Input tokens: `) + promptToken + '\n' + t(`Output tokens: `) + completionToken)
+					}
 				}
+
+
 			}
 		}
 
