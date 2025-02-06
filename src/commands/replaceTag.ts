@@ -80,10 +80,13 @@ interface ReplaceTag {
 }
 
 const countOccurrences = (array: string[]) =>
-	array.reduce((acc, curr) => {
-		acc[curr] = (acc[curr] || 0) + 1
-		return acc
-	}, {} as { [key: string]: number }) // Add index signature to the accumulator object
+	array.reduce(
+		(acc, curr) => {
+			acc[curr] = (acc[curr] || 0) + 1
+			return acc
+		},
+		{} as { [key: string]: number }
+	) // Add index signature to the accumulator object
 
 const findTwoMostFrequentSpeakers = (fileText: string) => {
 	// [\u4e00-\u9fa5a-zA-Z0-9]：这个字符集匹配任何单个中文字符（范围从 \u4e00 到 \u9fa5，覆盖了绝大多数常用汉字）、英文字符（大小写）或数字（0-9）

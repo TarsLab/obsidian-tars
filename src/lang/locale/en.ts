@@ -43,7 +43,7 @@ export default {
 	tag: 'tag',
 	'Trigger AI generation': 'Trigger AI generation',
 	'Obtain key from ': 'Obtain key from ',
-	'Web Search': 'Web Search',
+	'Web search': 'Web search',
 	'Enable web search for AI': 'Enable web search for AI',
 	'Enter your key': 'Enter your key',
 	'Refer to the technical documentation': 'Refer to the technical documentation',

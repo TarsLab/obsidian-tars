@@ -2,6 +2,7 @@ import { App, Notice, PluginSettingTab, Setting } from 'obsidian'
 import { t } from './lang/helper'
 import TarsPlugin from './main'
 import { BaseOptions, CALLOUT_OPTIONS, CalloutType, Optional, ProviderSettings, ReasoningOptional } from './providers'
+import { ZhipuOptions } from './providers/zhipu'
 import { DEFAULT_SETTINGS, availableVendors } from './settings'
 
 export class TarsSettingTab extends PluginSettingTab {
@@ -140,29 +141,27 @@ export class TarsSettingTab extends PluginSettingTab {
 
 		if (settings.vendor === 'Zhipu') {
 			new Setting(details)
-				.setName(t('Web Search'))
+				.setName(t('Web search'))
 				.setDesc(t('Enable web search for AI'))
-			  .addToggle((toggle) =>
-				toggle
-				  .setValue((settings.options as ZhipuOptions).enableWebSearch)
-				  .onChange(async (value) => {
-					(settings.options as ZhipuOptions).enableWebSearch = value
-					await this.plugin.saveSettings()
-				  })
-			  )
-		  }
-		  
-		let conditionSettings: Setting[] = [];
-		let showReasoningSettings: boolean = false;
-		if ('reasoningLLMs' in settings.options && 'ReasoningLLMOptions' in settings.options) {
-			const reasoningLLMs = (settings.options as BaseOptions & ReasoningOptional).reasoningLLMs;
-			showReasoningSettings = reasoningLLMs.includes(settings.options.model);
-			conditionSettings = this.addReasoningLLMSetting(details, settings.options as BaseOptions & ReasoningOptional);
+				.addToggle((toggle) =>
+					toggle.setValue((settings.options as ZhipuOptions).enableWebSearch).onChange(async (value) => {
+						;(settings.options as ZhipuOptions).enableWebSearch = value
+						await this.plugin.saveSettings()
+					})
+				)
 		}
 
-		conditionSettings.forEach(setting => {
-			this.mayDisableSetting(setting, !showReasoningSettings);
-		});
+		let conditionSettings: Setting[] = []
+		let showReasoningSettings: boolean = false
+		if ('reasoningLLMs' in settings.options && 'ReasoningLLMOptions' in settings.options) {
+			const reasoningLLMs = (settings.options as BaseOptions & ReasoningOptional).reasoningLLMs
+			showReasoningSettings = reasoningLLMs.includes(settings.options.model)
+			conditionSettings = this.addReasoningLLMSetting(details, settings.options as BaseOptions & ReasoningOptional)
+		}
+
+		conditionSettings.forEach((setting) => {
+			this.mayDisableSetting(setting, !showReasoningSettings)
+		})
 
 		this.addBaseURLSection(details, settings.options as BaseOptions, 'e.g. ' + vendor.defaultOptions.baseURL)
 
@@ -295,35 +294,29 @@ export class TarsSettingTab extends PluginSettingTab {
 						this.display()
 					})
 			)
-			
+
 	addReasoningLLMSetting = (details: HTMLDetailsElement, options: BaseOptions & ReasoningOptional) => {
 		return [
-			new Setting(details)
-				.setName(t('Expand Reasoning Chain by Default'))
-				.addToggle((toggle) =>
-					toggle
-						.setValue(options.ReasoningLLMOptions.expendCoT)
-						.onChange(async (value) => {
-							options.ReasoningLLMOptions.expendCoT = value;
-							await this.plugin.saveSettings();
-						})
-				),
-			new Setting(details)
-				.setName(t('Callout type'))
-				.addDropdown(dropdown => 
-					dropdown
-						.addOptions(
-							CALLOUT_OPTIONS.reduce((acc: Record<string, string>, cur) => {
-								acc[cur] = cur
-								return acc
-							}, {})
-						)
-						.setValue(options.ReasoningLLMOptions.calloutType)
-						.onChange(async (value: CalloutType) => {
-							options.ReasoningLLMOptions.calloutType = value;
-							await this.plugin.saveSettings();
-						})
-				)
+			new Setting(details).setName(t('Expand Reasoning Chain by Default')).addToggle((toggle) =>
+				toggle.setValue(options.ReasoningLLMOptions.expendCoT).onChange(async (value) => {
+					options.ReasoningLLMOptions.expendCoT = value
+					await this.plugin.saveSettings()
+				})
+			),
+			new Setting(details).setName(t('Callout type')).addDropdown((dropdown) =>
+				dropdown
+					.addOptions(
+						CALLOUT_OPTIONS.reduce((acc: Record<string, string>, cur) => {
+							acc[cur] = cur
+							return acc
+						}, {})
+					)
+					.setValue(options.ReasoningLLMOptions.calloutType)
+					.onChange(async (value: CalloutType) => {
+						options.ReasoningLLMOptions.calloutType = value
+						await this.plugin.saveSettings()
+					})
+			)
 		]
 	}
 
@@ -410,7 +403,7 @@ export class TarsSettingTab extends PluginSettingTab {
 						try {
 							options.parameters = JSON.parse(value)
 							await this.plugin.saveSettings()
-						} catch (error) {
+						} catch (_error) {
 							// 这里不好处理，onChange触发很快，用户输入的时候可能还没输入完，频繁报错让用户很烦
 							return
 						}
@@ -419,11 +412,10 @@ export class TarsSettingTab extends PluginSettingTab {
 
 	mayDisableSetting(setting: Setting, disable: boolean) {
 		if (disable) {
-			setting.setDisabled(disable);
-			setting.setClass("obsidian-tars-disabled");
+			setting.setDisabled(disable)
+			setting.setClass('obsidian-tars-disabled')
 		}
 	}
-
 }
 
 const validateTag = (tag: string) => {
@@ -453,7 +445,7 @@ const isValidUrl = (url: string) => {
 	try {
 		new URL(url)
 		return true
-	} catch (e) {
+	} catch (_error) {
 		return false
 	}
 }
