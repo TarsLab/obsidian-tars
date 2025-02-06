@@ -16,13 +16,15 @@ export interface PluginSettings {
 	systemTags: string[]
 	newChatTags: string[]
 	userTags: string[]
+	enableWebSearch: boolean
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
 	providers: [],
 	systemTags: ['System', '系统'],
 	newChatTags: ['NewChat', '新对话'],
-	userTags: ['User', '我']
+	userTags: ['User', '我'],
+	enableWebSearch: false
 }
 
 export const availableVendors: Vendor[] = [

@@ -42,6 +42,8 @@ export default {
 	tag: '标签',
 	'Trigger AI generation': '触发AI生成',
 	'Obtain key from ': '获取 key 网站 ',
+	'Web Search': '网络搜索',
+	'Enable web search for AI': '为当前 AI 启用网络搜索',
 	'Enter your key': '输入你的 key',
 	'Refer to the technical documentation': '参考技术文档',
 	'Keyword for tag must not contain #': '标签关键字不能包含#',

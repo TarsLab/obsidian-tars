@@ -138,6 +138,20 @@ export class TarsSettingTab extends PluginSettingTab {
 			this.addModelTextSection(details, settings.options, index)
 		}
 
+		if (settings.vendor === 'Zhipu') {
+			new Setting(details)
+				.setName(t('Web Search'))
+				.setDesc(t('Enable web search for AI'))
+			  .addToggle((toggle) =>
+				toggle
+				  .setValue((settings.options as ZhipuOptions).enableWebSearch)
+				  .onChange(async (value) => {
+					(settings.options as ZhipuOptions).enableWebSearch = value
+					await this.plugin.saveSettings()
+				  })
+			  )
+		  }
+		  
 		let conditionSettings: Setting[] = [];
 		let showReasoningSettings: boolean = false;
 		if ('reasoningLLMs' in settings.options && 'ReasoningLLMOptions' in settings.options) {
