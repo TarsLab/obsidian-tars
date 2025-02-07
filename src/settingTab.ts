@@ -1,20 +1,19 @@
 import { App, Notice, PluginSettingTab, Setting } from 'obsidian'
 import { t } from './lang/helper'
 import TarsPlugin from './main'
-import { BaseOptions, CALLOUT_OPTIONS, CalloutType, Optional, ProviderSettings, ReasoningOptional } from './providers'
+import { BaseOptions, Optional, ProviderSettings } from './providers'
 import { ZhipuOptions } from './providers/zhipu'
 import { DEFAULT_SETTINGS, availableVendors } from './settings'
 
 export class TarsSettingTab extends PluginSettingTab {
 	plugin: TarsPlugin
-	nowSettingIndex: number | null
 
 	constructor(app: App, plugin: TarsPlugin) {
 		super(app, plugin)
 		this.plugin = plugin
 	}
 
-	display(): void {
+	display(expandLastProvider = false): void {
 		const { containerEl } = this
 		containerEl.empty()
 
@@ -57,14 +56,14 @@ export class TarsSettingTab extends PluginSettingTab {
 					})
 					// 初始时，vendor和tag是一样的, 但是vendor只读，标记vendor类型，而tag是用户可以修改的
 					// TODO, tag 可能会重复，需要检查
-					this.nowSettingIndex = this.plugin.settings.providers.length - 1
 					await this.plugin.saveSettings()
-					this.display()
+					this.display(true)
 				})
 			})
 
 		for (const [index, provider] of this.plugin.settings.providers.entries()) {
-			this.createProviderSetting(index, provider, index === this.nowSettingIndex)
+			const isLast = index === this.plugin.settings.providers.length - 1
+			this.createProviderSetting(index, provider, isLast && expandLastProvider)
 		}
 
 		containerEl.createEl('br')
@@ -108,8 +107,6 @@ export class TarsSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings()
 				})
 		)
-
-		this.nowSettingIndex = null
 	}
 
 	createProviderSetting = (index: number, settings: ProviderSettings, isOpen: boolean = false) => {
@@ -117,8 +114,7 @@ export class TarsSettingTab extends PluginSettingTab {
 		if (!vendor) throw new Error('No vendor found ' + settings.vendor)
 		const { containerEl } = this
 		const details = containerEl.createEl('details')
-		const summary = settings.tag === vendor.name ? vendor.name : settings.tag + ' (' + vendor.name + ')'
-		details.createEl('summary', { text: summary, cls: 'tars-setting-h4' })
+		details.createEl('summary', { text: getSummary(settings.tag, vendor.name), cls: 'tars-setting-h4' })
 		details.open = isOpen
 
 		this.addTagSection(details, settings, index, vendor.name)
@@ -151,18 +147,6 @@ export class TarsSettingTab extends PluginSettingTab {
 				)
 		}
 
-		let conditionSettings: Setting[] = []
-		let showReasoningSettings: boolean = false
-		if ('reasoningLLMs' in settings.options && 'ReasoningLLMOptions' in settings.options) {
-			const reasoningLLMs = (settings.options as BaseOptions & ReasoningOptional).reasoningLLMs
-			showReasoningSettings = reasoningLLMs.includes(settings.options.model)
-			conditionSettings = this.addReasoningLLMSetting(details, settings.options as BaseOptions & ReasoningOptional)
-		}
-
-		conditionSettings.forEach((setting) => {
-			this.mayDisableSetting(setting, !showReasoningSettings)
-		})
-
 		this.addBaseURLSection(details, settings.options as BaseOptions, 'e.g. ' + vendor.defaultOptions.baseURL)
 
 		if ('max_tokens' in settings.options)
@@ -176,13 +160,12 @@ export class TarsSettingTab extends PluginSettingTab {
 
 		this.addParametersSection(details, settings.options)
 
-		new Setting(details).setName(t('Remove') + ' ' + summary).addButton((btn) => {
+		new Setting(details).setName(t('Remove') + ' ' + vendor.name).addButton((btn) => {
 			btn
 				.setWarning()
 				.setButtonText(t('Remove'))
 				.onClick(async () => {
 					this.plugin.settings.providers.splice(index, 1)
-					this.nowSettingIndex = null
 					await this.plugin.saveSettings()
 					this.display()
 				})
@@ -199,7 +182,7 @@ export class TarsSettingTab extends PluginSettingTab {
 					.setValue(settings.tag)
 					.onChange(async (value) => {
 						const trimmed = value.trim()
-						console.debug('trimmed', trimmed)
+						// console.debug('trimmed', trimmed)
 						if (trimmed.length === 0) return
 						if (!validateTag(trimmed)) return
 						const otherTags = this.plugin.settings.providers
@@ -211,6 +194,8 @@ export class TarsSettingTab extends PluginSettingTab {
 						}
 
 						settings.tag = trimmed
+						const summaryElement = details.querySelector('summary')
+						if (summaryElement != null) summaryElement.textContent = getSummary(settings.tag, defaultTag) // 更新summary
 						await this.plugin.saveSettings()
 					})
 			)
@@ -273,9 +258,7 @@ export class TarsSettingTab extends PluginSettingTab {
 					.setValue(options.model)
 					.onChange(async (value) => {
 						options.model = value
-						this.nowSettingIndex = index
 						await this.plugin.saveSettings()
-						this.display()
 					})
 			)
 
@@ -289,36 +272,9 @@ export class TarsSettingTab extends PluginSettingTab {
 					.setValue(options.model)
 					.onChange(async (value) => {
 						options.model = value
-						this.nowSettingIndex = index
-						await this.plugin.saveSettings()
-						this.display()
-					})
-			)
-
-	addReasoningLLMSetting = (details: HTMLDetailsElement, options: BaseOptions & ReasoningOptional) => {
-		return [
-			new Setting(details).setName(t('Expand Reasoning Chain by Default')).addToggle((toggle) =>
-				toggle.setValue(options.ReasoningLLMOptions.expendCoT).onChange(async (value) => {
-					options.ReasoningLLMOptions.expendCoT = value
-					await this.plugin.saveSettings()
-				})
-			),
-			new Setting(details).setName(t('Callout type')).addDropdown((dropdown) =>
-				dropdown
-					.addOptions(
-						CALLOUT_OPTIONS.reduce((acc: Record<string, string>, cur) => {
-							acc[cur] = cur
-							return acc
-						}, {})
-					)
-					.setValue(options.ReasoningLLMOptions.calloutType)
-					.onChange(async (value: CalloutType) => {
-						options.ReasoningLLMOptions.calloutType = value
 						await this.plugin.saveSettings()
 					})
 			)
-		]
-	}
 
 	addMaxTokensOptional = (details: HTMLDetailsElement, options: BaseOptions & Pick<Optional, 'max_tokens'>) =>
 		new Setting(details)
@@ -409,14 +365,10 @@ export class TarsSettingTab extends PluginSettingTab {
 						}
 					})
 			)
-
-	mayDisableSetting(setting: Setting, disable: boolean) {
-		if (disable) {
-			setting.setDisabled(disable)
-			setting.setClass('obsidian-tars-disabled')
-		}
-	}
 }
+
+const getSummary = (tag: string, defaultTag: string) =>
+	tag === defaultTag ? defaultTag : tag + ' (' + defaultTag + ')'
 
 const validateTag = (tag: string) => {
 	if (tag.includes('#')) {
