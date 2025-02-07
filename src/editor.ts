@@ -194,24 +194,15 @@ export const fetchTextRange = async (
 }
 
 export const fetchTextForTag = async (env: RunEnv, tagWithSections: TagWithSections) => {
-	const { fileText } = env
 	const textRanges = await Promise.all(
 		tagWithSections.sections.map((section) => fetchTextRange(env, section, tagWithSections.contentRange))
 	)
 
-	const startOffset = tagWithSections.contentRange[0]
-	const accumulated = textRanges.reduce(
-		(acc, { text, range }) => ({
-			text: acc.text + fileText.slice(acc.range[1], range[0]) + text,
-			range: [acc.range[0], range[1]]
-		}),
-		{
-			range: [startOffset, startOffset],
-			text: ''
-		}
-	)
-	console.debug('accumulated', accumulated)
-	return accumulated.text
+	const accumulated = textRanges
+		.map((range) => range.text)
+		.join('\n\n')
+		.trim()
+	return accumulated
 }
 
 export const fetchConversation = async (env: RunEnv, startOffset: number, endOffset: number) => {
