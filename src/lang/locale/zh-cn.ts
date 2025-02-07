@@ -52,8 +52,6 @@ export default {
 	Model: '模型',
 	'Select the model to use': '选择要使用的模型',
 	'Input the model to use': '输入要使用的模型',
-	'Callout type': '标注类型',
-	'Expand Reasoning Chain by Default': '默认展开思维链',
 	'Please enter a number': '请输入一个数字',
 	'Minimum value is 256': '最小值是256',
 	'Proxy URL': '代理 URL',
@@ -65,12 +63,8 @@ export default {
 	Remove: '移除',
 	Endpoint: '终结点',
 
-	'Input tokens: ': '输入消耗 token 数：',
-	'Output tokens: ': '输出消耗 token 数：',
-
 	// suggest.ts
 	'AI generate': 'AI 生成',
 	'Text generated successfully': '文本生成成功',
-	', took ': '，耗时 ',
-	' seconds': ' 秒'
+	'Check the developer console for error details': '查看开发者控制台了解错误'
 }
