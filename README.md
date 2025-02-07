@@ -7,7 +7,7 @@
 
 # 简介
 
-Tars 是一个 Obsidian 插件，基于标签建议进行文本生成，支持 Claude、OpenAI、Gemini、Ollama、Kimi、豆包、阿里千问、智谱、深度求索、百度千帆等。Tars 这个名字来源于电影《星际穿越》中的机器人 Tars。
+Tars 是一个 Obsidian 插件，基于标签建议进行文本生成，支持 Claude、OpenAI、Gemini、Ollama、Kimi、豆包、阿里千问、智谱、🔥DeepSeek、百度千帆等。Tars 这个名字来源于电影《星际穿越》中的机器人 Tars。
 
 ## 特性
 
@@ -41,7 +41,7 @@ Tars 是一个 Obsidian 插件，基于标签建议进行文本生成，支持 C
 
 ### 助手特色
 
-- DeepSeek：推理模型 deepseek-reasoner 的思维链以 callout 格式输出
+- 🔥DeepSeek：推理模型 deepseek-reasoner 的思维链以 callout 格式输出
 - Zhipu：网络搜索选项
 
 ## 如何使用
