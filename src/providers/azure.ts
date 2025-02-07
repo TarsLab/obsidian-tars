@@ -10,13 +10,13 @@ const sendRequestFunc = (settings: AzureOptions): SendRequest =>
 	async function* (messages: Message[]) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters } // 这样的设计，让parameters 可以覆盖掉前面的设置 optionsExcludingParams
-		const { apiKey, baseURL, model, endpoint, ...remains } = options
+		const { apiKey, model, endpoint, ...remains } = options
 		if (!apiKey) throw new Error(t('API key is required'))
-	
+
 		const apiVersion = '2024-06-01'
 		const deployment = model
-		
-		const client = new AzureOpenAI({ endpoint, apiKey, apiVersion, deployment, dangerouslyAllowBrowser: true });
+
+		const client = new AzureOpenAI({ endpoint, apiKey, apiVersion, deployment, dangerouslyAllowBrowser: true })
 
 		const stream = await client.chat.completions.create({
 			model,
@@ -30,16 +30,9 @@ const sendRequestFunc = (settings: AzureOptions): SendRequest =>
 			if (!text) continue
 			yield text
 		}
-  }
+	}
 
-const models = [
-	'gpt-4o-mini',
-	'gpt-4o',
-	'gpt-4-turbo',
-	'gpt-4',
-	'gpt-3.5-turbo',
-	'gpt-3.5-turbo-16k'
-]
+const models = ['gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo', 'gpt-3.5-turbo-16k']
 
 export const azureVendor: Vendor = {
 	name: 'Azure',

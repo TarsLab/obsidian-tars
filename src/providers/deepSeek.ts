@@ -1,25 +1,15 @@
 import OpenAI from 'openai'
 import { t } from 'src/lang/helper'
-import { BaseOptions, CalloutType, Message, ReasoningOptional, SendRequest, Vendor, createReasoningCallout, ReasoningDelta } from '.'
-import { Notice } from 'obsidian'
+import { BaseOptions, Message, SendRequest, Vendor } from '.'
 
-type DeepSeekOptions = BaseOptions & ReasoningOptional
+const CALLOUT_BLOCK_START = '\n\n> [!quote]-  \n> ' // TODO, 后续可以考虑增加配置项，配置 callout 类型，比如 quote, note
+const CALLOUT_BLOCK_END = '\n\n'
 
-const models = ['deepseek-chat', 'deepseek-coder', 'deepseek-reasoner']
+type DeepSeekDelta = OpenAI.ChatCompletionChunk.Choice.Delta & {
+	reasoning_content?: string
+} // hack, deepseek-reasoner 增加了 reasoning_content 字段
 
-const deepseekDefaultOptions: DeepSeekOptions = {
-	apiKey: '',
-	baseURL: 'https://api.deepseek.com',
-	model: models[0],
-	parameters: {},
-	reasoningLLMs: ['deepseek-reasoner'],
-	ReasoningLLMOptions: {
-		expendCoT: false,
-		calloutType: CalloutType.Note
-	}
-}
-
-const sendRequestFunc = (settings: DeepSeekOptions): SendRequest =>
+const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 	async function* (messages: Message[]) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
@@ -39,59 +29,34 @@ const sendRequestFunc = (settings: DeepSeekOptions): SendRequest =>
 			...remains
 		})
 
-		if (!deepseekDefaultOptions.reasoningLLMs.includes(model)) {
-			// 对话模型
-			for await (const part of stream) {
-				const text = part.choices[0]?.delta?.content
-				if (!text) continue
-				yield text
-			}
-		} else {
-			let isReasoning = true
-			const reasoningCallout = createReasoningCallout(remains?.ReasoningLLMOptions?.calloutType, remains?.ReasoningLLMOptions?.expendCoT ? '+' : '-')
+		let startReasoning = false
+		for await (const part of stream) {
+			if (part.usage && part.usage.prompt_tokens && part.usage.completion_tokens)
+				console.debug(`Prompt tokens: ${part.usage.prompt_tokens}, completion tokens: ${part.usage.completion_tokens}`)
 
-			// 推理模型，输出 callout 头部
-			yield '\n\n'
-			yield reasoningCallout.header
-			yield '\n' + reasoningCallout.prefix
+			const delta = part.choices[0]?.delta as DeepSeekDelta
+			const reasonContent = delta?.reasoning_content
 
-			for await (const chunk of stream) {
-				const delta = chunk.choices[0]?.delta as ReasoningDelta
-
-				if (delta?.reasoning_content !== null) {
-					const reasoningContent = delta?.reasoning_content
-					if (!reasoningContent) continue
-					for (const char of reasoningContent) {
-						yield char === '\n' ? char + reasoningCallout.prefix : char
-					}
-				} else {
-					if (isReasoning) {
-						isReasoning = false
-						yield "\n\n"
-					}
-					const text = chunk.choices[0]?.delta?.content
-					if (text) 
-						yield text
-				}
-
-				if (!chunk.usage)
-					continue
-
-				// 统计消耗的 token 数量
-				const promptToken = chunk.usage?.prompt_tokens
-				const completionToken = chunk.usage?.completion_tokens
-
-				if (promptToken && completionToken) {
-					new Notice(t(`Input tokens: `) + promptToken + '\n' + t(`Output tokens: `) + completionToken)
-				}
+			if (reasonContent) {
+				const prefix = !startReasoning ? ((startReasoning = true), CALLOUT_BLOCK_START) : ''
+				yield prefix + reasonContent.replace(/\n/g, '\n> ') // callout的每行前面都要加上 >
+			} else {
+				const prefix = startReasoning ? ((startReasoning = false), CALLOUT_BLOCK_END) : ''
+				if (delta?.content) yield prefix + delta?.content
 			}
 		}
-
 	}
+
+const models = ['deepseek-chat', 'deepseek-coder', 'deepseek-reasoner']
 
 export const deepSeekVendor: Vendor = {
 	name: 'DeepSeek',
-	defaultOptions: deepseekDefaultOptions,
+	defaultOptions: {
+		apiKey: '',
+		baseURL: 'https://api.deepseek.com',
+		model: models[0],
+		parameters: {}
+	},
 	sendRequestFunc,
 	models,
 	websiteToObtainKey: 'https://platform.deepseek.com'

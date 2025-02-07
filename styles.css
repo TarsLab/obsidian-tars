@@ -10,7 +10,3 @@ summary.tars-setting-h4 {
 	margin-block-start: var(--p-spacing);
 	margin-block-end: var(--p-spacing);
 }
-
-.obsidian-tars-disabled {
-    opacity: 0.5;
-}

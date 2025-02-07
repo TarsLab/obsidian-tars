@@ -9,52 +9,54 @@ interface Token {
 	apiKeySecret: string
 }
 
-interface ZhipuOptions extends BaseOptions {
+export interface ZhipuOptions extends BaseOptions {
 	token?: Token
 	tokenExpireInMinutes: number
 	enableWebSearch: boolean
 }
 
 const sendRequestFunc = (settings: ZhipuOptions): SendRequest =>
-  async function* (messages: Message[]) {
-    const { parameters, ...optionsExcludingParams } = settings
-    const options = { ...optionsExcludingParams, ...parameters }
-    const { apiKey, baseURL, model, token: currentToken, tokenExpireInMinutes, enableWebSearch, ...remains } = options
-    if (!apiKey) throw new Error(t('API key is required'))
-    console.debug('zhipu options', { baseURL, apiKey, model, currentToken, tokenExpireInMinutes, enableWebSearch })
+	async function* (messages: Message[]) {
+		const { parameters, ...optionsExcludingParams } = settings
+		const options = { ...optionsExcludingParams, ...parameters }
+		const { apiKey, baseURL, model, token: currentToken, tokenExpireInMinutes, enableWebSearch, ...remains } = options
+		if (!apiKey) throw new Error(t('API key is required'))
+		console.debug('zhipu options', { baseURL, apiKey, model, currentToken, tokenExpireInMinutes, enableWebSearch })
 
-    const { token } = await validOrCreate(currentToken, apiKey, tokenExpireInMinutes)
-    options.token = token // 这里的token没有保存到磁盘，只是在内存中保存
+		const { token } = await validOrCreate(currentToken, apiKey, tokenExpireInMinutes)
+		options.token = token // 这里的token没有保存到磁盘，只是在内存中保存
 
-    const client = new OpenAI({
-      apiKey: token.id,
-      baseURL,
-      dangerouslyAllowBrowser: true
-    })
+		const client = new OpenAI({
+			apiKey: token.id,
+			baseURL,
+			dangerouslyAllowBrowser: true
+		})
 
-    const tools = enableWebSearch ? [
-      {
-        "type": "web_search",
-        "web_search": {
-          "enable": true  // 启用网络搜索
-        }
-      }
-    ] : []
+		const tools = (enableWebSearch
+			? [
+					{
+						type: 'web_search',
+						web_search: {
+							enable: true
+						}
+					}
+				]
+			: []) as object[] as OpenAI.Chat.Completions.ChatCompletionTool[] // hack，因为 zhipu-ai 的函数调用类型和 openai 的类型定义不一样
 
-    const stream = await client.chat.completions.create({
-      model,
-      messages,
-      stream: true,
-      tools,
-      ...remains
-    })
+		const stream = await client.chat.completions.create({
+			model,
+			messages,
+			stream: true,
+			tools: tools,
+			...remains
+		})
 
-    for await (const part of stream) {
-      const text = part.choices[0]?.delta?.content
-      if (!text) continue
-      yield text
-    }
-  }
+		for await (const part of stream) {
+			const text = part.choices[0]?.delta?.content
+			if (!text) continue
+			yield text
+		}
+	}
 
 const createToken = async (apiKeySecret: string, expireInMinutes: number) => {
 	const [apiKey, apiSecret] = apiKeySecret.split('.')
@@ -98,7 +100,7 @@ const validOrCreate = async (currentToken: Token | undefined, apiKeySecret: stri
 	}
 }
 
-const models = ['glm-4', 'glm-4-0520', 'glm-4-air', 'glm-4-flash', 'glm-3-turbo']
+const models = ['glm-4-plus', 'glm-4-air', 'glm-4-airx', 'glm-4-long', 'glm-4-flash', 'glm-4-flashx']
 
 export const zhipuVendor: Vendor = {
 	name: 'Zhipu',
@@ -107,7 +109,7 @@ export const zhipuVendor: Vendor = {
 		baseURL: 'https://open.bigmodel.cn/api/paas/v4/',
 		model: models[0],
 		tokenExpireInMinutes: 60 * 24,
-		enableWebSearch: false, // 启用网络搜索
+		enableWebSearch: false,
 		parameters: {}
 	} as ZhipuOptions,
 	sendRequestFunc,
