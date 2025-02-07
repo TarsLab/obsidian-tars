@@ -168,8 +168,8 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 			}
 			const sendRequest = vendor.sendRequestFunc(provider.options)
 
-			const startTime = performance.now()
-			console.debug('🚀 Begin : ', formatDate(new Date(startTime)))
+			const startTime = new Date()
+			console.debug('🚀 Begin : ', formatDate(startTime))
 
 			let accumulatedText = ''
 			for await (const text of sendRequest(messages)) {
@@ -177,9 +177,9 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 				accumulatedText += text
 			}
 
-			const endTime = performance.now()
-			console.debug('🏁 Finish: ', formatDate(new Date(endTime)))
-			console.debug('⌛ Total : ', formatDuration(endTime - startTime))
+			const endTime = new Date()
+			console.debug('🏁 Finish: ', formatDate(endTime))
+			console.debug('⌛ Total : ', formatDuration(endTime.getTime() - startTime.getTime()))
 
 			if (accumulatedText.length === 0) {
 				throw new Error('No text generated')
