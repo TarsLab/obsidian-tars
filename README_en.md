@@ -39,6 +39,11 @@ Tars is an Obsidian plugin that supports text generation based on tag suggestion
 
 If the AI provider you want is not in the list above, you can propose a specific plan in the issue.
 
+### Assistant features
+
+- DeepSeek: The reasoning model deepseek-reasoner's CoT is output in callout format
+- Zhipu: Web search option
+
 ## How to use
 
 Add an AI assistant in the settings page, set the API key, and then use the corresponding tag in the editor to trigger the AI assistant. Trigger through a conversation form, with user messages first, then trigger the AI assistant to answer questions.
