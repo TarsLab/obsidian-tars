@@ -43,6 +43,8 @@ export default {
 	tag: 'tag',
 	'Trigger AI generation': 'Trigger AI generation',
 	'Obtain key from ': 'Obtain key from ',
+	'Web search': 'Web search',
+	'Enable web search for AI': 'Enable web search for AI',
 	'Enter your key': 'Enter your key',
 	'Refer to the technical documentation': 'Refer to the technical documentation',
 	'Keyword for tag must not contain #': 'Keyword for tag must not contain #',
@@ -64,5 +66,6 @@ export default {
 
 	// suggest.ts
 	'AI generate': 'AI generate',
-	'Text generated successfully': 'Text generated successfully'
+	'Text generated successfully': 'Text generated successfully',
+	'Check the developer console for error details': 'Check the developer console for error details'
 }

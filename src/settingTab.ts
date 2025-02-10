@@ -2,6 +2,7 @@ import { App, Notice, PluginSettingTab, Setting } from 'obsidian'
 import { t } from './lang/helper'
 import TarsPlugin from './main'
 import { BaseOptions, Optional, ProviderSettings } from './providers'
+import { ZhipuOptions } from './providers/zhipu'
 import { DEFAULT_SETTINGS, availableVendors } from './settings'
 
 export class TarsSettingTab extends PluginSettingTab {
@@ -12,7 +13,7 @@ export class TarsSettingTab extends PluginSettingTab {
 		this.plugin = plugin
 	}
 
-	display(): void {
+	display(expandLastProvider = false): void {
 		const { containerEl } = this
 		containerEl.empty()
 
@@ -56,12 +57,13 @@ export class TarsSettingTab extends PluginSettingTab {
 					// 初始时，vendor和tag是一样的, 但是vendor只读，标记vendor类型，而tag是用户可以修改的
 					// TODO, tag 可能会重复，需要检查
 					await this.plugin.saveSettings()
-					this.display()
+					this.display(true)
 				})
 			})
 
 		for (const [index, provider] of this.plugin.settings.providers.entries()) {
-			this.createProviderSetting(index, provider)
+			const isLast = index === this.plugin.settings.providers.length - 1
+			this.createProviderSetting(index, provider, isLast && expandLastProvider)
 		}
 
 		containerEl.createEl('br')
@@ -128,13 +130,13 @@ export class TarsSettingTab extends PluginSettingTab {
 		)
 	}
 
-	createProviderSetting = (index: number, settings: ProviderSettings) => {
+	createProviderSetting = (index: number, settings: ProviderSettings, isOpen: boolean = false) => {
 		const vendor = availableVendors.find((v) => v.name === settings.vendor)
 		if (!vendor) throw new Error('No vendor found ' + settings.vendor)
 		const { containerEl } = this
 		const details = containerEl.createEl('details')
-		const summary = settings.tag === vendor.name ? vendor.name : settings.tag + ' (' + vendor.name + ')'
-		details.createEl('summary', { text: summary, cls: 'tars-setting-h4' })
+		details.createEl('summary', { text: getSummary(settings.tag, vendor.name), cls: 'tars-setting-h4' })
+		details.open = isOpen
 
 		this.addTagSection(details, settings, index, vendor.name)
 		if (settings.vendor !== 'Ollama') {
@@ -149,9 +151,21 @@ export class TarsSettingTab extends PluginSettingTab {
 			this.addAPISecretOptional(details, settings.options as BaseOptions & Pick<Optional, 'apiSecret'>)
 
 		if (vendor.models.length > 0) {
-			this.addModelDropDownSection(details, settings.options, vendor.models)
+			this.addModelDropDownSection(details, settings.options, vendor.models, index)
 		} else {
-			this.addModelTextSection(details, settings.options)
+			this.addModelTextSection(details, settings.options, index)
+		}
+
+		if (settings.vendor === 'Zhipu') {
+			new Setting(details)
+				.setName(t('Web search'))
+				.setDesc(t('Enable web search for AI'))
+				.addToggle((toggle) =>
+					toggle.setValue((settings.options as ZhipuOptions).enableWebSearch).onChange(async (value) => {
+						;(settings.options as ZhipuOptions).enableWebSearch = value
+						await this.plugin.saveSettings()
+					})
+				)
 		}
 
 		this.addBaseURLSection(details, settings.options as BaseOptions, 'e.g. ' + vendor.defaultOptions.baseURL)
@@ -167,7 +181,7 @@ export class TarsSettingTab extends PluginSettingTab {
 
 		this.addParametersSection(details, settings.options)
 
-		new Setting(details).setName(t('Remove') + ' ' + summary).addButton((btn) => {
+		new Setting(details).setName(t('Remove') + ' ' + vendor.name).addButton((btn) => {
 			btn
 				.setWarning()
 				.setButtonText(t('Remove'))
@@ -189,7 +203,7 @@ export class TarsSettingTab extends PluginSettingTab {
 					.setValue(settings.tag)
 					.onChange(async (value) => {
 						const trimmed = value.trim()
-						console.debug('trimmed', trimmed)
+						// console.debug('trimmed', trimmed)
 						if (trimmed.length === 0) return
 						if (!validateTag(trimmed)) return
 						const otherTags = this.plugin.settings.providers
@@ -201,6 +215,8 @@ export class TarsSettingTab extends PluginSettingTab {
 						}
 
 						settings.tag = trimmed
+						const summaryElement = details.querySelector('summary')
+						if (summaryElement != null) summaryElement.textContent = getSummary(settings.tag, defaultTag) // 更新summary
 						await this.plugin.saveSettings()
 					})
 			)
@@ -248,7 +264,7 @@ export class TarsSettingTab extends PluginSettingTab {
 					})
 			)
 
-	addModelDropDownSection = (details: HTMLDetailsElement, options: BaseOptions, models: string[]) =>
+	addModelDropDownSection = (details: HTMLDetailsElement, options: BaseOptions, models: string[], index: number) =>
 		new Setting(details)
 			.setName(t('Model'))
 			.setDesc(t('Select the model to use'))
@@ -267,7 +283,7 @@ export class TarsSettingTab extends PluginSettingTab {
 					})
 			)
 
-	addModelTextSection = (details: HTMLDetailsElement, options: BaseOptions) =>
+	addModelTextSection = (details: HTMLDetailsElement, options: BaseOptions, index: number) =>
 		new Setting(details)
 			.setName(t('Model'))
 			.setDesc(t('Input the model to use'))
@@ -364,13 +380,16 @@ export class TarsSettingTab extends PluginSettingTab {
 						try {
 							options.parameters = JSON.parse(value)
 							await this.plugin.saveSettings()
-						} catch (error) {
+						} catch (_error) {
 							// 这里不好处理，onChange触发很快，用户输入的时候可能还没输入完，频繁报错让用户很烦
 							return
 						}
 					})
 			)
 }
+
+const getSummary = (tag: string, defaultTag: string) =>
+	tag === defaultTag ? defaultTag : tag + ' (' + defaultTag + ')'
 
 const validateTag = (tag: string) => {
 	if (tag.includes('#')) {
@@ -399,7 +418,7 @@ const isValidUrl = (url: string) => {
 	try {
 		new URL(url)
 		return true
-	} catch (e) {
+	} catch (_error) {
 		return false
 	}
 }

@@ -92,7 +92,7 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 		}
 	}
 
-const models = ['claude-3-5-sonnet-latest', 'claude-3-opus-latest', 'claude-3-haiku-20240307']
+const models = ['claude-3-5-sonnet-latest', 'claude-3-opus-latest', 'claude-3-5-haiku-latest']
 
 export const claudeVendor: Vendor = {
 	name: 'Claude',
@@ -121,7 +121,10 @@ export type ServerSentEvent = {
 class Stream<Item> implements AsyncIterable<Item> {
 	controller: AbortController
 
-	constructor(private iterator: () => AsyncIterator<Item>, controller: AbortController) {
+	constructor(
+		private iterator: () => AsyncIterator<Item>,
+		controller: AbortController
+	) {
 		this.controller = controller
 	}
 
@@ -347,10 +350,10 @@ async function* iterSSEChunks(iterator: AsyncIterableIterator<Bytes>): AsyncGene
 			chunk instanceof ArrayBuffer
 				? new Uint8Array(chunk)
 				: typeof chunk === 'string'
-				? new TextEncoder().encode(chunk)
-				: chunk
+					? new TextEncoder().encode(chunk)
+					: chunk
 
-		let newData = new Uint8Array(data.length + binaryChunk.length)
+		const newData = new Uint8Array(data.length + binaryChunk.length)
 		newData.set(data)
 		newData.set(binaryChunk, data.length)
 		data = newData
@@ -437,11 +440,8 @@ class SSEDecoder {
 			return null
 		}
 
-		let [fieldName, _, value] = partition(line, ':')
-
-		if (value.startsWith(' ')) {
-			value = value.substring(1)
-		}
+		const [fieldName, _, leftoverValue] = partition(line, ':')
+		const value = leftoverValue.startsWith(' ') ? leftoverValue.substring(1) : leftoverValue
 
 		if (fieldName === 'event') {
 			this.event = value

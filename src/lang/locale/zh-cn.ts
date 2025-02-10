@@ -42,6 +42,8 @@ export default {
 	tag: '标签',
 	'Trigger AI generation': '触发AI生成',
 	'Obtain key from ': '获取 key 网站 ',
+	'Web search': '网络搜索',
+	'Enable web search for AI': '为当前 AI 启用网络搜索',
 	'Enter your key': '输入你的 key',
 	'Refer to the technical documentation': '参考技术文档',
 	'Keyword for tag must not contain #': '标签关键字不能包含#',
@@ -63,5 +65,6 @@ export default {
 
 	// suggest.ts
 	'AI generate': 'AI 生成',
-	'Text generated successfully': '文本生成成功'
+	'Text generated successfully': '文本生成成功',
+	'Check the developer console for error details': '查看开发者控制台了解错误'
 }

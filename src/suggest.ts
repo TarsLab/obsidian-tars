@@ -44,6 +44,10 @@ const toTriggerPhrase = (w: string) => [
 	`#${w.toLowerCase()} ：` // 中文冒号
 ]
 
+const formatDate = (d: Date) =>
+	`${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}:${d.getSeconds().toString().padStart(2, '0')}`
+const formatDuration = (d: number) => `${(d / 1000).toFixed(2)}s`
+
 export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 	settings: PluginSettings
 
@@ -183,16 +187,30 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 			}
 			const sendRequest = vendor.sendRequestFunc(provider.options)
 
-			const texts: TextWithTime[] = []
-			const startTime = Date.now()
+      const texts: TextWithTime[] = []
+			const startTime = new Date()
+			console.debug('🚀 Begin : ', formatDate(startTime))
+
+			let accumulatedText = ''
 			for await (const text of sendRequest(messages)) {
 				insertText(editor, text)
-
-				if (this.settings.isLog) {
-					const diffTime = Date.now() - startTime
+				accumulatedText += text
+        
+        if (this.settings.isLog) {
+					const diffTime = Date.now() - startTime.getTime()
 					texts.push({ text: text, time: diffTime })
 				}
 			}
+
+			const endTime = new Date()
+			console.debug('🏁 Finish: ', formatDate(endTime))
+			console.debug('⌛ Total : ', formatDuration(endTime.getTime() - startTime.getTime()))
+
+			if (accumulatedText.length === 0) {
+				throw new Error('No text generated')
+			}
+
+			console.debug('✨ ' + t('AI generate') + ' ✨ ', accumulatedText)
 			new Notice(t('Text generated successfully'))
 
 			if (this.settings.isLog && texts.length > 0 && this.settings.logPath) {
@@ -210,7 +228,7 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 			}
 		} catch (error) {
 			console.error('error', error)
-			new Notice(`🔴${t('Error')}: ${error}`, 10 * 1000)
+			new Notice(`🔴${t('Check the developer console for error details')}: ${error}`, 10 * 1000)
 		}
 
 		this.close()
