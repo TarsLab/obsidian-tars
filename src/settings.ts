@@ -16,13 +16,19 @@ export interface PluginSettings {
 	systemTags: string[]
 	newChatTags: string[]
 	userTags: string[]
+	isLog: boolean
+	logPath: string
+	isAuto: boolean
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
 	providers: [],
 	systemTags: ['System', '系统'],
 	newChatTags: ['NewChat', '新对话'],
-	userTags: ['User', '我']
+	userTags: ['User', '我'],
+	logPath: '',
+	isLog: false,
+	isAuto: false
 }
 
 export const availableVendors: Vendor[] = [

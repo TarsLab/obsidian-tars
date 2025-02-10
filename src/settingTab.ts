@@ -107,6 +107,27 @@ export class TarsSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings()
 				})
 		)
+
+		new Setting(containerEl).setName('isLog').addToggle((toggle) =>
+			toggle.setValue(this.plugin.settings.isLog).onChange(async (value) => {
+				this.plugin.settings.isLog = value
+				await this.plugin.saveSettings()
+			})
+		)
+
+		new Setting(containerEl).setName('LogPath').addText((text) =>
+			text.setValue(this.plugin.settings.logPath).onChange(async (value) => {
+				this.plugin.settings.logPath = value
+				await this.plugin.saveSettings()
+			})
+		)
+
+		new Setting(containerEl).setName('isAuto').addToggle((toggle) =>
+			toggle.setValue(this.plugin.settings.isAuto).onChange(async (value) => {
+				this.plugin.settings.isAuto = value
+				await this.plugin.saveSettings()
+			})
+		)
 	}
 
 	createProviderSetting = (index: number, settings: ProviderSettings, isOpen: boolean = false) => {
