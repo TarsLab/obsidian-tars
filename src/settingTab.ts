@@ -158,6 +158,9 @@ export class TarsSettingTab extends PluginSettingTab {
 		if ('endpoint' in settings.options)
 			this.addEndpointOptional(details, settings.options as BaseOptions & Pick<Optional, 'endpoint'>)
 
+		if ('apiVersion' in settings.options)
+			this.addApiVersionOptional(details, settings.options as BaseOptions & Pick<Optional, 'apiVersion'>)
+
 		this.addParametersSection(details, settings.options)
 
 		new Setting(details).setName(t('Remove') + ' ' + vendor.name).addButton((btn) => {
@@ -344,6 +347,20 @@ export class TarsSettingTab extends PluginSettingTab {
 							options.endpoint = url
 							await this.plugin.saveSettings()
 						}
+					})
+			)
+
+	addApiVersionOptional = (details: HTMLDetailsElement, options: BaseOptions & Pick<Optional, 'apiVersion'>) =>
+		new Setting(details)
+			.setName(t('API version'))
+			.setDesc('e.g. 2024-xx-xx-preview')
+			.addText((text) =>
+				text
+					.setPlaceholder('')
+					.setValue(options.apiVersion)
+					.onChange(async (value) => {
+						options.apiVersion = value
+						await this.plugin.saveSettings()
 					})
 			)
 
