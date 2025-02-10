@@ -187,7 +187,7 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 			}
 			const sendRequest = vendor.sendRequestFunc(provider.options)
 
-      const texts: TextWithTime[] = []
+			const texts: TextWithTime[] = []
 			const startTime = new Date()
 			console.debug('🚀 Begin : ', formatDate(startTime))
 
@@ -195,8 +195,8 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 			for await (const text of sendRequest(messages)) {
 				insertText(editor, text)
 				accumulatedText += text
-        
-        if (this.settings.isLog) {
+
+				if (this.settings.isLog) {
 					const diffTime = Date.now() - startTime.getTime()
 					texts.push({ text: text, time: diffTime })
 				}
@@ -233,15 +233,4 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 
 		this.close()
 	}
-}
-
-const formatDate = (date: Date): string => {
-	const pad = (num: number) => num.toString().padStart(2, '0')
-
-	const month = pad(date.getMonth() + 1) // 月份从0开始，所以需要加1
-	const day = pad(date.getDate())
-	const hours = pad(date.getHours())
-	const minutes = pad(date.getMinutes())
-
-	return `${month}${day}-${hours}:${minutes}`
 }
