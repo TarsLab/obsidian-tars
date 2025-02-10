@@ -30,4 +30,5 @@ export interface Optional {
 	proxyUrl: string
 	max_tokens: number
 	endpoint: string
+	apiVersion: string
 }

@@ -62,6 +62,7 @@ export default {
 	'Remove AI assistant': '移除 AI 助手',
 	Remove: '移除',
 	Endpoint: '终结点',
+	'API version': 'API 版本',
 
 	// suggest.ts
 	'AI generate': 'AI 生成',
