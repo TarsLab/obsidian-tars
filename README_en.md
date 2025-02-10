@@ -41,6 +41,7 @@ If the AI provider you want is not in the list above, you can propose a specific
 
 ### Assistant features
 
+- Azure: Supports o1, deepseek-r1, gpt-4o, etc.
 - 🔥DeepSeek: The reasoning model deepseek-reasoner's CoT is output in callout format
 - Zhipu: Web search option
 
