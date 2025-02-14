@@ -3,7 +3,7 @@ import { t } from 'src/lang/helper'
 import { BaseOptions, Message, SendRequest, Vendor } from '.'
 
 interface AzureOptions extends BaseOptions {
-	endpoint: string,
+	endpoint: string
 	apiVersion: string
 }
 
@@ -60,8 +60,8 @@ const sendRequestFunc = (settings: AzureOptions): SendRequest =>
 			}
 
 			yield isReasoning
-                ? text.replace(/\n/g, '\n> ') // callout的每行前面都要加上 >
-                : text
+				? text.replace(/\n/g, '\n> ') // callout的每行前面都要加上 >
+				: text
 		}
 	}
 

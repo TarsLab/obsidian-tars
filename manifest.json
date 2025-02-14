@@ -1,10 +1,10 @@
 {
 	"id": "tars",
 	"name": "Tars",
-	"version": "0.8.1",
+	"version": "1.0.0",
 	"minAppVersion": "1.5.8",
-	"description": "Text generation based on tag suggestions, using Claude, OpenAI, Gemini, Ollama, Kimi, Doubao, Qwen, Zhipu, DeepSeek, QianFan & more.",
+	"description": "Text generation based on tag suggestions, using DeepSeek, Claude, OpenAI, Gemini, Ollama, Kimi, Doubao, Qwen, Zhipu, QianFan & more.",
 	"author": "Tarslab",
 	"authorUrl": "https://github.com/tarslab",
-	"isDesktopOnly": true
+	"isDesktopOnly": false
 }

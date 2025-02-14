@@ -1,22 +1,18 @@
-import { HttpsProxyAgent } from 'https-proxy-agent'
 import OpenAI from 'openai'
 import { t } from 'src/lang/helper'
 import { BaseOptions, Message, SendRequest, Vendor } from '.'
 
-type OpenAIOptions = BaseOptions & { proxyUrl?: string }
-
-const sendRequestFunc = (settings: OpenAIOptions): SendRequest =>
+const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 	async function* (messages: Message[]) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters } // 这样的设计，让parameters 可以覆盖掉前面的设置 optionsExcludingParams
-		const { apiKey, baseURL, model, proxyUrl, ...remains } = options
+		const { apiKey, baseURL, model, ...remains } = options
 		if (!apiKey) throw new Error(t('API key is required'))
 
 		const client = new OpenAI({
 			apiKey,
 			baseURL,
-			dangerouslyAllowBrowser: true,
-			httpAgent: proxyUrl ? new HttpsProxyAgent(proxyUrl) : undefined
+			dangerouslyAllowBrowser: true
 		})
 
 		const stream = await client.chat.completions.create({
@@ -39,9 +35,8 @@ export const openAIVendor: Vendor = {
 		apiKey: '',
 		baseURL: 'https://api.openai.com/v1',
 		model: 'gpt-4',
-		proxyUrl: '',
 		parameters: {}
-	} as OpenAIOptions,
+	},
 	sendRequestFunc,
 	models: [],
 	websiteToObtainKey: 'https://platform.openai.com/api-keys'

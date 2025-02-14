@@ -1,4 +1,5 @@
-import fetch from 'node-fetch'
+import axios from 'axios'
+import { requestUrl } from 'obsidian'
 import { t } from 'src/lang/helper'
 import { BaseOptions, Message, Optional, SendRequest, Vendor } from '.'
 
@@ -25,17 +26,12 @@ const createToken = async (apiKey: string, apiSecret: string) => {
 		client_secret: apiSecret
 	}
 	const queryString = new URLSearchParams(queryParams).toString()
-	const res = await fetch(`https://aip.baidubce.com/oauth/2.0/token?${queryString}`)
-
-	const result = (await res.json()) as TokenResponse
-	console.debug('create new token', result)
-	const accessToken = result.access_token
-	const now = Date.now()
-	const exp = now + result.expires_in
+	const res = await requestUrl(`https://aip.baidubce.com/oauth/2.0/token?${queryString}`)
+	const result = res.json as TokenResponse
 
 	return {
-		accessToken,
-		exp,
+		accessToken: result.access_token,
+		exp: Date.now() + result.expires_in,
 		apiKey,
 		apiSecret
 	} as Token
@@ -55,6 +51,7 @@ const validOrCreate = async (currentToken: Token | undefined, apiKey: string, ap
 		}
 	}
 	const newToken = await createToken(apiKey, apiSecret)
+	console.debug('create new token', newToken)
 	return {
 		isValid: false,
 		token: newToken
@@ -89,32 +86,25 @@ const sendRequestFunc = (settings: QianFanOptions): SendRequest =>
 		if (!model) throw new Error(t('Model is required'))
 
 		const { token } = await validOrCreate(currentToken, apiKey, apiSecret)
-		options.token = token // 这里的token没有保存到磁盘，只是在内存中保存
+		settings.token = token // 这里的token没有保存到磁盘，只是在内存中保存
 
 		const data = {
 			messages,
 			stream: true,
 			...remains
 		}
-		const response = await fetch(baseURL + `/${model}?access_token=${token.accessToken}`, {
-			method: 'POST',
+		const response = await axios.post(baseURL + `/${model}?access_token=${token.accessToken}`, data, {
 			headers: {
 				'Content-Type': 'application/json'
 			},
-			body: JSON.stringify(data)
+			adapter: 'fetch',
+			responseType: 'stream',
+			withCredentials: false
 		})
-
-		if (!response || !response.body) {
-			throw new Error('No response')
-		}
-		if (!response.ok) {
-			console.error('response', response)
-			throw new Error(`Unexpected response status: ${response.status} ${response.statusText}`)
-		}
 
 		const buffer: string[] = []
 		const decoder = new TextDecoder('utf-8')
-		for await (const chunk of response.body) {
+		for await (const chunk of response.data) {
 			const text = decoder.decode(Buffer.from(chunk))
 			const lines = getLines(buffer, text)
 			for (const line of lines) {
