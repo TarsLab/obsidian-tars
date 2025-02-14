@@ -6,6 +6,7 @@ import {
 	EditorSuggestContext,
 	EditorSuggestTriggerInfo,
 	Notice,
+	Platform,
 	TFile
 } from 'obsidian'
 import { buildRunEnv, fetchConversation, insertText } from './editor'
@@ -182,14 +183,17 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 			console.debug('⌛ Total : ', formatDuration(endTime.getTime() - startTime.getTime()))
 
 			if (accumulatedText.length === 0) {
-				throw new Error('No text generated')
+				throw new Error(t('No text generated'))
 			}
 
 			console.debug('✨ ' + t('AI generate') + ' ✨ ', accumulatedText)
 			new Notice(t('Text generated successfully'))
 		} catch (error) {
 			console.error('error', error)
-			new Notice(`🔴${t('Check the developer console for error details')}: ${error}`, 10 * 1000)
+			new Notice(
+				`🔴 ${Platform.isDesktopApp ? t('Check the developer console for error details. ') : ''}${error}`,
+				10 * 1000
+			)
 		}
 		this.close()
 	}

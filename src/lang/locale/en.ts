@@ -68,5 +68,7 @@ export default {
 	// suggest.ts
 	'AI generate': 'AI generate',
 	'Text generated successfully': 'Text generated successfully',
-	'Check the developer console for error details': 'Check the developer console for error details'
+	'No text generated': 'No text generated',
+	'Check the developer console for error details. ': 'Check the developer console for error details. ',
+	'This is a non-streaming request, please wait...': 'This is a non-streaming request, please wait...'
 }

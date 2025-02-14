@@ -1,4 +1,4 @@
-import fetch from 'node-fetch'
+import OpenAI from 'openai'
 import { t } from 'src/lang/helper'
 import { BaseOptions, Message, SendRequest, Vendor } from '.'
 
@@ -9,60 +9,23 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 		const { apiKey, baseURL, model, ...remains } = options
 		if (!apiKey) throw new Error(t('API key is required'))
 
-		const data = {
-			model,
-			input: {
-				messages
-			},
-			parameters: {
-				incremental_output: 'true'
-			},
-			...remains
-		}
-		const response = await fetch(baseURL, {
-			method: 'POST',
-			headers: {
-				Authorization: `Bearer ${apiKey}`,
-				'Content-Type': 'application/json',
-				'X-DashScope-SSE': 'enable'
-			},
-			body: JSON.stringify(data)
+		const client = new OpenAI({
+			apiKey,
+			baseURL,
+			dangerouslyAllowBrowser: true
 		})
 
-		if (!response || !response.body) {
-			throw new Error('No response')
-		}
-		const decoder = new TextDecoder('utf-8')
-		let isError = false
-		let _statusCode = 500
-		// 参考 python 版本的 dashscope 代码
-		if (response.status === 200 && response.headers.get('content-type')?.contains('text/event-stream')) {
-			for await (const chunk of response.body) {
-				const lines = decoder.decode(Buffer.from(chunk))
-				for (const line of lines.split('\n')) {
-					if (line.startsWith('event:error')) {
-						isError = true
-					} else if (line.startsWith('status:')) {
-						_statusCode = parseInt(line.slice('status:'.length).trim(), 10)
-					} else if (line.startsWith('data:')) {
-						const data = line.slice('data:'.length)
-						const msg = JSON.parse(data)
-						const text = msg.output.text
-						yield text
-						if (isError) break
-					}
-				}
-			}
-		} else if (response.status === 200) {
-			const data = await response.json()
-			throw new Error(JSON.stringify(data))
-		} else {
-			if (response.headers.get('content-type')?.contains('application/json')) {
-				const data = await response.json()
-				throw new Error(JSON.stringify(data))
-			}
-			console.error('response', response)
-			throw new Error(`${response.statusText}}`)
+		const stream = await client.chat.completions.create({
+			model,
+			messages,
+			stream: true,
+			...remains
+		})
+
+		for await (const part of stream) {
+			const text = part.choices[0]?.delta?.content
+			if (!text) continue
+			yield text
 		}
 	}
 
@@ -72,7 +35,7 @@ export const qwenVendor: Vendor = {
 	name: 'Qwen',
 	defaultOptions: {
 		apiKey: '',
-		baseURL: 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation',
+		baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
 		model: models[0],
 		parameters: {}
 	},

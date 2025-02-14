@@ -67,5 +67,7 @@ export default {
 	// suggest.ts
 	'AI generate': 'AI 生成',
 	'Text generated successfully': '文本生成成功',
-	'Check the developer console for error details': '查看开发者控制台了解错误'
+	'No text generated': '没有生成文本',
+	'Check the developer console for error details. ': '查看开发者控制台了解错误. ',
+	'This is a non-streaming request, please wait...': '这是一个非流式请求，请稍候...'
 }

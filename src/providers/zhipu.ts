@@ -24,7 +24,7 @@ const sendRequestFunc = (settings: ZhipuOptions): SendRequest =>
 		console.debug('zhipu options', { baseURL, apiKey, model, currentToken, tokenExpireInMinutes, enableWebSearch })
 
 		const { token } = await validOrCreate(currentToken, apiKey, tokenExpireInMinutes)
-		options.token = token // 这里的token没有保存到磁盘，只是在内存中保存
+		settings.token = token // 这里的token没有保存到磁盘，只是在内存中保存
 
 		const client = new OpenAI({
 			apiKey: token.id,

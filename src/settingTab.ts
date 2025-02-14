@@ -48,14 +48,16 @@ export class TarsSettingTab extends PluginSettingTab {
 					if (!options) {
 						throw new Error('No default options found for ' + vendorToCreate)
 					}
+
+					const isTagDuplicate = this.plugin.settings.providers.map((e) => e.tag).includes(vendorToCreate)
+					const newTag = isTagDuplicate ? '' : vendorToCreate
 					const deepCopiedOptions = JSON.parse(JSON.stringify(options))
 					this.plugin.settings.providers.push({
-						tag: vendorToCreate,
+						tag: newTag,
 						vendor: vendorToCreate,
 						options: deepCopiedOptions
 					})
-					// 初始时，vendor和tag是一样的, 但是vendor只读，标记vendor类型，而tag是用户可以修改的
-					// TODO, tag 可能会重复，需要检查
+					// 初始时，vendor和tag可能是一样的, 但是vendor只读，标记vendor类型，而tag是用户可以修改的
 					await this.plugin.saveSettings()
 					this.display(true)
 				})
@@ -151,9 +153,6 @@ export class TarsSettingTab extends PluginSettingTab {
 
 		if ('max_tokens' in settings.options)
 			this.addMaxTokensOptional(details, settings.options as BaseOptions & Pick<Optional, 'max_tokens'>)
-
-		if ('proxyUrl' in settings.options)
-			this.addProxyUrlOptional(details, settings.options as BaseOptions & Pick<Optional, 'proxyUrl'>)
 
 		if ('endpoint' in settings.options)
 			this.addEndpointOptional(details, settings.options as BaseOptions & Pick<Optional, 'endpoint'>)
@@ -299,30 +298,6 @@ export class TarsSettingTab extends PluginSettingTab {
 						}
 						options.max_tokens = number
 						await this.plugin.saveSettings()
-					})
-			)
-
-	addProxyUrlOptional = (details: HTMLDetailsElement, options: BaseOptions & Pick<Optional, 'proxyUrl'>) =>
-		new Setting(details)
-			.setName(t('Proxy URL'))
-			.setDesc('e.g. http://127.0.0.1:7890')
-			.addText((text) =>
-				text
-					.setPlaceholder('')
-					.setValue(options.proxyUrl)
-					.onChange(async (value) => {
-						const url = value.trim()
-						if (url.length === 0) {
-							// 空字符串是合法的，清空proxyUrl
-							options.proxyUrl = ''
-							await this.plugin.saveSettings()
-						} else if (!isValidUrl(url)) {
-							new Notice(t('Invalid URL'))
-							return
-						} else {
-							options.proxyUrl = url
-							await this.plugin.saveSettings()
-						}
 					})
 			)
 
