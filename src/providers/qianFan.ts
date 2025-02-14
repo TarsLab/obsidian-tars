@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { requestUrl } from 'obsidian'
+import { Notice, Platform, requestUrl } from 'obsidian'
 import { t } from 'src/lang/helper'
 import { BaseOptions, Message, Optional, SendRequest, Vendor } from '.'
 
@@ -88,35 +88,57 @@ const sendRequestFunc = (settings: QianFanOptions): SendRequest =>
 		const { token } = await validOrCreate(currentToken, apiKey, apiSecret)
 		settings.token = token // 这里的token没有保存到磁盘，只是在内存中保存
 
-		const data = {
-			messages,
-			stream: true,
-			...remains
-		}
-		const response = await axios.post(baseURL + `/${model}?access_token=${token.accessToken}`, data, {
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			adapter: 'fetch',
-			responseType: 'stream',
-			withCredentials: false
-		})
+		if (Platform.isDesktopApp) {
+			const data = {
+				messages,
+				stream: true,
+				...remains
+			}
+			const response = await axios.post(baseURL + `/${model}?access_token=${token.accessToken}`, data, {
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				adapter: 'fetch',
+				responseType: 'stream',
+				withCredentials: false
+			})
 
-		const buffer: string[] = []
-		const decoder = new TextDecoder('utf-8')
-		for await (const chunk of response.data) {
-			const text = decoder.decode(Buffer.from(chunk))
-			const lines = getLines(buffer, text)
-			for (const line of lines) {
-				if (line.startsWith('data: ')) {
-					const rawStr = line.slice('data: '.length)
-					const data = JSON.parse(rawStr)
-					const content = data.result
-					if (content) {
-						yield content
+			const buffer: string[] = []
+			const decoder = new TextDecoder('utf-8')
+			for await (const chunk of response.data) {
+				const text = decoder.decode(Buffer.from(chunk))
+				const lines = getLines(buffer, text)
+				for (const line of lines) {
+					if (line.startsWith('data: ')) {
+						const rawStr = line.slice('data: '.length)
+						const data = JSON.parse(rawStr)
+						const content = data.result
+						if (content) {
+							yield content
+						}
 					}
 				}
 			}
+		} else {
+			const data = {
+				messages,
+				stream: false,
+				...remains
+			}
+
+			new Notice(t('This is a non-streaming request, please wait...'), 5 * 1000)
+
+			const response = await requestUrl({
+				url: baseURL + `/${model}?access_token=${token.accessToken}`,
+				method: 'POST',
+				body: JSON.stringify(data),
+				headers: {
+					'Content-Type': 'application/json'
+				}
+			})
+
+			console.debug('response', response.json)
+			yield response.json.result
 		}
 	}
 
