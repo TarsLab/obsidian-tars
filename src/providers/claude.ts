@@ -48,7 +48,8 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 		const headers = {
 			'Content-Type': 'application/json',
 			'anthropic-version': '2023-06-01',
-			'X-Api-Key': apiKey
+			'X-Api-Key': apiKey,
+			'anthropic-dangerous-direct-browser-access': 'true'
 		}
 		const body = {
 			model,

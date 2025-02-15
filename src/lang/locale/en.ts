@@ -52,6 +52,7 @@ export default {
 	'Keyword for tag must be unique': 'Keyword for tag must be unique',
 	Model: 'Model',
 	'Select the model to use': 'Select the model to use',
+	'Please input API key first': 'Please input API key first',
 	'Input the model to use': 'Input the model to use',
 	'Please enter a number': 'Please enter a number',
 	'Minimum value is 256': 'Minimum value is 256',

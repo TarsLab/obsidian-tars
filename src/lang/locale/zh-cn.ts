@@ -51,6 +51,7 @@ export default {
 	'Keyword for tag must be unique': '标签关键字必须唯一',
 	Model: '模型',
 	'Select the model to use': '选择要使用的模型',
+	'Please input API key first': '请先输入API key',
 	'Input the model to use': '输入要使用的模型',
 	'Please enter a number': '请输入一个数字',
 	'Minimum value is 256': '最小值是256',

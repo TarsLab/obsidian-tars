@@ -9,6 +9,7 @@ import { ollamaVendor } from './providers/ollama'
 import { openAIVendor } from './providers/openAI'
 import { qianFanVendor } from './providers/qianFan'
 import { qwenVendor } from './providers/qwen'
+import { siliconFlowVendor } from './providers/siliconflow'
 import { zhipuVendor } from './providers/zhipu'
 
 export interface PluginSettings {
@@ -37,5 +38,6 @@ export const availableVendors: Vendor[] = [
 	ollamaVendor,
 	qianFanVendor,
 	qwenVendor,
+	siliconFlowVendor,
 	zhipuVendor
 ]
