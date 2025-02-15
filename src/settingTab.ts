@@ -1,8 +1,11 @@
 import { App, Notice, PluginSettingTab, Setting } from 'obsidian'
 import { t } from './lang/helper'
 import TarsPlugin from './main'
+import { SelectModelModal } from './modal'
 import { BaseOptions, Optional, ProviderSettings } from './providers'
-import { ZhipuOptions } from './providers/zhipu'
+import { ollamaVendor } from './providers/ollama'
+import { fetchModels, siliconFlowVendor } from './providers/siliconflow'
+import { ZhipuOptions, zhipuVendor } from './providers/zhipu'
 import { DEFAULT_SETTINGS, availableVendors } from './settings'
 
 export class TarsSettingTab extends PluginSettingTab {
@@ -120,7 +123,7 @@ export class TarsSettingTab extends PluginSettingTab {
 		details.open = isOpen
 
 		this.addTagSection(details, settings, index, vendor.name)
-		if (settings.vendor !== 'Ollama') {
+		if (vendor.name !== ollamaVendor.name) {
 			this.addAPIkeySection(
 				details,
 				settings.options,
@@ -131,13 +134,39 @@ export class TarsSettingTab extends PluginSettingTab {
 		if ('apiSecret' in settings.options)
 			this.addAPISecretOptional(details, settings.options as BaseOptions & Pick<Optional, 'apiSecret'>)
 
-		if (vendor.models.length > 0) {
+		// model setting
+		if (vendor.name === siliconFlowVendor.name) {
+			new Setting(details)
+				.setName(t('Model'))
+				.setDesc(t('Select the model to use'))
+				.addButton((btn) => {
+					btn
+						.setButtonText(settings.options.model ? settings.options.model : t('Select the model to use'))
+						.onClick(async () => {
+							if (!settings.options.apiKey) {
+								new Notice(t('Please input API key first'))
+								return
+							}
+							try {
+								const models = await fetchModels(settings.options.apiKey)
+								const onChoose = async (selectedModel: string) => {
+									settings.options.model = selectedModel
+									await this.plugin.saveSettings()
+									btn.setButtonText(selectedModel)
+								}
+								new SelectModelModal(this.app, models, onChoose).open()
+							} catch (error) {
+								new Notice('🔴' + error)
+							}
+						})
+				})
+		} else if (vendor.models.length > 0) {
 			this.addModelDropDownSection(details, settings.options, vendor.models, index)
 		} else {
 			this.addModelTextSection(details, settings.options, index)
 		}
 
-		if (settings.vendor === 'Zhipu') {
+		if (vendor.name === zhipuVendor.name) {
 			new Setting(details)
 				.setName(t('Web search'))
 				.setDesc(t('Enable web search for AI'))
