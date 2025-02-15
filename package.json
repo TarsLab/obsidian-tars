@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-tars",
-	"version": "1.1.0",
+	"version": "1.1.1",
 	"description": "Text generation based on tag suggestions, using DeepSeek, Claude, OpenAI, Ollama, Kimi, Doubao, Qwen, Zhipu, QianFan & more.",
 	"main": "main.js",
 	"scripts": {
