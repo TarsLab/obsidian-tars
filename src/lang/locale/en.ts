@@ -21,6 +21,11 @@ export default {
 	'Select message at cursor': 'Select message at cursor',
 	'No message found at cursor': 'No message found at cursor',
 
+	// commands/useModel.ts
+	'Please open a file': 'Please open a file',
+	'No available models': 'No available models',
+	'Answer with Selected Model': 'Answer with Selected Model',
+
 	// providers
 	'API key is required': 'API key is required',
 	'API secret is required': 'API secret is required',

@@ -159,42 +159,59 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 			console.debug('messages', messages)
 			console.debug('generate text: ')
 			console.debug('element', element)
-			const provider = this.settings.providers.find((p) => p.tag === element.tag)
-			if (!provider) {
-				throw new Error('No provider found ' + element.tag)
-			}
-			const vendor = availableVendors.find((v) => v.name === provider.vendor)
-			if (!vendor) {
-				throw new Error('No vendor found ' + provider.vendor)
-			}
-			const sendRequest = vendor.sendRequestFunc(provider.options)
 
-			const startTime = new Date()
-			console.debug('🚀 Begin : ', formatDate(startTime))
-
-			let accumulatedText = ''
-			for await (const text of sendRequest(messages)) {
-				insertText(editor, text)
-				accumulatedText += text
-			}
-
-			const endTime = new Date()
-			console.debug('🏁 Finish: ', formatDate(endTime))
-			console.debug('⌛ Total : ', formatDuration(endTime.getTime() - startTime.getTime()))
-
-			if (accumulatedText.length === 0) {
-				throw new Error(t('No text generated'))
-			}
-
-			console.debug('✨ ' + t('AI generate') + ' ✨ ', accumulatedText)
-			new Notice(t('Text generated successfully'))
+			await generateWithModel(editor, messages, element.tag, this.settings)
 		} catch (error) {
 			console.error('error', error)
-			new Notice(
-				`🔴 ${Platform.isDesktopApp ? t('Check the developer console for error details. ') : ''}${error}`,
-				10 * 1000
-			)
 		}
 		this.close()
 	}
+}
+
+export async function generateWithModel(
+    editor: Editor,
+    messages: any[],
+    modelTag: string,
+    settings: PluginSettings
+) {
+    const provider = settings.providers.find((p) => p.tag === modelTag)
+    if (!provider) {
+        throw new Error('No provider found ' + modelTag)
+    }
+    
+    const vendor = availableVendors.find((v) => v.name === provider.vendor)
+    if (!vendor) {
+        throw new Error('No vendor found ' + provider.vendor)
+    }
+    
+    const sendRequest = vendor.sendRequestFunc(provider.options)
+    const startTime = new Date()
+    console.debug('🚀 Begin : ', formatDate(startTime))
+
+    let accumulatedText = ''
+    try {
+        for await (const text of sendRequest(messages)) {
+            insertText(editor, text)
+            accumulatedText += text
+        }
+
+        const endTime = new Date()
+        console.debug('🏁 Finish: ', formatDate(endTime))
+        console.debug('⌛ Total : ', formatDuration(endTime.getTime() - startTime.getTime()))
+
+        if (accumulatedText.length === 0) {
+            throw new Error(t('No text generated'))
+        }
+
+        console.debug('✨ ' + t('AI generate') + ' ✨ ', accumulatedText)
+        new Notice(t('Text generated successfully'))
+    } catch (error) {
+        console.error('error', error)
+        new Notice(
+            `🔴 ${Platform.isDesktopApp ? t('Check the developer console for error details. ') : ''}${error}`,
+            10 * 1000
+        )
+        throw error
+    }
+    return accumulatedText
 }
