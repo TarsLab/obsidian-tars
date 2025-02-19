@@ -11,7 +11,7 @@ type DeepSeekDelta = OpenAI.ChatCompletionChunk.Choice.Delta & {
 } // hack, deepseek-reasoner 增加了 reasoning_content 字段
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
-	async function* (messages: Message[]) {
+	async function* (messages: Message[], abortController: AbortController) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters } // 这样的设计，让parameters 可以覆盖掉前面的设置 optionsExcludingParams
 		const { apiKey, baseURL, model, ...remains } = options
@@ -32,6 +32,7 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 
 		let startReasoning = false
 		for await (const part of stream) {
+			if (abortController.signal.aborted) break
 			const delta = part.choices[0]?.delta as DeepSeekDelta
 			const reasonContent = delta?.reasoning_content
 

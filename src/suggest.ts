@@ -168,13 +168,14 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 				throw new Error('No vendor found ' + provider.vendor)
 			}
 			const sendRequest = vendor.sendRequestFunc(provider.options)
-
+			const abortController = new AbortController()
 			const startTime = new Date()
 			console.debug('🚀 Begin : ', formatDate(startTime))
 
 			let accumulatedText = ''
-			for await (const text of sendRequest(messages)) {
-				insertText(editor, text)
+			let lastEditCursor: EditorPosition | null = null
+			for await (const text of sendRequest(messages, abortController)) {
+				lastEditCursor = insertText(editor, text, lastEditCursor, abortController)
 				accumulatedText += text
 			}
 

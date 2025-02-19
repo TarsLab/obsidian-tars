@@ -4,6 +4,7 @@ import {
 	Editor,
 	EditorPosition,
 	MetadataCache,
+	Notice,
 	ReferenceCache,
 	SectionCache,
 	TagCache,
@@ -229,8 +230,18 @@ export const fetchConversation = async (env: RunEnv, startOffset: number, endOff
 	return conversation
 }
 
-export const insertText = (editor: Editor, text: string) => {
+export const insertText = (
+	editor: Editor,
+	text: string,
+	lastEditCursor: EditorPosition | null,
+	abortController: AbortController
+) => {
 	const current = editor.getCursor('to')
+	if (lastEditCursor != null && current.line <= lastEditCursor.line && current.ch < lastEditCursor.ch) {
+		abortController.abort()
+		new Notice('Abort due to cursor position changed')
+		return current
+	}
 	const lines = text.split('\n')
 	const newPos: EditorPosition = {
 		line: current.line + lines.length - 1,
@@ -239,6 +250,7 @@ export const insertText = (editor: Editor, text: string) => {
 	editor.replaceRange(text, current)
 	editor.setCursor(newPos)
 	editor.scrollIntoView({ from: newPos, to: newPos })
+	return newPos
 }
 
 export const getSectionsWithRefer = (fileMeta: CachedMetadata) => {

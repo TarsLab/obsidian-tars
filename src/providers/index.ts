@@ -3,7 +3,10 @@ export interface Message {
 	readonly content: string
 }
 
-export type SendRequest = (messages: readonly Message[]) => AsyncGenerator<string, void, unknown>
+export type SendRequest = (
+	messages: readonly Message[],
+	abortController: AbortController
+) => AsyncGenerator<string, void, unknown>
 
 export interface Vendor {
 	readonly name: string
