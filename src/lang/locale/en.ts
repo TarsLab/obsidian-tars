@@ -52,6 +52,7 @@ export default {
 	'Keyword for tag must be unique': 'Keyword for tag must be unique',
 	Model: 'Model',
 	'Select the model to use': 'Select the model to use',
+	'Please input API key first': 'Please input API key first',
 	'Input the model to use': 'Input the model to use',
 	'Please enter a number': 'Please enter a number',
 	'Minimum value is 256': 'Minimum value is 256',
@@ -63,9 +64,12 @@ export default {
 	'Remove AI assistant': 'Remove AI assistant',
 	Remove: 'Remove',
 	Endpoint: 'Endpoint',
+	'API version': 'API version',
 
 	// suggest.ts
 	'AI generate': 'AI generate',
 	'Text generated successfully': 'Text generated successfully',
-	'Check the developer console for error details': 'Check the developer console for error details'
+	'No text generated': 'No text generated',
+	'Check the developer console for error details. ': 'Check the developer console for error details. ',
+	'This is a non-streaming request, please wait...': 'This is a non-streaming request, please wait...'
 }

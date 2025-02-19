@@ -1,10 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { HttpsProxyAgent } from 'https-proxy-agent'
-import fetch from 'node-fetch'
+import axios, { AxiosResponse } from 'axios'
 import { t } from 'src/lang/helper'
 import { BaseOptions, Message, Optional, SendRequest, Vendor } from '.'
 
-type ClaudeOptions = BaseOptions & Pick<Optional, 'max_tokens' | 'proxyUrl'>
+type ClaudeOptions = BaseOptions & Pick<Optional, 'max_tokens'>
 
 interface TextDelta {
 	text: string
@@ -41,7 +40,7 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 	async function* (messages: Message[]) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters } // 这样的设计，让parameters 可以覆盖掉前面的设置 optionsExcludingParams
-		const { apiKey, baseURL, model, max_tokens, proxyUrl, ...remains } = options
+		const { apiKey, baseURL, model, max_tokens } = options
 		if (!apiKey) throw new Error(t('API key is required'))
 
 		const [system_msg, messagesWithoutSys] =
@@ -49,35 +48,25 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 		const headers = {
 			'Content-Type': 'application/json',
 			'anthropic-version': '2023-06-01',
-			'X-Api-Key': apiKey
+			'X-Api-Key': apiKey,
+			'anthropic-dangerous-direct-browser-access': 'true'
 		}
 		const body = {
 			model,
 			system: system_msg?.content,
 			max_tokens,
 			messages: messagesWithoutSys,
-			stream: true,
-			...remains
+			stream: true
 		}
-		console.debug('proxyUrl', proxyUrl)
 		// console.debug('claude api body', JSON.stringify(body))
 
-		const response = await fetch(baseURL, {
-			method: 'POST',
+		const response = await axios.post(baseURL, body, {
 			headers,
-			body: JSON.stringify(body),
-			agent: proxyUrl ? new HttpsProxyAgent(proxyUrl) : undefined
+			adapter: 'fetch',
+			responseType: 'stream',
+			withCredentials: false
 		})
 
-		if (!response || !response.body) {
-			throw new Error('No response')
-		}
-		if (!response.ok) {
-			console.error('response', response)
-			throw new Error(`Unexpected response status: ${response.status} ${response.statusText}`)
-		}
-
-		// @ts-ignore
 		const stream = Stream.fromSSEResponse<PartialEvent>(response, new AbortController())
 
 		for await (const event of stream) {
@@ -101,7 +90,6 @@ export const claudeVendor: Vendor = {
 		baseURL: 'https://api.anthropic.com/v1/messages',
 		model: models[0],
 		max_tokens: 8192,
-		proxyUrl: '',
 		parameters: {}
 	} as ClaudeOptions,
 	sendRequestFunc,
@@ -128,7 +116,7 @@ class Stream<Item> implements AsyncIterable<Item> {
 		this.controller = controller
 	}
 
-	static fromSSEResponse<Item>(response: Response, controller: AbortController) {
+	static fromSSEResponse<Item>(response: AxiosResponse, controller: AbortController) {
 		let consumed = false
 
 		async function* iterator(): AsyncIterator<Item, any, undefined> {
@@ -304,18 +292,18 @@ class Stream<Item> implements AsyncIterable<Item> {
 }
 
 export async function* _iterSSEMessages(
-	response: Response,
+	response: AxiosResponse,
 	controller: AbortController
 ): AsyncGenerator<ServerSentEvent, void, unknown> {
-	if (!response.body) {
+	if (!response.data) {
 		controller.abort()
-		throw new Error(`Attempted to iterate over a response with no body`)
+		throw new Error(`Attempted to iterate over a response with no data`)
 	}
 
 	const sseDecoder = new SSEDecoder()
 	const lineDecoder = new LineDecoder()
 
-	const iter = readableStreamAsyncIterable<Bytes>(response.body)
+	const iter = readableStreamAsyncIterable<Bytes>(response.data)
 	for await (const sseChunk of iterSSEChunks(iter)) {
 		for (const line of lineDecoder.decode(sseChunk)) {
 			// console.debug('lineDecoder1', line)

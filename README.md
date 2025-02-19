@@ -35,13 +35,16 @@ Tars 是一个 Obsidian 插件，基于标签建议进行文本生成，支持 C
 - [OpenAI](https://platform.openai.com/api-keys)
 - [Qianfan 百度千帆](https://qianfan.cloud.baidu.com)
 - [Qwen 阿里千问](https://dashscope.console.aliyun.com)
+- [SiliconFlow 硅基流动](https://siliconflow.cn)
 - [Zhipu 智谱](https://open.bigmodel.cn/)
 
 如果上面列表没有你想要的 AI 服务提供商，可以在 issue 中提出具体方案。
 
 ### 助手特色
 
+- Azure: 支持 o1，deepseek-r1，gpt-4o 等等
 - 🔥DeepSeek：推理模型 deepseek-reasoner 的思维链以 callout 格式输出
+- 🔥SiliconFlow：支持 DeepSeek V3/R1 等等众多模型
 - Zhipu：网络搜索选项
 
 ## 如何使用
@@ -73,3 +76,5 @@ Tars 是一个 Obsidian 插件，基于标签建议进行文本生成，支持 C
 为了更好的外观，建议使用 [colored tags 插件](https://github.com/pfrankov/obsidian-colored-tags).
 
 ![Colored tags plugin](docs/images/coloredTags.png)
+
+- 标签设置建议，把默认的标签修改为使用的模型简称，或者使用场景的简称。

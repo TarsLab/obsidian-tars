@@ -94,16 +94,16 @@ const fetchLinkTextContent = async (env: RunEnv, linkText: string) => {
 	const targetFile = appMeta.getFirstLinkpathDest(path, filePath)
 
 	if (targetFile === null) {
-		throw new Error('no target file found')
+		throw new Error('LinkText broken: ' + linkText.substring(0, 20))
 	}
 
 	const fileMeta = appMeta.getFileCache(targetFile)
-	if (fileMeta === null) throw new Error('no file metadata found')
+	if (fileMeta === null) throw new Error(`No metadata found: ${path} ${subpath}`)
 
 	const targetFileText = await vault.cachedRead(targetFile)
 	if (subpath) {
 		const subPathData = resolveSubpath(fileMeta, subpath)
-		if (subPathData === null) throw new Error('no subpath data found')
+		if (subPathData === null) throw new Error(`no subpath data found: ${subpath}`)
 		return targetFileText.substring(subPathData.start.offset, subPathData.end ? subPathData.end.offset : undefined)
 	} else {
 		return targetFileText

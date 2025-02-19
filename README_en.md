@@ -35,13 +35,16 @@ Tars is an Obsidian plugin that supports text generation based on tag suggestion
 - [OpenAI](https://platform.openai.com/api-keys)
 - [Qianfan](https://qianfan.cloud.baidu.com)
 - [Qwen](https://dashscope.console.aliyun.com)
+- [SiliconFlow](https://siliconflow.cn)
 - [Zhipu](https://open.bigmodel.cn/)
 
 If the AI provider you want is not in the list above, you can propose a specific plan in the issue.
 
 ### Assistant features
 
+- Azure: Supports o1, deepseek-r1, gpt-4o, etc.
 - 🔥DeepSeek: The reasoning model deepseek-reasoner's CoT is output in callout format
+- 🔥SiliconFlow: Supports many models such as DeepSeek V3/R1
 - Zhipu: Web search option
 
 ## How to use
@@ -73,3 +76,5 @@ A paragraph cannot contain multiple messages. Messages should be separated by bl
 For better appearance, it is recommended to use the [colored tags plugin](https://github.com/pfrankov/obsidian-colored-tags).
 
 ![Colored tags plugin](docs/images/coloredTags.png)
+
+- Tag setting suggestion. Change the default tag to the abbreviation of the model used or the abbreviation of the usage scenario.

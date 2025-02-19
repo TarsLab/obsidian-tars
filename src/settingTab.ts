@@ -1,8 +1,11 @@
 import { App, Notice, PluginSettingTab, Setting } from 'obsidian'
 import { t } from './lang/helper'
 import TarsPlugin from './main'
+import { SelectModelModal } from './modal'
 import { BaseOptions, Optional, ProviderSettings } from './providers'
-import { ZhipuOptions } from './providers/zhipu'
+import { ollamaVendor } from './providers/ollama'
+import { fetchModels, siliconFlowVendor } from './providers/siliconflow'
+import { ZhipuOptions, zhipuVendor } from './providers/zhipu'
 import { DEFAULT_SETTINGS, availableVendors } from './settings'
 
 export class TarsSettingTab extends PluginSettingTab {
@@ -48,14 +51,16 @@ export class TarsSettingTab extends PluginSettingTab {
 					if (!options) {
 						throw new Error('No default options found for ' + vendorToCreate)
 					}
+
+					const isTagDuplicate = this.plugin.settings.providers.map((e) => e.tag).includes(vendorToCreate)
+					const newTag = isTagDuplicate ? '' : vendorToCreate
 					const deepCopiedOptions = JSON.parse(JSON.stringify(options))
 					this.plugin.settings.providers.push({
-						tag: vendorToCreate,
+						tag: newTag,
 						vendor: vendorToCreate,
 						options: deepCopiedOptions
 					})
-					// 初始时，vendor和tag是一样的, 但是vendor只读，标记vendor类型，而tag是用户可以修改的
-					// TODO, tag 可能会重复，需要检查
+					// 初始时，vendor和tag可能是一样的, 但是vendor只读，标记vendor类型，而tag是用户可以修改的
 					await this.plugin.saveSettings()
 					this.display(true)
 				})
@@ -139,7 +144,7 @@ export class TarsSettingTab extends PluginSettingTab {
 		details.open = isOpen
 
 		this.addTagSection(details, settings, index, vendor.name)
-		if (settings.vendor !== 'Ollama') {
+		if (vendor.name !== ollamaVendor.name) {
 			this.addAPIkeySection(
 				details,
 				settings.options,
@@ -150,13 +155,39 @@ export class TarsSettingTab extends PluginSettingTab {
 		if ('apiSecret' in settings.options)
 			this.addAPISecretOptional(details, settings.options as BaseOptions & Pick<Optional, 'apiSecret'>)
 
-		if (vendor.models.length > 0) {
+		// model setting
+		if (vendor.name === siliconFlowVendor.name) {
+			new Setting(details)
+				.setName(t('Model'))
+				.setDesc(t('Select the model to use'))
+				.addButton((btn) => {
+					btn
+						.setButtonText(settings.options.model ? settings.options.model : t('Select the model to use'))
+						.onClick(async () => {
+							if (!settings.options.apiKey) {
+								new Notice(t('Please input API key first'))
+								return
+							}
+							try {
+								const models = await fetchModels(settings.options.apiKey)
+								const onChoose = async (selectedModel: string) => {
+									settings.options.model = selectedModel
+									await this.plugin.saveSettings()
+									btn.setButtonText(selectedModel)
+								}
+								new SelectModelModal(this.app, models, onChoose).open()
+							} catch (error) {
+								new Notice('🔴' + error)
+							}
+						})
+				})
+		} else if (vendor.models.length > 0) {
 			this.addModelDropDownSection(details, settings.options, vendor.models, index)
 		} else {
 			this.addModelTextSection(details, settings.options, index)
 		}
 
-		if (settings.vendor === 'Zhipu') {
+		if (vendor.name === zhipuVendor.name) {
 			new Setting(details)
 				.setName(t('Web search'))
 				.setDesc(t('Enable web search for AI'))
@@ -173,11 +204,11 @@ export class TarsSettingTab extends PluginSettingTab {
 		if ('max_tokens' in settings.options)
 			this.addMaxTokensOptional(details, settings.options as BaseOptions & Pick<Optional, 'max_tokens'>)
 
-		if ('proxyUrl' in settings.options)
-			this.addProxyUrlOptional(details, settings.options as BaseOptions & Pick<Optional, 'proxyUrl'>)
-
 		if ('endpoint' in settings.options)
 			this.addEndpointOptional(details, settings.options as BaseOptions & Pick<Optional, 'endpoint'>)
+
+		if ('apiVersion' in settings.options)
+			this.addApiVersionOptional(details, settings.options as BaseOptions & Pick<Optional, 'apiVersion'>)
 
 		this.addParametersSection(details, settings.options)
 
@@ -320,30 +351,6 @@ export class TarsSettingTab extends PluginSettingTab {
 					})
 			)
 
-	addProxyUrlOptional = (details: HTMLDetailsElement, options: BaseOptions & Pick<Optional, 'proxyUrl'>) =>
-		new Setting(details)
-			.setName(t('Proxy URL'))
-			.setDesc('e.g. http://127.0.0.1:7890')
-			.addText((text) =>
-				text
-					.setPlaceholder('')
-					.setValue(options.proxyUrl)
-					.onChange(async (value) => {
-						const url = value.trim()
-						if (url.length === 0) {
-							// 空字符串是合法的，清空proxyUrl
-							options.proxyUrl = ''
-							await this.plugin.saveSettings()
-						} else if (!isValidUrl(url)) {
-							new Notice(t('Invalid URL'))
-							return
-						} else {
-							options.proxyUrl = url
-							await this.plugin.saveSettings()
-						}
-					})
-			)
-
 	addEndpointOptional = (details: HTMLDetailsElement, options: BaseOptions & Pick<Optional, 'endpoint'>) =>
 		new Setting(details)
 			.setName(t('Endpoint'))
@@ -365,6 +372,20 @@ export class TarsSettingTab extends PluginSettingTab {
 							options.endpoint = url
 							await this.plugin.saveSettings()
 						}
+					})
+			)
+
+	addApiVersionOptional = (details: HTMLDetailsElement, options: BaseOptions & Pick<Optional, 'apiVersion'>) =>
+		new Setting(details)
+			.setName(t('API version'))
+			.setDesc('e.g. 2024-xx-xx-preview')
+			.addText((text) =>
+				text
+					.setPlaceholder('')
+					.setValue(options.apiVersion)
+					.onChange(async (value) => {
+						options.apiVersion = value
+						await this.plugin.saveSettings()
 					})
 			)
 

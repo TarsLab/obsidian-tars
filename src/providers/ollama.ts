@@ -1,4 +1,4 @@
-import { Ollama } from 'ollama'
+import { Ollama } from 'ollama/browser'
 import { BaseOptions, Message, SendRequest, Vendor } from '.'
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>

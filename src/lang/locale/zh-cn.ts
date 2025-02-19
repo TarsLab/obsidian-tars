@@ -51,6 +51,7 @@ export default {
 	'Keyword for tag must be unique': '标签关键字必须唯一',
 	Model: '模型',
 	'Select the model to use': '选择要使用的模型',
+	'Please input API key first': '请先输入API key',
 	'Input the model to use': '输入要使用的模型',
 	'Please enter a number': '请输入一个数字',
 	'Minimum value is 256': '最小值是256',
@@ -62,9 +63,12 @@ export default {
 	'Remove AI assistant': '移除 AI 助手',
 	Remove: '移除',
 	Endpoint: '终结点',
+	'API version': 'API 版本',
 
 	// suggest.ts
 	'AI generate': 'AI 生成',
 	'Text generated successfully': '文本生成成功',
-	'Check the developer console for error details': '查看开发者控制台了解错误'
+	'No text generated': '没有生成文本',
+	'Check the developer console for error details. ': '查看开发者控制台了解错误. ',
+	'This is a non-streaming request, please wait...': '这是一个非流式请求，请稍候...'
 }
