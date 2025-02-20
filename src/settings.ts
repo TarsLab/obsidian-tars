@@ -17,6 +17,8 @@ export interface PluginSettings {
 	systemTags: string[]
 	newChatTags: string[]
 	userTags: string[]
+	lastUsedTemplateTitle?: string
+	lastUsedProviderTag?: string
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {

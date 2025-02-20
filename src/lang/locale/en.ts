@@ -21,6 +21,13 @@ export default {
 	'Select message at cursor': 'Select message at cursor',
 	'No message found at cursor': 'No message found at cursor',
 
+	// prompt
+	'Generate from the selected text / current line': 'Generate from the selected text / current line',
+	'Cannot find prompt template file.': 'Cannot find prompt template file.',
+	'Last used': 'Last used',
+	'Create tars folder': 'Create tars folder',
+	'Create template file': 'Create template file',
+
 	// providers
 	'API key is required': 'API key is required',
 	'API secret is required': 'API secret is required',
@@ -71,5 +78,33 @@ export default {
 	'Text generated successfully': 'Text generated successfully',
 	'No text generated': 'No text generated',
 	'Check the developer console for error details. ': 'Check the developer console for error details. ',
-	'This is a non-streaming request, please wait...': 'This is a non-streaming request, please wait...'
+	'This is a non-streaming request, please wait...': 'This is a non-streaming request, please wait...',
+
+	promptFileName: 'prompt.en',
+	PRESET_PROMPT_TEMPLATES: `
+	# 说明
+	
+	- If you wish to use English prompts, please adjust the settings accordingly.
+	- 本文件按照 obsidian 的幻灯片格式，用“---”来分隔每一页的内容
+	- 第一页是说明，后面的每一页都是一个提示词模板
+	- \`#\` 是标题。当启动命令“生成内容”，标题显示在弹窗列表中。插件会把 \`{{s}}\`替换为选中的文本，得到最终的提示词。开头的\`{{s}}\`可以省略。
+	---
+	
+	# 生成
+	
+	{{s}} 
+	
+	---
+	
+	# 翻译
+	
+	把以下内容翻译为中文：{{s}}
+	
+	---
+	
+	# 总结
+	
+	总结以下内容：{{s}}
+	
+	`
 }
