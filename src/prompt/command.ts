@@ -1,3 +1,4 @@
+import Handlebars from 'handlebars'
 import {
 	App,
 	Command,
@@ -93,7 +94,7 @@ const toPromptTemplate = (slide: SectionCache[], headings: HeadingCache[], fileT
 
 	return {
 		title,
-		content: trimmedContent
+		template: trimmedContent
 	}
 }
 
@@ -108,6 +109,15 @@ export const generateFromSelectedCmd = (app: App, settings: PluginSettings): Com
 	name: t('Generate from the selected text / current line'),
 	editorCallback: async (editor: Editor, view: MarkdownView) => {
 		try {
+			const userTag = settings.userTags.first()
+			if (!userTag) {
+				new Notice('At least one user tag is required')
+				return
+			}
+			if (!settings.providers.length) {
+				new Notice('At least one provider is required')
+				return
+			}
 			const promptTemplates = await getTemplatesWithCreate(app, false)
 			const onChooseTemplate = (template: PromptTemplate) => {
 				const providers: Provider[] = settings.providers.map((p) => ({
@@ -118,9 +128,13 @@ export const generateFromSelectedCmd = (app: App, settings: PluginSettings): Com
 					settings.lastUsedProviderTag = provider.tag
 					settings.lastUsedTemplateTitle = template.title
 					new Notice('Selected provider: ' + provider.tag)
+					applyUserTag(editor, userTag)
+					applyAssistantTag(editor, provider.tag)
+					// 类似 suggest.ts 里的 await generate(env, editor, provider, endOffset)
 				}
 				new SelectProviderModal(app, providers, onChooseProvider, settings.lastUsedProviderTag).open()
 				new Notice('Selected template: ' + template.title)
+				applyTemplate(editor, template)
 			}
 			new SelectPromptTemplateModal(app, promptTemplates, onChooseTemplate, settings.lastUsedTemplateTitle).open()
 		} catch (error) {
@@ -132,6 +146,33 @@ export const generateFromSelectedCmd = (app: App, settings: PluginSettings): Com
 		}
 	}
 })
+
+const applyTemplate = async (editor: Editor, promptTemplate: PromptTemplate) => {
+	let selection = editor.getSelection()
+	if (selection.trim().length > 0) {
+		// TODO
+	} else {
+		const current = editor.getCursor('to').line
+		// TODO，检查前面是否有userTag，有则跳过userTag。
+		if (editor.getLine(current).trim().length === 0) {
+			new Notice('Nothing was selected')
+			return
+		}
+		editor.setSelection({ line: current, ch: 0 }, { line: current, ch: editor.getLine(current).length })
+		selection = editor.getSelection()
+	}
+	const templateFn = Handlebars.compile(promptTemplate.template)
+	const newPrompt = templateFn({ s: selection })
+	editor.replaceSelection(newPrompt)
+}
+
+const applyUserTag = async (editor: Editor, tag: string) => {
+	// 先检查有没有UserTag，有则跳过
+}
+
+const applyAssistantTag = async (editor: Editor, tag: string) => {
+	// 基于前面的行，另起新的一行。不去检查后面的内容。
+}
 
 export const viewPromptTemplatesCmd = (app: App): Command => ({
 	id: 'view-prompt-templates',

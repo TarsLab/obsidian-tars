@@ -4,14 +4,14 @@ import { PromptTemplate, Provider } from './types'
 
 export class SelectPromptTemplateModal extends FuzzySuggestModal<PromptTemplate> {
 	templates: PromptTemplate[]
-	lastUsedTemplateTitle: string | undefined
+	lastUsedTemplateTitle?: string
 	onChoose: (result: PromptTemplate) => void
 
 	constructor(
 		app: App,
 		templates: PromptTemplate[],
-		lastUsedTemplateTitle: string | undefined,
-		onChoose: (result: PromptTemplate) => void
+		onChoose: (result: PromptTemplate) => void,
+		lastUsedTemplateTitle?: string
 	) {
 		super(app)
 		this.templates = templates
@@ -58,10 +58,10 @@ export class SelectPromptTemplateModal extends FuzzySuggestModal<PromptTemplate>
 
 export class SelectProviderModal extends FuzzySuggestModal<Provider> {
 	providers: Provider[]
-	lastUsedProviderTag: string
+	lastUsedProviderTag?: string
 	onChoose: (result: Provider) => void
 
-	constructor(app: App, providers: Provider[], lastUsedProviderTag: string, onChoose: (result: Provider) => void) {
+	constructor(app: App, providers: Provider[], onChoose: (result: Provider) => void, lastUsedProviderTag?: string) {
 		super(app)
 		this.providers = providers
 		this.lastUsedProviderTag = lastUsedProviderTag

@@ -1,6 +1,6 @@
 export interface PromptTemplate {
 	readonly title: string
-	readonly content: string
+	readonly template: string
 }
 
 export interface Provider {

@@ -82,29 +82,29 @@ export default {
 
 	promptFileName: 'prompt.en',
 	PRESET_PROMPT_TEMPLATES: `
-	# 说明
-	
-	- If you wish to use English prompts, please adjust the settings accordingly.
-	- 本文件按照 obsidian 的幻灯片格式，用“---”来分隔每一页的内容
-	- 第一页是说明，后面的每一页都是一个提示词模板
-	- \`#\` 是标题。当启动命令“生成内容”，标题显示在弹窗列表中。插件会把 \`{{s}}\`替换为选中的文本，得到最终的提示词。开头的\`{{s}}\`可以省略。
-	---
-	
-	# 生成
-	
-	{{s}} 
-	
-	---
-	
-	# 翻译
-	
-	把以下内容翻译为中文：{{s}}
-	
-	---
-	
-	# 总结
-	
-	总结以下内容：{{s}}
-	
-	`
+# 说明
+
+- If you wish to use English prompts, please adjust the settings accordingly.
+- 本文件按照 obsidian 的幻灯片格式，用“---”来分隔每一页的内容
+- 第一页是说明，后面的每一页都是一个提示词模板
+- \`#\` 是标题。当启动命令“生成内容”，标题显示在弹窗列表中。插件会把 \`{{s}}\`替换为选中的文本，得到最终的提示词。开头的\`{{s}}\`可以省略。
+---
+
+# 生成
+
+{{s}} 
+
+---
+
+# 翻译
+
+把以下内容翻译为中文：{{s}}
+
+---
+
+# 总结
+
+总结以下内容：{{s}}
+
+`
 }
