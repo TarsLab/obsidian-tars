@@ -20,6 +20,11 @@ export default {
 	// commands/select.ts
 	'Select message at cursor': '选择光标处的消息',
 	'No message found at cursor': '光标处没有找到消息',
+	
+	// commands/useModel.ts
+	'Please open a file': '请打开一个文件',
+	'No available models': '没有可用的模型',
+	'Answer with Selected Model': '指定模型回答',
 
 	// providers
 	'API key is required': '请配置对应的 API key',

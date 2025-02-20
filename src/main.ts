@@ -5,6 +5,7 @@ import { selectMsgAtCursorCmd } from './commands/select'
 import { TarsSettingTab } from './settingTab'
 import { DEFAULT_SETTINGS, PluginSettings } from './settings'
 import { TagEditorSuggest } from './suggest'
+import { useModelCmd } from './commands/useModel'
 
 export default class TarsPlugin extends Plugin {
 	settings: PluginSettings
@@ -19,6 +20,7 @@ export default class TarsPlugin extends Plugin {
 		this.addCommand(replaceCmd(this.app))
 		this.addCommand(exportCmd(this.app, this.settings))
 		this.addCommand(selectMsgAtCursorCmd(this.app, this.settings))
+		this.addCommand(useModelCmd(this.app, this.settings))
 
 		this.addSettingTab(new TarsSettingTab(this.app, this))
 	}
