@@ -9,9 +9,9 @@ import {
 	Platform,
 	TFile
 } from 'obsidian'
-import { buildRunEnv, fetchConversation, insertText } from './editor'
+import { buildRunEnv, generate } from './editor'
 import { t } from './lang/helper'
-import { PluginSettings, availableVendors } from './settings'
+import { PluginSettings } from './settings'
 
 interface TagEntry {
 	readonly type: 'user' | 'assistant' | 'system' | 'newChat'
@@ -31,10 +31,6 @@ const toTriggerPhrase = (w: string) => [
 	`#${w.toLowerCase()} :`, // 英文冒号
 	`#${w.toLowerCase()} ：` // 中文冒号
 ]
-
-const formatDate = (d: Date) =>
-	`${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}:${d.getSeconds().toString().padStart(2, '0')}`
-const formatDuration = (d: number) => `${(d / 1000).toFixed(2)}s`
 
 export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 	settings: PluginSettings
@@ -150,43 +146,17 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 		editor.replaceRange(element.replacement, this.context.start, this.context.end)
 
 		if (element.type !== 'assistant') return
+		console.debug('element', element)
 
 		try {
-			const env = await buildRunEnv(this.app, this.settings)
-			const conversation = await fetchConversation(env, 0, editor.posToOffset(this.context.start))
-			const messages = conversation.map((c) => ({ role: c.role, content: c.content }))
-
-			console.debug('messages', messages)
-			console.debug('generate text: ')
-			console.debug('element', element)
 			const provider = this.settings.providers.find((p) => p.tag === element.tag)
 			if (!provider) {
 				throw new Error('No provider found ' + element.tag)
 			}
-			const vendor = availableVendors.find((v) => v.name === provider.vendor)
-			if (!vendor) {
-				throw new Error('No vendor found ' + provider.vendor)
-			}
-			const sendRequest = vendor.sendRequestFunc(provider.options)
 
-			const startTime = new Date()
-			console.debug('🚀 Begin : ', formatDate(startTime))
-
-			let accumulatedText = ''
-			for await (const text of sendRequest(messages)) {
-				insertText(editor, text)
-				accumulatedText += text
-			}
-
-			const endTime = new Date()
-			console.debug('🏁 Finish: ', formatDate(endTime))
-			console.debug('⌛ Total : ', formatDuration(endTime.getTime() - startTime.getTime()))
-
-			if (accumulatedText.length === 0) {
-				throw new Error(t('No text generated'))
-			}
-
-			console.debug('✨ ' + t('AI generate') + ' ✨ ', accumulatedText)
+			const env = await buildRunEnv(this.app, this.settings)
+			const endOffset = editor.posToOffset(this.context.start)
+			await generate(env, editor, provider, endOffset)
 			new Notice(t('Text generated successfully'))
 		} catch (error) {
 			console.error('error', error)

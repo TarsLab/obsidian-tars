@@ -11,8 +11,9 @@ import {
 	parseLinktext,
 	resolveSubpath
 } from 'obsidian'
-import { Message } from './providers'
-import { PluginSettings } from './settings'
+import { t } from 'src/lang/helper'
+import { Message, ProviderSettings } from './providers'
+import { PluginSettings, availableVendors } from './settings'
 
 export interface RunEnv {
 	readonly appMeta: MetadataCache
@@ -110,7 +111,7 @@ const fetchLinkTextContent = async (env: RunEnv, linkText: string) => {
 	}
 }
 
-export const fetchTagsWithSections = (env: RunEnv, startOffset: number, endOffset: number) => {
+const fetchTagsWithSections = (env: RunEnv, startOffset: number, endOffset: number) => {
 	const {
 		tagsInMeta,
 		sectionsWithRefer,
@@ -160,7 +161,7 @@ export const fetchTagsWithSections = (env: RunEnv, startOffset: number, endOffse
 	return tagsWithSections
 }
 
-export const fetchTextRange = async (
+const fetchTextRange = async (
 	env: RunEnv,
 	sectionWithRefer: SectionCacheWithRefer,
 	contentRange: readonly [number, number]
@@ -193,7 +194,7 @@ export const fetchTextRange = async (
 	}
 }
 
-export const fetchTextForTag = async (env: RunEnv, tagWithSections: TagWithSections) => {
+const fetchTextForTag = async (env: RunEnv, tagWithSections: TagWithSections) => {
 	const textRanges = await Promise.all(
 		tagWithSections.sections.map((section) => fetchTextRange(env, section, tagWithSections.contentRange))
 	)
@@ -205,7 +206,7 @@ export const fetchTextForTag = async (env: RunEnv, tagWithSections: TagWithSecti
 	return accumulated
 }
 
-export const fetchConversation = async (env: RunEnv, startOffset: number, endOffset: number) => {
+const fetchConversation = async (env: RunEnv, startOffset: number, endOffset: number) => {
 	const {
 		tagsInMeta,
 		options: { newChatTags }
@@ -229,7 +230,7 @@ export const fetchConversation = async (env: RunEnv, startOffset: number, endOff
 	return conversation
 }
 
-export const insertText = (editor: Editor, text: string) => {
+const insertText = (editor: Editor, text: string) => {
 	const current = editor.getCursor('to')
 	const lines = text.split('\n')
 	const newPos: EditorPosition = {
@@ -241,7 +242,7 @@ export const insertText = (editor: Editor, text: string) => {
 	editor.scrollIntoView({ from: newPos, to: newPos })
 }
 
-export const getSectionsWithRefer = (fileMeta: CachedMetadata) => {
+const getSectionsWithRefer = (fileMeta: CachedMetadata) => {
 	if (!fileMeta.sections) return []
 	const refersCache: ReferenceCache[] = [...(fileMeta.links || []), ...(fileMeta.embeds || [])].sort(
 		(a, b) => a.position.start.offset - b.position.start.offset // keep the order
@@ -325,4 +326,42 @@ export const getMsgPositionByLine = (env: RunEnv, line: number) => {
 	const endOffset = lastSection.position.end.offset
 	console.debug('startOff', startOffset, 'endOffset', endOffset)
 	return [startOffset, endOffset]
+}
+
+const formatDate = (d: Date) =>
+	`${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}:${d.getSeconds().toString().padStart(2, '0')}`
+const formatDuration = (d: number) => `${(d / 1000).toFixed(2)}s`
+
+export const generate = async (env: RunEnv, editor: Editor, provider: ProviderSettings, endOffset: number) => {
+	const vendor = availableVendors.find((v) => v.name === provider.vendor)
+	if (!vendor) {
+		throw new Error('No vendor found ' + provider.vendor)
+	}
+
+	const conversation = await fetchConversation(env, 0, endOffset)
+	const messages = conversation.map((c) => ({ role: c.role, content: c.content }))
+
+	console.debug('messages', messages)
+	console.debug('generate text: ')
+
+	const sendRequest = vendor.sendRequestFunc(provider.options)
+
+	const startTime = new Date()
+	console.debug('🚀 Begin : ', formatDate(startTime))
+
+	let accumulatedText = ''
+	for await (const text of sendRequest(messages)) {
+		insertText(editor, text)
+		accumulatedText += text
+	}
+
+	const endTime = new Date()
+	console.debug('🏁 Finish: ', formatDate(endTime))
+	console.debug('⌛ Total : ', formatDuration(endTime.getTime() - startTime.getTime()))
+
+	if (accumulatedText.length === 0) {
+		throw new Error(t('No text generated'))
+	}
+
+	console.debug('✨ ' + t('AI generate') + ' ✨ ', accumulatedText)
 }
