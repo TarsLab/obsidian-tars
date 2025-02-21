@@ -12,10 +12,40 @@ import {
 } from 'obsidian'
 import { t } from 'src/lang/helper'
 import { PluginSettings } from 'src/settings'
-import { SelectPromptTemplateModal, SelectProviderModal } from './modal'
-import { PromptTemplate, Provider } from './types'
+import { SelectPromptTemplateModal } from './modal'
+import { PromptTemplate } from './types'
 
 const APP_FOLDER = 'Tars'
+
+export const questionCmd = (app: App, settings: PluginSettings): Command => ({
+	id: 'question',
+	name: 'Question  (selected text / current line)',
+	editorCallback: async (editor: Editor, view: MarkdownView) => {
+		try {
+			const userTag = settings.userTags.first()
+			if (!userTag) {
+				new Notice('At least one user tag is required')
+				return
+			}
+			if (!settings.providers.length) {
+				new Notice('At least one provider is required')
+				return
+			}
+			const promptTemplates = await getTemplatesWithCreate(app, false)
+			const onChooseTemplate = (template: PromptTemplate) => {
+				new Notice('Selected template: ' + template.title)
+				applyUserTag(editor, template, userTag)
+			}
+			new SelectPromptTemplateModal(app, promptTemplates, onChooseTemplate, settings.lastUsedTemplateTitle).open()
+		} catch (error) {
+			console.error(error)
+			new Notice(
+				`🔴 ${Platform.isDesktopApp ? t('Check the developer console for error details. ') : ''}${error}`,
+				10 * 1000
+			)
+		}
+	}
+})
 
 const getPromptTemplatesFromFile = async (app: App): Promise<PromptTemplate[]> => {
 	const promptFilePath = normalizePath(`${APP_FOLDER}/${t('promptFileName')}.md`)
@@ -104,50 +134,7 @@ export const showFileMetaCmd = (app: App) => ({
 	callback: () => getPromptTemplatesFromFile(app)
 })
 
-export const generateFromSelectedCmd = (app: App, settings: PluginSettings): Command => ({
-	id: 'generate',
-	name: t('Generate from the selected text / current line'),
-	editorCallback: async (editor: Editor, view: MarkdownView) => {
-		try {
-			const userTag = settings.userTags.first()
-			if (!userTag) {
-				new Notice('At least one user tag is required')
-				return
-			}
-			if (!settings.providers.length) {
-				new Notice('At least one provider is required')
-				return
-			}
-			const promptTemplates = await getTemplatesWithCreate(app, false)
-			const onChooseTemplate = (template: PromptTemplate) => {
-				const providers: Provider[] = settings.providers.map((p) => ({
-					tag: p.tag,
-					description: p.options.model
-				}))
-				const onChooseProvider = (provider: Provider) => {
-					settings.lastUsedProviderTag = provider.tag
-					settings.lastUsedTemplateTitle = template.title
-					new Notice('Selected provider: ' + provider.tag)
-					applyUserTag(editor, userTag)
-					applyAssistantTag(editor, provider.tag)
-					// 类似 suggest.ts 里的 await generate(env, editor, provider, endOffset)
-				}
-				new SelectProviderModal(app, providers, onChooseProvider, settings.lastUsedProviderTag).open()
-				new Notice('Selected template: ' + template.title)
-				applyTemplate(editor, template)
-			}
-			new SelectPromptTemplateModal(app, promptTemplates, onChooseTemplate, settings.lastUsedTemplateTitle).open()
-		} catch (error) {
-			console.error(error)
-			new Notice(
-				`🔴 ${Platform.isDesktopApp ? t('Check the developer console for error details. ') : ''}${error}`,
-				10 * 1000
-			)
-		}
-	}
-})
-
-const applyTemplate = async (editor: Editor, promptTemplate: PromptTemplate) => {
+const applyUserTag = async (editor: Editor, promptTemplate: PromptTemplate, userTag: string) => {
 	let selection = editor.getSelection()
 	if (selection.trim().length > 0) {
 		// TODO
@@ -164,14 +151,6 @@ const applyTemplate = async (editor: Editor, promptTemplate: PromptTemplate) => 
 	const templateFn = Handlebars.compile(promptTemplate.template)
 	const newPrompt = templateFn({ s: selection })
 	editor.replaceSelection(newPrompt)
-}
-
-const applyUserTag = async (editor: Editor, tag: string) => {
-	// 先检查有没有UserTag，有则跳过
-}
-
-const applyAssistantTag = async (editor: Editor, tag: string) => {
-	// 基于前面的行，另起新的一行。不去检查后面的内容。
 }
 
 export const viewPromptTemplatesCmd = (app: App): Command => ({

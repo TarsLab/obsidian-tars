@@ -20,7 +20,7 @@ interface TagEntry {
 }
 
 // 冒号前面加空格，对中文输入更友好。中文输入#tag后需要空格，才能输入中文的冒号
-const toSpeakMark = (tag: string) => `#${tag} : `
+export const toSpeakMark = (tag: string) => `#${tag} : `
 
 const toNewChatMark = (tag: string) => `#${tag} `
 

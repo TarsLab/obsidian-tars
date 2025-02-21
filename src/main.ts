@@ -2,7 +2,7 @@ import { Plugin } from 'obsidian'
 import { exportCmd } from './commands/export'
 import { replaceCmd } from './commands/replaceTag'
 import { selectMsgAtCursorCmd } from './commands/select'
-import { generateFromSelectedCmd, showFileMetaCmd, viewPromptTemplatesCmd } from './prompt/command'
+import { answerCmd, qaCmd, questionCmd, viewPromptTemplatesCmd } from './qa'
 import { TarsSettingTab } from './settingTab'
 import { DEFAULT_SETTINGS, PluginSettings } from './settings'
 import { TagEditorSuggest } from './suggest'
@@ -17,13 +17,14 @@ export default class TarsPlugin extends Plugin {
 
 		this.registerEditorSuggest(new TagEditorSuggest(this.app, this.settings))
 
+		this.addCommand(questionCmd(this.app, this.settings))
+		this.addCommand(answerCmd(this.app, this.settings))
+		this.addCommand(qaCmd(this.app, this.settings))
+
+		this.addCommand(selectMsgAtCursorCmd(this.app, this.settings))
+		this.addCommand(viewPromptTemplatesCmd(this.app))
 		this.addCommand(replaceCmd(this.app))
 		this.addCommand(exportCmd(this.app, this.settings))
-		this.addCommand(selectMsgAtCursorCmd(this.app, this.settings))
-
-		this.addCommand(showFileMetaCmd(this.app))
-		this.addCommand(generateFromSelectedCmd(this.app, this.settings))
-		this.addCommand(viewPromptTemplatesCmd(this.app, this.settings))
 
 		this.addSettingTab(new TarsSettingTab(this.app, this))
 	}
