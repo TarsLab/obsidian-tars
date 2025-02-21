@@ -332,7 +332,13 @@ const formatDate = (d: Date) =>
 	`${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}:${d.getSeconds().toString().padStart(2, '0')}`
 const formatDuration = (d: number) => `${(d / 1000).toFixed(2)}s`
 
-export const generate = async (env: RunEnv, editor: Editor, provider: ProviderSettings, endOffset: number) => {
+export const generate = async (
+	env: RunEnv,
+	editor: Editor,
+	provider: ProviderSettings,
+	endOffset: number,
+	statusBarItem: HTMLElement
+) => {
 	const vendor = availableVendors.find((v) => v.name === provider.vendor)
 	if (!vendor) {
 		throw new Error('No vendor found ' + provider.vendor)
@@ -347,21 +353,21 @@ export const generate = async (env: RunEnv, editor: Editor, provider: ProviderSe
 		throw new Error(t('Please add a user message before generating AI response'))
 	}
 
-	console.debug('generate text: ')
-
 	const sendRequest = vendor.sendRequestFunc(provider.options)
-
 	const startTime = new Date()
 	console.debug('🚀 Begin : ', formatDate(startTime))
+	statusBarItem.setText(`🚀 ${t('AI generate')} ...`)
 
 	let accumulatedText = ''
 	for await (const text of sendRequest(messages)) {
 		insertText(editor, text)
 		accumulatedText += text
+		statusBarItem.setText(`✏️ ${accumulatedText.length} ${t('characters')}`)
 	}
 
 	const endTime = new Date()
 	console.debug('🏁 Finish: ', formatDate(endTime))
+	statusBarItem.setText(`🏁 ${accumulatedText.length} ${t('characters')}`)
 	console.debug('⌛ Total : ', formatDuration(endTime.getTime() - startTime.getTime()))
 
 	if (accumulatedText.length === 0) {
