@@ -340,8 +340,13 @@ export const generate = async (env: RunEnv, editor: Editor, provider: ProviderSe
 
 	const conversation = await fetchConversation(env, 0, endOffset)
 	const messages = conversation.map((c) => ({ role: c.role, content: c.content }))
-
 	console.debug('messages', messages)
+
+	const lastMsg = messages.last()
+	if (!lastMsg || lastMsg.role !== 'user') {
+		throw new Error(t('Please add a user message before generating AI response'))
+	}
+
 	console.debug('generate text: ')
 
 	const sendRequest = vendor.sendRequestFunc(provider.options)
