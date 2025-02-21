@@ -8,7 +8,12 @@ import { Provider } from './types'
 
 const HARD_LINE_BREAK = '  \n' // 两个空格加换行符, hard line break in markdown
 
-export const answerCmd = (app: App, settings: PluginSettings, saveSettings: () => Promise<void>): Command => ({
+export const answerCmd = (
+	app: App,
+	settings: PluginSettings,
+	statusBarItem: HTMLElement,
+	saveSettings: () => Promise<void>
+): Command => ({
 	id: 'answer',
 	name: 'Answer',
 	editorCallback: async (editor: Editor, view: MarkdownView) => {
@@ -33,7 +38,7 @@ export const answerCmd = (app: App, settings: PluginSettings, saveSettings: () =
 					throw new Error('No provider found ' + provider.tag)
 				}
 				console.debug('endOffset', messagesEndOffset)
-				await generate(env, editor, providerSettings, messagesEndOffset)
+				await generate(env, editor, providerSettings, messagesEndOffset, statusBarItem)
 			} catch (error) {
 				console.error(error)
 				new Notice(
