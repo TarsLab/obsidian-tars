@@ -78,3 +78,13 @@ For better appearance, it is recommended to use the [colored tags plugin](https:
 ![Colored tags plugin](docs/images/coloredTags.png)
 
 - Tag setting suggestion. Change the default tag to the abbreviation of the model used or the abbreviation of the usage scenario.
+
+## FAQ
+
+### How to view the developer console?
+
+- **Windows**：`CTRL + SHIFT + i`
+- **MacOS**：`CMD + OPTION + i`
+- **Linux**：`CTRL + SHIFT + i`
+
+[Capture console logs](https://help.obsidian.md/Help+and+support#Capture+console+logs)

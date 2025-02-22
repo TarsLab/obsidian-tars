@@ -78,3 +78,13 @@ Tars 是一个 Obsidian 插件，基于标签建议进行文本生成，支持 C
 ![Colored tags plugin](docs/images/coloredTags.png)
 
 - 标签设置建议，把默认的标签修改为使用的模型简称，或者使用场景的简称。
+
+## 常见问题
+
+### 如何查看开发者控制台？
+
+- **Windows**：`CTRL + SHIFT + i`
+- **MacOS**：`CMD + OPTION + i`
+- **Linux**：`CTRL + SHIFT + i`
+
+[获取控制台日志](https://publish.obsidian.md/help-zh/%E5%B8%AE%E5%8A%A9%E4%B8%8E%E6%94%AF%E6%8C%81#%E8%8E%B7%E5%8F%96%E6%8E%A7%E5%88%B6%E5%8F%B0%E6%97%A5%E5%BF%97)
