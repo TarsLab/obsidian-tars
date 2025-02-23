@@ -1,25 +1,15 @@
 import Handlebars from 'handlebars'
-import {
-	App,
-	Command,
-	Editor,
-	HeadingCache,
-	MarkdownView,
-	normalizePath,
-	Notice,
-	Platform,
-	SectionCache
-} from 'obsidian'
+import { App, Command, Editor, EditorPosition, EditorSelection, MarkdownView, Notice, Platform } from 'obsidian'
 import { t } from 'src/lang/helper'
 import { PluginSettings } from 'src/settings'
+import { toSpeakMark } from 'src/suggest'
 import { SelectPromptTemplateModal } from './modal'
-import { PromptTemplate } from './types'
+import { fetchOrCreateTemplates } from './promptTemplate'
+import { BASIC_PROMPT_TEMPLATE, PromptTemplate } from './types'
 
-const APP_FOLDER = 'Tars'
-
-export const questionCmd = (app: App, settings: PluginSettings): Command => ({
+export const questionCmd = (app: App, settings: PluginSettings, saveSettings: () => Promise<void>): Command => ({
 	id: 'question',
-	name: 'Question  (selected text / current line)',
+	name: 'Question: selected sections / current section at cursor', // 这里隐藏了空行也行，在文档说明就好
 	editorCallback: async (editor: Editor, view: MarkdownView) => {
 		try {
 			const userTag = settings.userTags.first()
@@ -27,16 +17,15 @@ export const questionCmd = (app: App, settings: PluginSettings): Command => ({
 				new Notice('At least one user tag is required')
 				return
 			}
-			if (!settings.providers.length) {
-				new Notice('At least one provider is required')
-				return
-			}
-			const promptTemplates = await getTemplatesWithCreate(app, false)
-			const onChooseTemplate = (template: PromptTemplate) => {
+			const sortedPromptTemplates = await getSortedPromptTemplates(app, settings)
+			const onChooseTemplate = async (template: PromptTemplate) => {
 				new Notice('Selected template: ' + template.title)
-				applyUserTag(editor, template, userTag)
+				settings.lastUsedTemplateTitle = template.title
+				await saveSettings()
+				question(app, editor, userTag, template)
 			}
-			new SelectPromptTemplateModal(app, promptTemplates, onChooseTemplate, settings.lastUsedTemplateTitle).open()
+
+			new SelectPromptTemplateModal(app, sortedPromptTemplates, onChooseTemplate, settings.lastUsedTemplateTitle).open()
 		} catch (error) {
 			console.error(error)
 			new Notice(
@@ -47,138 +36,126 @@ export const questionCmd = (app: App, settings: PluginSettings): Command => ({
 	}
 })
 
-const getPromptTemplatesFromFile = async (app: App): Promise<PromptTemplate[]> => {
-	const promptFilePath = normalizePath(`${APP_FOLDER}/${t('promptFileName')}.md`)
-	const promptFile = app.vault.getFileByPath(promptFilePath)
+export const getSortedPromptTemplates = async (app: App, settings: PluginSettings): Promise<PromptTemplate[]> => {
+	const templatesFromFile = await fetchOrCreateTemplates(app, false)
+	const sortedPromptTemplates = prioritizeLastUsedTemplate(
+		[BASIC_PROMPT_TEMPLATE, ...templatesFromFile],
+		settings.lastUsedTemplateTitle
+	)
+	return sortedPromptTemplates
+}
 
-	if (!promptFile) {
-		throw new Error('No prompt file found. ' + promptFilePath)
+export const question = (app: App, editor: Editor, userTag: string, template: PromptTemplate) => {
+	const { anchor, head } = refineSelection(app, editor)
+	editor.setSelection(anchor, head)
+
+	console.debug('anchor', anchor)
+	console.debug('head', head)
+	addUserTag(editor, anchor, head, userTag)
+	applyTemplate(editor, template)
+}
+
+const getSections = (app: App) => {
+	const activeFile = app.workspace.getActiveFile()
+	if (!activeFile) {
+		throw new Error('No active file')
 	}
-
-	const appMeta = app.metadataCache
-	const fileMeta = appMeta.getFileCache(promptFile)
+	const fileMeta = app.metadataCache.getFileCache(activeFile)
 	if (!fileMeta) {
-		throw new Error('No cached metadata found. ' + promptFilePath)
+		throw new Error('No cached metadata found')
 	}
+	return fileMeta.sections
+}
 
-	console.debug('fileMeta', fileMeta)
-	console.debug('sections', fileMeta.sections)
+const getEditorSelection = (editor: Editor): EditorSelection => {
+	const selections = editor.listSelections()
+	if (selections.length === 0) {
+		throw new Error('No selection')
+	} else if (selections.length > 1) {
+		throw new Error('Multiple selections')
+	}
+	const selection = selections[0]
+	return selection
+}
 
-	const sections = fileMeta.sections
+const refineSelection = (app: App, editor: Editor): EditorSelection => {
+	const selection = getEditorSelection(editor)
+	console.debug('anchor', selection.anchor)
+	console.debug('head', selection.head)
+
+	const sections = getSections(app)
 	if (!sections) {
-		throw new Error('No sections found. ' + promptFilePath)
-	}
-	const headings = fileMeta.headings
-	if (!headings) {
-		throw new Error('No headings found. ' + promptFilePath)
+		console.debug('No sections')
+		throw new Error('No sections')
 	}
 
-	const fileText = await app.vault.cachedRead(promptFile)
-	console.debug('fileText', fileText)
-	// Group sections using reduce
-	const sectionGroups = sections
-		.reduce<SectionCache[][]>(
-			(acc, section) => {
-				if (section.type === 'thematicBreak') {
-					// Start a new group when encountering a thematic break
-					return [...acc, []]
-				}
-				// Add current section to the last group
-				const lastGroupIndex = acc.length - 1
-				acc[lastGroupIndex] = [...acc[lastGroupIndex], section]
-				return acc
+	const anchorOffset = editor.posToOffset(selection.anchor)
+	const headOffset = editor.posToOffset(selection.head)
+
+	const [frontOffset, backOffset] = anchorOffset < headOffset ? [anchorOffset, headOffset] : [headOffset, anchorOffset]
+
+	const overlappingSections = sections.filter(
+		(s) => frontOffset <= s.position.end.offset && s.position.start.offset <= backOffset
+	)
+
+	if (overlappingSections.length === 0) {
+		console.debug('No overlapping sections')
+		const cursor = editor.getCursor()
+		// select the whole line
+		return {
+			anchor: {
+				line: cursor.line,
+				ch: 0
 			},
-			[[]] // Start with an empty group
-		)
-		.filter((group) => group.length > 0) // Remove empty groups
-
-	console.debug('sectionGroups', sectionGroups)
-
-	const slides = sectionGroups.slice(1) // Remove the intro slide
-	console.debug('slides', slides)
-	const promptTemplates = slides.map((slide) => toPromptTemplate(slide, headings, fileText))
-	console.debug('promptTemplates', promptTemplates)
-	return promptTemplates
-}
-
-const toPromptTemplate = (slide: SectionCache[], headings: HeadingCache[], fileText: string): PromptTemplate => {
-	if (slide.length < 2) {
-		throw new Error(`Line ${slide[0].position.start.line + 1}, Expected at least 2 sections, heading and content`)
-	}
-	if (slide[0].type !== 'heading') {
-		throw new Error(`Line ${slide[0].position.start.line + 1} - ${slide[0].position.end.line + 1}, Expected heading`)
-	}
-	const heading = headings.find((heading) => heading.position.start.line === slide[0].position.start.line)
-	if (!heading) {
-		throw new Error('No heading found')
-	}
-	const title = heading.heading
-	console.debug('title', title)
-
-	const startOffset = slide[1].position.start.offset
-	const endOffset = slide[slide.length - 1].position.end.offset
-	const content = fileText.slice(startOffset, endOffset)
-	console.debug('content', content)
-	const trimmedContent = content.trim()
-	console.debug('trimmedContent', trimmedContent)
-
-	return {
-		title,
-		template: trimmedContent
-	}
-}
-
-export const showFileMetaCmd = (app: App) => ({
-	id: 'ShowFileMeta',
-	name: 'Show file meta',
-	callback: () => getPromptTemplatesFromFile(app)
-})
-
-const applyUserTag = async (editor: Editor, promptTemplate: PromptTemplate, userTag: string) => {
-	let selection = editor.getSelection()
-	if (selection.trim().length > 0) {
-		// TODO
-	} else {
-		const current = editor.getCursor('to').line
-		// TODO，检查前面是否有userTag，有则跳过userTag。
-		if (editor.getLine(current).trim().length === 0) {
-			new Notice('Nothing was selected')
-			return
+			head: {
+				line: cursor.line,
+				ch: editor.getLine(cursor.line).length
+			}
 		}
-		editor.setSelection({ line: current, ch: 0 }, { line: current, ch: editor.getLine(current).length })
-		selection = editor.getSelection()
 	}
-	const templateFn = Handlebars.compile(promptTemplate.template)
-	const newPrompt = templateFn({ s: selection })
-	editor.replaceSelection(newPrompt)
+	return {
+		anchor: {
+			line: overlappingSections[0].position.start.line,
+			ch: overlappingSections[0].position.start.col
+		},
+		head: {
+			line: overlappingSections[overlappingSections.length - 1].position.end.line,
+			ch: overlappingSections[overlappingSections.length - 1].position.end.col
+		}
+	}
 }
 
-export const viewPromptTemplatesCmd = (app: App): Command => ({
-	id: 'view-prompt-templates',
-	name: 'View prompt templates',
-	callback: async () => {
-		await getTemplatesWithCreate(app, true)
-		// 用 modal 展示promptTemplates
-	}
-})
+const addUserTag = async (editor: Editor, anchor: EditorPosition, head: EditorPosition, userTag: string) => {
+	const userMark = toSpeakMark(userTag)
+	// TODO , 检测前面是否有userTag，有则跳过userTag。
+	// TODO, 是否需要加空行？
+	editor.replaceRange(userMark, anchor, anchor)
+	// TODO，如果之前没有选中，还要调整 anchor 和 head
+}
 
-const getTemplatesWithCreate = async (app: App, open: boolean) => {
-	if (!(await app.vault.adapter.exists(normalizePath(APP_FOLDER)))) {
-		await app.vault.createFolder(APP_FOLDER)
-		new Notice(t('Create tars folder'))
+/**
+ * Apply the selected template to the selected text, 后续如何改进？
+ */
+const applyTemplate = async (editor: Editor, promptTemplate: PromptTemplate) => {
+	const selectedText = editor.getSelection()
+	const templateFn = Handlebars.compile(promptTemplate.template, { noEscape: true })
+	console.debug('selectedText', selectedText)
+	const substitution = templateFn({ s: selectedText })
+	const newPrompt = substitution.includes(selectedText) ? substitution : selectedText + substitution // 选中文本在newPrompt中，替换，否则追加
+	console.debug('newPrompt', newPrompt)
+	const { anchor, head } = getEditorSelection(editor)
+	editor.replaceRange(newPrompt, anchor, head)
+}
+
+const prioritizeLastUsedTemplate = (promptTemplates: PromptTemplate[], lastUsedTemplateTitle: null | string) => {
+	const lastUsedTemplateIndex = promptTemplates.findIndex((p) => p.title === lastUsedTemplateTitle)
+	if (lastUsedTemplateIndex === -1) {
+		return promptTemplates
 	}
 
-	const promptFilePath = normalizePath(`${APP_FOLDER}/${t('promptFileName')}.md`)
-	if (!(await app.vault.adapter.exists(promptFilePath))) {
-		await app.vault.create(promptFilePath, t('PRESET_PROMPT_TEMPLATES'))
-		new Notice('Create prompt template file')
-	}
-
-	if (open) {
-		console.debug('open prompt file')
-		await app.workspace.openLinkText('', promptFilePath, true)
-	}
-
-	const promptTemplates = await getPromptTemplatesFromFile(app)
-	return promptTemplates
+	return [
+		promptTemplates[lastUsedTemplateIndex],
+		...promptTemplates.slice(0, lastUsedTemplateIndex),
+		...promptTemplates.slice(lastUsedTemplateIndex + 1)
+	]
 }

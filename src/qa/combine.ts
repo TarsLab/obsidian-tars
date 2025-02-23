@@ -1,25 +1,54 @@
 import { App, Command, Editor, MarkdownView, Notice, Platform } from 'obsidian'
 import { t } from 'src/lang/helper'
 import { PluginSettings } from 'src/settings'
-import { SelectProviderModal } from './modal'
-import { Provider } from './types'
+import { answer, openProviderModal } from './answer'
+import { getSortedPromptTemplates, question } from './question'
+import { BASIC_PROMPT_TEMPLATE, PromptTemplate } from './types'
 
-export const qaCmd = (app: App, settings: PluginSettings): Command => ({
+// 创建一个延迟函数
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+export const qaCmd = (
+	app: App,
+	settings: PluginSettings,
+	statusBarItem: HTMLElement,
+	saveSettings: () => Promise<void>
+): Command => ({
 	id: 'qa',
-	name: 'Question & Answer (recently used)',
+	name: 'Question & Answer 📌',
 	editorCallback: async (editor: Editor, view: MarkdownView) => {
 		try {
-			const onChooseProvider = (provider: Provider) => {
-				settings.lastUsedProviderTag = provider.tag
-				new Notice('Selected provider: ' + provider.tag)
-				applyAssistantTag(editor, provider.tag)
-				// 类似 suggest.ts 里的 await generate(env, editor, provider, endOffset)
+			const userTag = settings.userTags.first()
+			if (!userTag) {
+				new Notice('At least one user tag is required')
+				return
 			}
-			const providers: Provider[] = settings.providers.map((p) => ({
-				tag: p.tag,
-				description: p.options.model
-			}))
-			new SelectProviderModal(app, providers, onChooseProvider, settings.lastUsedProviderTag).open()
+			if (!settings.providers.length) {
+				new Notice('Please add one assistant in the settings first')
+				return
+			}
+			const sortedPromptTemplates = await getSortedPromptTemplates(app, settings)
+			const matchedTemplate = sortedPromptTemplates.find((t) => t.title === settings.lastUsedTemplateTitle)
+			let promptTemplate: PromptTemplate | undefined
+			if (!matchedTemplate) {
+				new Notice('Last used template not found, reset to basic template')
+				promptTemplate = BASIC_PROMPT_TEMPLATE
+				settings.lastUsedTemplateTitle = promptTemplate.title
+				await saveSettings()
+			} else {
+				new Notice('Selected template: ' + matchedTemplate.title)
+				promptTemplate = matchedTemplate
+			}
+
+			question(app, editor, userTag, promptTemplate)
+			await delay(500)
+			const provider = settings.providers.find((p) => p.tag === settings.lastUsedProviderTag)
+
+			if (provider != undefined && settings.lastUsedProviderTag != undefined) {
+				await answer(app, editor, settings, statusBarItem, provider)
+			} else {
+				await openProviderModal(app, editor, settings, statusBarItem, saveSettings)
+			}
 		} catch (error) {
 			console.error(error)
 			new Notice(
@@ -29,7 +58,3 @@ export const qaCmd = (app: App, settings: PluginSettings): Command => ({
 		}
 	}
 })
-
-const applyAssistantTag = async (editor: Editor, tag: string) => {
-	// 基于前面的行，另起新的一行。不去检查后面的内容。
-}

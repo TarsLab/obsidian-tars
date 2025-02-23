@@ -34,11 +34,13 @@ const toTriggerPhrase = (w: string) => [
 
 export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 	settings: PluginSettings
+	statusBarItem: HTMLElement
 
-	constructor(app: App, settings: PluginSettings) {
+	constructor(app: App, settings: PluginSettings, statusBarItem: HTMLElement) {
 		super(app)
 		this.app = app
 		this.settings = settings
+		this.statusBarItem = statusBarItem
 	}
 
 	onTrigger(cursor: EditorPosition, editor: Editor, file: TFile): EditorSuggestTriggerInfo | null {
@@ -155,8 +157,9 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 			}
 
 			const env = await buildRunEnv(this.app, this.settings)
-			const endOffset = editor.posToOffset(this.context.start)
-			await generate(env, editor, provider, endOffset)
+			const messagesEndOffset = editor.posToOffset(this.context.start)
+			console.debug('endOffset', messagesEndOffset)
+			await generate(env, editor, provider, messagesEndOffset, this.statusBarItem)
 			new Notice(t('Text generated successfully'))
 		} catch (error) {
 			console.error('error', error)

@@ -1,12 +1,23 @@
 import { App, Command, Editor, MarkdownView, Notice, Platform } from 'obsidian'
 import { buildRunEnv, generate } from 'src/editor'
 import { t } from 'src/lang/helper'
+import { ProviderSettings } from 'src/providers'
 import { PluginSettings } from 'src/settings'
 import { toSpeakMark } from 'src/suggest'
-import { SelectProviderModal } from './modal'
-import { Provider } from './types'
+import { SelectProviderSettingModal } from './modal'
+import { HARD_LINE_BREAK } from './types'
 
-const HARD_LINE_BREAK = '  \n' // 两个空格加换行符, hard line break in markdown
+export const answer = async (
+	app: App,
+	editor: Editor,
+	settings: PluginSettings,
+	statusBarItem: HTMLElement,
+	providerSettings: ProviderSettings
+) => {
+	const messagesEndOffset = setAssistantTag(editor, providerSettings.tag, settings.providers)
+	const env = await buildRunEnv(app, settings)
+	await generate(env, editor, providerSettings, messagesEndOffset, statusBarItem)
+}
 
 export const answerCmd = (
 	app: App,
@@ -21,54 +32,38 @@ export const answerCmd = (
 			new Notice('Please add one assistant in the settings first')
 			return
 		}
-		const providers: Provider[] = settings.providers.map((p) => ({
-			tag: p.tag,
-			description: p.options.model
-		}))
-
-		const onChooseProvider = async (provider: Provider) => {
-			settings.lastUsedProviderTag = provider.tag
-			console.debug('Selected provider: ' + provider.tag)
-			await saveSettings()
-			try {
-				const messagesEndOffset = applyAssistantTag(editor, provider.tag, providers)
-				const env = await buildRunEnv(app, settings)
-				const providerSettings = settings.providers.find((p) => p.tag === provider.tag)
-				if (!providerSettings) {
-					throw new Error('No provider found ' + provider.tag)
-				}
-				console.debug('endOffset', messagesEndOffset)
-				await generate(env, editor, providerSettings, messagesEndOffset, statusBarItem)
-			} catch (error) {
-				console.error(error)
-				new Notice(
-					`🔴 ${Platform.isDesktopApp ? t('Check the developer console for error details. ') : ''}${error}`,
-					10 * 1000
-				)
-			}
-		}
-
-		const prioritizeLastUsedProvider = (providers: Provider[], lastUsedProviderTag?: string) => {
-			if (!lastUsedProviderTag) {
-				return providers
-			}
-			const lastUsedProviderIndex = providers.findIndex((p) => p.tag === lastUsedProviderTag)
-			if (lastUsedProviderIndex === -1) {
-				return providers
-			}
-
-			return [
-				providers[lastUsedProviderIndex],
-				...providers.slice(0, lastUsedProviderIndex),
-				...providers.slice(lastUsedProviderIndex + 1)
-			]
-		}
-		const prioritizedProviders = prioritizeLastUsedProvider(providers, settings.lastUsedProviderTag)
-		new SelectProviderModal(app, prioritizedProviders, onChooseProvider, settings.lastUsedProviderTag).open()
+		await openProviderModal(app, editor, settings, statusBarItem, saveSettings)
 	}
 })
 
-const applyAssistantTag = (editor: Editor, tag: string, providers: Provider[]) => {
+export const openProviderModal = async (
+	app: App,
+	editor: Editor,
+	settings: PluginSettings,
+	statusBarItem: HTMLElement,
+	saveSettings: () => Promise<void>
+) => {
+	const onChooseProvider = async (provider: ProviderSettings) => {
+		settings.lastUsedProviderTag = provider.tag
+		await saveSettings()
+		console.debug('Selected provider: ' + provider.tag)
+		try {
+			await answer(app, editor, settings, statusBarItem, provider)
+		} catch (error) {
+			console.error(error)
+			new Notice(
+				`🔴 ${Platform.isDesktopApp ? t('Check the developer console for error details. ') : ''}${error}`,
+				10 * 1000
+			)
+		}
+	}
+
+	const prioritizedProviders = prioritizeLastUsed(settings.providers, settings.lastUsedProviderTag)
+	new SelectProviderSettingModal(app, prioritizedProviders, onChooseProvider, settings.lastUsedProviderTag).open()
+}
+
+/** 遵循对话语法。这里主要是设置空行 */
+export const setAssistantTag = (editor: Editor, tag: string, providers: ProviderSettings[]) => {
 	const cursor = editor.getCursor()
 	const assistantMark = toSpeakMark(tag)
 	const currentLine = cursor.line
@@ -126,7 +121,23 @@ const applyAssistantTag = (editor: Editor, tag: string, providers: Provider[]) =
 	return editor.posToOffset(messageEndPosition)
 }
 
-const isStartWithAssistantTag = (lineContent: string, providers: Provider[]) => {
+const prioritizeLastUsed = (provider: ProviderSettings[], lastUsedProviderTag?: string) => {
+	if (!lastUsedProviderTag) {
+		return provider
+	}
+	const lastUsedProviderIndex = provider.findIndex((p) => p.tag === lastUsedProviderTag)
+	if (lastUsedProviderIndex === -1) {
+		return provider
+	}
+
+	return [
+		provider[lastUsedProviderIndex],
+		...provider.slice(0, lastUsedProviderIndex),
+		...provider.slice(lastUsedProviderIndex + 1)
+	]
+}
+
+const isStartWithAssistantTag = (lineContent: string, providers: ProviderSettings[]) => {
 	// TODO，这里的逻辑需要考虑更多场景，这里先匹配常见的重试场景
 	if (!lineContent.startsWith('#')) {
 		return false

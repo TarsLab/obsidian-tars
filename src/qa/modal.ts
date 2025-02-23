@@ -1,17 +1,29 @@
 import { App, FuzzyMatch, FuzzySuggestModal } from 'obsidian'
-import { t } from '../lang/helper'
-import { PromptTemplate, Provider } from './types'
+import { t } from 'src/lang/helper'
+import { ProviderSettings } from 'src/providers'
+import { PromptTemplate } from './types'
+
+const truncateString = (str: string, frontLen: number, backLen: number) => {
+	if (str.length <= frontLen + backLen) {
+		return str
+	}
+	const front = str.slice(0, frontLen)
+	const back = str.slice(-backLen)
+	return `${front} ... ${back}`
+}
+
+const escapeNewlines = (str: string) => str.replace(/\n/g, '\\n')
 
 export class SelectPromptTemplateModal extends FuzzySuggestModal<PromptTemplate> {
 	templates: PromptTemplate[]
-	lastUsedTemplateTitle?: string
+	lastUsedTemplateTitle: string | null
 	onChoose: (result: PromptTemplate) => void
 
 	constructor(
 		app: App,
 		templates: PromptTemplate[],
 		onChoose: (result: PromptTemplate) => void,
-		lastUsedTemplateTitle?: string
+		lastUsedTemplateTitle: string | null
 	) {
 		super(app)
 		this.templates = templates
@@ -24,11 +36,11 @@ export class SelectPromptTemplateModal extends FuzzySuggestModal<PromptTemplate>
 	}
 
 	getItemText(template: PromptTemplate): string {
-		return template.title
+		return template.title ?? t('BASIC_PROMPT_TEMPLATE')
 	}
 
 	renderSuggestion(template: FuzzyMatch<PromptTemplate>, el: HTMLElement) {
-		const title = template.item.title
+		const title = template.item.title ?? t('BASIC_PROMPT_TEMPLATE')
 		let lastIndex = 0
 
 		const div = el.createEl('div')
@@ -44,11 +56,12 @@ export class SelectPromptTemplateModal extends FuzzySuggestModal<PromptTemplate>
 		// 添加最后一个匹配项后面的文本
 		div.createEl('span', { text: title.slice(lastIndex) })
 
-		if (title === this.lastUsedTemplateTitle) {
-			el.createEl('small', {
-				text: t('Last used')
-			})
-		}
+		const description = truncateString(escapeNewlines(template.item.template), 20, 5) // 截取前20个字符, 截取最后的5个字符
+
+		el.createEl('small', {
+			text: title === this.lastUsedTemplateTitle ? '📌 ' + description : description,
+			attr: { style: 'color: #666;' } // 设置字体颜色比正常字体暗一些
+		})
 	}
 
 	onChooseItem(template: PromptTemplate, evt: MouseEvent | KeyboardEvent) {
@@ -56,27 +69,32 @@ export class SelectPromptTemplateModal extends FuzzySuggestModal<PromptTemplate>
 	}
 }
 
-export class SelectProviderModal extends FuzzySuggestModal<Provider> {
-	providers: Provider[]
+export class SelectProviderSettingModal extends FuzzySuggestModal<ProviderSettings> {
+	providers: ProviderSettings[]
 	lastUsedProviderTag?: string
-	onChoose: (result: Provider) => void
+	onChoose: (result: ProviderSettings) => void
 
-	constructor(app: App, providers: Provider[], onChoose: (result: Provider) => void, lastUsedProviderTag?: string) {
+	constructor(
+		app: App,
+		providers: ProviderSettings[],
+		onChoose: (result: ProviderSettings) => void,
+		lastUsedProviderTag?: string
+	) {
 		super(app)
 		this.providers = providers
 		this.lastUsedProviderTag = lastUsedProviderTag
 		this.onChoose = onChoose
 	}
 
-	getItems(): Provider[] {
+	getItems(): ProviderSettings[] {
 		return this.providers
 	}
 
-	getItemText(item: Provider): string {
+	getItemText(item: ProviderSettings): string {
 		return item.tag
 	}
 
-	renderSuggestion(template: FuzzyMatch<Provider>, el: HTMLElement) {
+	renderSuggestion(template: FuzzyMatch<ProviderSettings>, el: HTMLElement) {
 		const title = template.item.tag
 		let lastIndex = 0
 
@@ -92,13 +110,12 @@ export class SelectProviderModal extends FuzzySuggestModal<Provider> {
 
 		// 添加最后一个匹配项后面的文本
 		div.createEl('span', { text: title.slice(lastIndex) })
-		const prefix = title === this.lastUsedProviderTag ? t('Last used') : ''
 		el.createEl('small', {
-			text: prefix + template.item.description
+			text: title === this.lastUsedProviderTag ? '📌 ' + template.item.options.model : template.item.options.model
 		})
 	}
 
-	onChooseItem(provider: Provider, evt: MouseEvent | KeyboardEvent) {
+	onChooseItem(provider: ProviderSettings, evt: MouseEvent | KeyboardEvent) {
 		this.onChoose(provider)
 	}
 }
