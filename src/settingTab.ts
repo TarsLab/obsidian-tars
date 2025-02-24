@@ -6,6 +6,11 @@ import { BaseOptions, Optional, ProviderSettings } from './providers'
 import { ollamaVendor } from './providers/ollama'
 import { fetchModels, siliconFlowVendor } from './providers/siliconflow'
 import { ZhipuOptions, zhipuVendor } from './providers/zhipu'
+import { prioritizeLastUsed } from './qa/answer'
+import { SelectPromptTemplateModal, SelectProviderSettingModal } from './qa/modal'
+import { getTemplateTitle } from './qa/promptTemplate'
+import { getSortedPromptTemplates } from './qa/question'
+import { PromptTemplate } from './qa/types'
 import { DEFAULT_SETTINGS, availableVendors } from './settings'
 
 export class TarsSettingTab extends PluginSettingTab {
@@ -112,6 +117,93 @@ export class TarsSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings()
 				})
 		)
+
+		containerEl.createEl('br')
+		new Setting(containerEl)
+			.setName('Question & Answer')
+			.setDesc('提问加回答命令，会直接使用最近使用的模板和助手。')
+			.setHeading()
+
+		new Setting(containerEl)
+			.setName('Recently used template title')
+			.setDesc('最近使用的模板标题。在使用提问命令中会自动更新。')
+			.addButton((btn) => {
+				btn
+					.setButtonText(
+						this.plugin.settings.lastUsedTemplateTitle == null
+							? t('BASIC_PROMPT_TEMPLATE')
+							: this.plugin.settings.lastUsedTemplateTitle
+					)
+					.onClick(async () => {
+						try {
+							const sortedPromptTemplates = await getSortedPromptTemplates(this.app, this.plugin.settings)
+							const onChooseTemplate = async (template: PromptTemplate) => {
+								this.plugin.settings.lastUsedTemplateTitle = template.title
+								await this.plugin.saveSettings()
+								btn.setButtonText(getTemplateTitle(template))
+							}
+
+							new SelectPromptTemplateModal(
+								this.app,
+								sortedPromptTemplates,
+								onChooseTemplate,
+								this.plugin.settings.lastUsedTemplateTitle
+							).open()
+						} catch (error) {
+							new Notice('🔴' + error)
+						}
+					})
+			})
+
+		new Setting(containerEl)
+			.setName('Recently used provider tag')
+			.setDesc('最近使用的助手标签。在使用回答命令中会自动更新。')
+			.addButton((btn) => {
+				btn
+					.setButtonText(
+						this.plugin.settings.lastUsedProviderTag ? this.plugin.settings.lastUsedProviderTag : t('Select assistant')
+					)
+					.onClick(async () => {
+						try {
+							if (!this.plugin.settings.providers.length) {
+								new Notice('Please add one assistant in the settings first')
+								return
+							}
+							const onChooseProvider = async (provider: ProviderSettings) => {
+								this.plugin.settings.lastUsedProviderTag = provider.tag
+								await this.plugin.saveSettings()
+								btn.setButtonText(provider.tag)
+							}
+
+							const prioritizedProviders = prioritizeLastUsed(
+								this.plugin.settings.providers,
+								this.plugin.settings.lastUsedProviderTag
+							)
+							new SelectProviderSettingModal(
+								this.app,
+								prioritizedProviders,
+								onChooseProvider,
+								this.plugin.settings.lastUsedProviderTag
+							).open()
+						} catch (error) {
+							new Notice('🔴' + error)
+						}
+					})
+			})
+
+		new Setting(containerEl)
+			.setName('Answer delay seconds')
+			.setDesc('如果发现user message错误，可能是消息解析需要时间等待，请稍微加大延迟回答时间')
+			.addSlider((slider) =>
+				slider
+					.setLimits(1.5, 4, 0.5)
+					.setValue(this.plugin.settings.answerDelayInMilliseconds / 1000)
+					.setDynamicTooltip()
+					.onChange(async (value) => {
+						this.plugin.settings.answerDelayInMilliseconds = Math.round(value * 1000)
+						await this.plugin.saveSettings()
+					})
+			)
 	}
 
 	createProviderSetting = (index: number, settings: ProviderSettings, isOpen: boolean = false) => {
