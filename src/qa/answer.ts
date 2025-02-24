@@ -28,10 +28,10 @@ export const answerCmd = (
 	saveSettings: () => Promise<void>
 ): Command => ({
 	id: 'answer',
-	name: 'Answer',
+	name: t('Answer: Select assistant'),
 	editorCallback: async (editor: Editor, view: MarkdownView) => {
 		if (!settings.providers.length) {
-			new Notice('Please add one assistant in the settings first')
+			new Notice(t('Please add one assistant in the settings first'))
 			return
 		}
 		await openProviderModal(app, editor, settings, statusBarItem, saveSettings)
@@ -95,6 +95,8 @@ export const setAssistantTag = async (
 			lnToWrite = await insertMarkSlowMo(editor, assistantMark, delayDuration)
 
 			if (lnToWrite != currentLine) console.error('lnToWrite != currentLine')
+
+			// TODO, 这里会删除用户内容，有没有更优的用户体验？
 			new Notice(t('Regenerate Answer'))
 		} else {
 			// 不清楚的内容，换行，新一行

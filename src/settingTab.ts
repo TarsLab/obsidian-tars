@@ -120,13 +120,15 @@ export class TarsSettingTab extends PluginSettingTab {
 
 		containerEl.createEl('br')
 		new Setting(containerEl)
-			.setName('Question & Answer')
-			.setDesc('提问加回答命令，会直接使用最近使用的模板和助手。')
+			.setName(t('Question & Answer'))
+			.setDesc(
+				t('The question and answer command will directly select the most recently used prompt template and assistant.')
+			)
 			.setHeading()
 
 		new Setting(containerEl)
-			.setName('Recently used template title')
-			.setDesc('最近使用的模板标题。在使用提问命令中会自动更新。')
+			.setName(t('Recently used prompt template'))
+			.setDesc(t("When using the 'Question' command, it will automatically update."))
 			.addButton((btn) => {
 				btn
 					.setButtonText(
@@ -156,8 +158,8 @@ export class TarsSettingTab extends PluginSettingTab {
 			})
 
 		new Setting(containerEl)
-			.setName('Recently used provider tag')
-			.setDesc('最近使用的助手标签。在使用回答命令中会自动更新。')
+			.setName(t('Recently used assistant tag'))
+			.setDesc(t("When using the 'Answer' command, it will automatically update."))
 			.addButton((btn) => {
 				btn
 					.setButtonText(
@@ -166,7 +168,7 @@ export class TarsSettingTab extends PluginSettingTab {
 					.onClick(async () => {
 						try {
 							if (!this.plugin.settings.providers.length) {
-								new Notice('Please add one assistant in the settings first')
+								new Notice(t('Please add one assistant in the settings first'))
 								return
 							}
 							const onChooseProvider = async (provider: ProviderSettings) => {
@@ -192,8 +194,12 @@ export class TarsSettingTab extends PluginSettingTab {
 			})
 
 		new Setting(containerEl)
-			.setName('Answer delay seconds')
-			.setDesc('如果发现user message错误，可能是消息解析需要时间等待，请稍微加大延迟回答时间')
+			.setName(t('Delay before answer (Seconds)'))
+			.setDesc(
+				t(
+					'If you encounter errors with missing user messages, it may be due to the need for more time to parse the messages. Please slightly increase the answer delay time.'
+				)
+			)
 			.addSlider((slider) =>
 				slider
 					.setLimits(1.5, 4, 0.5)

@@ -27,6 +27,35 @@ export default {
 	'Model is required': '请配置对应的模型',
 	'API URL is required': '请配置对应的 API URL',
 
+	// qa/answer.ts
+	'Answer: Select assistant': '回答：选择助手',
+	'Please add one assistant in the settings first': '请先在设置中添加一个助手',
+	'Regenerate Answer': '重新生成回答',
+
+	// qa/combine.ts
+	'Question & Answer: Recently used template and assistant': '提问和回答: 最近使用的模板和助手',
+	'At least one user tag is required': '至少需要一个用户标签',
+
+	// qa/modal.ts
+	'Syntax Error Report': '语法错误报告',
+
+	// qa/promptTemplate.ts
+	BASIC_PROMPT_TEMPLATE: '✨ (原文) ✨',
+	'View prompt templates: check syntax': '查看提示模板：检查语法',
+	'Prompt template file is syntactically correct': '提示模板文件语法正确',
+	'Create tars folder': '创建 tars 文件夹',
+	'Create prompt template file': '创建提示词模板文件',
+	'Expected at least 2 sections, heading and content': '至少需要 2 个部分，标题和内容',
+	'Expected heading': '需要标题',
+
+	// qa/question.ts
+	'Question: selected sections / current section at cursor': '提问：选中的段落 / 光标处的段落',
+
+	// editor.ts
+	'Please add a user message before generating AI response': '请先添加用户消息，再用 AI 回答',
+	'No text generated': '没有生成文本',
+	characters: '个字符',
+
 	// settingTab.ts
 	'AI assistants': 'AI 助手',
 	'New AI assistant': '新的AI助手',
@@ -64,11 +93,56 @@ export default {
 	Remove: '移除',
 	Endpoint: '终结点',
 	'API version': 'API 版本',
+	'Select assistant': '选择助手',
+
+	'Question & Answer': '提问和回答',
+	'The question and answer command will directly select the most recently used prompt template and assistant.':
+		'"提问和回答"命令, 会直接选择最近使用的提示词模板和助手。',
+	'Recently used prompt template': '最近使用的提示词模板',
+	"When using the 'Question' command, it will automatically update.": "使用 '提问' 命令时，会自动更新",
+	'Recently used assistant tag': '最近使用的助手标签',
+	"When using the 'Answer' command, it will automatically update.": "使用 '回答' 命令时，会自动更新",
+	'Delay before answer (Seconds)': '回答前的延迟（秒）',
+	'If you encounter errors with missing user messages, it may be due to the need for more time to parse the messages. Please slightly increase the answer delay time.':
+		'如果遇到缺少用户消息的错误，可能是因为需要更多时间来解析消息。请稍微增加回答延迟时间。',
 
 	// suggest.ts
 	'AI generate': 'AI 生成',
 	'Text generated successfully': '文本生成成功',
-	'No text generated': '没有生成文本',
 	'Check the developer console for error details. ': '查看开发者控制台了解错误. ',
-	'This is a non-streaming request, please wait...': '这是一个非流式请求，请稍候...'
+	'This is a non-streaming request, please wait...': '这是一个非流式请求，请稍候...',
+
+	promptFileName: 'prompt.zh',
+	PRESET_PROMPT_TEMPLATES: `
+# 使用说明
+
+- 把你的常用提示词收集到这里，以便在Tars插件的“提问”命令中使用。
+- 本文件按照 obsidian 的幻灯片格式，用“---”来分隔每一页的内容
+- 第一页是说明，后面的每一页都是一个提示词模板
+- 首先是模板的标题, 以markdown的标题格式。接下来都是模板的内容。标题和内容都不可缺少。
+- 如果内容有 \`{{s}}\`，会把 \`{{s}}\`替换为选中的文本
+- 如果没有 \`{{s}}\`，则追加
+- 如果没有选中的文本，那么会直接使用模板的内容
+- 如果某一页有语法错误，则不会出现在“提问”命令的弹窗列表中
+- 如果要检查有没有语法错误，执行命令“查看提示词模板: 检查语法”
+
+---
+
+# 提示词例子
+
+给我讲个笑话
+
+---
+
+# 翻译
+
+把以下内容翻译为中文：{{s}}
+
+---
+
+# 总结
+
+总结以下内容：{{s}}
+	
+`
 }

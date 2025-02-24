@@ -12,15 +12,15 @@ export const qaCmd = (
 	saveSettings: () => Promise<void>
 ): Command => ({
 	id: 'qa',
-	name: 'Question & Answer 📌',
+	name: t('Question & Answer: Recently used template and assistant'),
 	editorCallback: async (editor: Editor, view: MarkdownView) => {
 		try {
 			if (settings.userTags.length === 0) {
-				new Notice('At least one user tag is required')
+				new Notice(t('At least one user tag is required'))
 				return
 			}
 			if (!settings.providers.length) {
-				new Notice('Please add one assistant in the settings first')
+				new Notice(t('Please add one assistant in the settings first'))
 				return
 			}
 			const sortedPromptTemplates = await getSortedPromptTemplates(app, settings)

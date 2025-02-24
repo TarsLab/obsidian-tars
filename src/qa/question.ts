@@ -9,7 +9,7 @@ import { BASIC_PROMPT_TEMPLATE, HARD_LINE_BREAK, PromptTemplate } from './types'
 
 export const questionCmd = (app: App, settings: PluginSettings, saveSettings: () => Promise<void>): Command => ({
 	id: 'question',
-	name: 'Question: selected sections / current section at cursor', // 这里隐藏了空行也行，在文档说明就好
+	name: t('Question: selected sections / current section at cursor'), // 这里隐藏了空行也行，在文档说明就好
 	editorCallback: async (editor: Editor, view: MarkdownView) => {
 		try {
 			if (settings.userTags.length === 0) {
@@ -37,9 +37,6 @@ export const questionCmd = (app: App, settings: PluginSettings, saveSettings: ()
 
 export const getSortedPromptTemplates = async (app: App, settings: PluginSettings): Promise<PromptTemplate[]> => {
 	const { promptTemplates } = await fetchOrCreateTemplates(app, false)
-	// if (reporter.length > 0) { // annoying
-	// 	new Notice('Warning in prompt template file, please View prompt templates')
-	// }
 	const sortedPromptTemplates = prioritizeLastUsedTemplate(
 		[BASIC_PROMPT_TEMPLATE, ...promptTemplates],
 		settings.lastUsedTemplateTitle

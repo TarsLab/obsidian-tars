@@ -9,11 +9,13 @@ export const getTemplateTitle = (template: PromptTemplate) => template.title ?? 
 
 export const viewPromptTemplatesCmd = (app: App): Command => ({
 	id: 'view-prompt-templates',
-	name: 'View prompt templates',
+	name: t('View prompt templates: check syntax'),
 	callback: async () => {
 		const { reporter } = await fetchOrCreateTemplates(app, true)
 		if (reporter.length > 0) {
 			new ReporterModal(app, reporter).open()
+		} else {
+			new Notice(t('Prompt template file is syntactically correct'))
 		}
 	}
 })
@@ -27,7 +29,7 @@ export const fetchOrCreateTemplates = async (app: App, open: boolean = false) =>
 	const promptFilePath = normalizePath(`${APP_FOLDER}/${t('promptFileName')}.md`)
 	if (!(await app.vault.adapter.exists(promptFilePath))) {
 		await app.vault.create(promptFilePath, t('PRESET_PROMPT_TEMPLATES'))
-		new Notice('Create prompt template file')
+		new Notice(t('Create prompt template file'))
 	}
 
 	if (open && app.workspace.getActiveFile()?.path != promptFilePath) {
@@ -104,18 +106,22 @@ const getPromptTemplatesFromFile = async (app: App) => {
 
 const toPromptTemplate = (slide: SectionCache[], headings: HeadingCache[], fileText: string): PromptTemplate => {
 	if (slide.length < 2) {
-		throw new Error(`Line ${slide[0].position.start.line + 1}, Expected at least 2 sections, heading and content`)
+		throw new Error(
+			`Line ${slide[0].position.start.line + 1}, ${t('Expected at least 2 sections, heading and content')}`
+		)
 	}
 	if (slide[0].type !== 'heading') {
-		throw new Error(`Line ${slide[0].position.start.line + 1} - ${slide[0].position.end.line + 1}, Expected heading`)
+		throw new Error(
+			`Line ${slide[0].position.start.line + 1} - ${slide[0].position.end.line + 1}, ${t('Expected heading')}`
+		)
 	}
 	const heading = headings.find((heading) => heading.position.start.line === slide[0].position.start.line)
 	if (!heading) {
-		throw new Error(`Line ${slide[0].position.start.line + 1}, Expected heading`)
+		throw new Error(`Line ${slide[0].position.start.line + 1}, ${t('Expected heading')}`)
 	}
 	const title = heading.heading.trim()
 	if (!title) {
-		throw new Error(`Line ${heading.position.start.line + 1}, Expected heading title`)
+		throw new Error(`Line ${heading.position.start.line + 1}, ${t('Expected heading')}`)
 	}
 	console.debug('title', title)
 

@@ -21,18 +21,40 @@ export default {
 	'Select message at cursor': 'Select message at cursor',
 	'No message found at cursor': 'No message found at cursor',
 
-	// prompt
-	'Generate from the selected text / current line': 'Generate from the selected text / current line',
-	'Cannot find prompt template file.': 'Cannot find prompt template file.',
-	'Last used': 'Last used',
-	'Create tars folder': 'Create tars folder',
-	'Create template file': 'Create template file',
-
 	// providers
 	'API key is required': 'API key is required',
 	'API secret is required': 'API secret is required',
 	'Model is required': 'Model is required',
 	'API URL is required': 'API URL is required',
+
+	// qa/answer.ts
+	'Answer: Select assistant': 'Answer: Select assistant',
+	'Please add one assistant in the settings first': 'Please add one assistant in the settings first',
+	'Regenerate Answer': 'Regenerate Answer',
+
+	// qa/combine.ts
+	'Question & Answer: Recently used template and assistant': 'Question & Answer: Recently used template and assistant',
+	'At least one user tag is required': 'At least one user tag is required',
+
+	// qa/modal.ts
+	'Syntax Error Report': 'Syntax Error Report',
+
+	// qa/promptTemplate.ts
+	BASIC_PROMPT_TEMPLATE: '✨ (Original) ✨',
+	'View prompt templates: check syntax': 'View prompt templates: check syntax',
+	'Prompt template file is syntactically correct': 'Prompt template file is syntactically correct',
+	'Create tars folder': 'Create tars folder',
+	'Create prompt template file': 'Create prompt template file',
+	'Expected at least 2 sections, heading and content': 'Expected at least 2 sections, heading and content',
+	'Expected heading': 'Expected heading',
+
+	// qa/question.ts
+	'Question: selected sections / current section at cursor': 'Question: selected sections / current section at cursor',
+
+	// editor.ts
+	'Please add a user message before generating AI response': 'Please add a user message before generating AI response',
+	'No text generated': 'No text generated',
+	characters: 'characters',
 
 	// settingTab.ts
 	'AI assistants': 'AI assistants',
@@ -72,27 +94,46 @@ export default {
 	Remove: 'Remove',
 	Endpoint: 'Endpoint',
 	'API version': 'API version',
+	'Select assistant': 'Select assistant',
+
+	'Question & Answer': 'Question & Answer',
+	'The question and answer command will directly select the most recently used prompt template and assistant.':
+		'The question and answer command will directly select the most recently used prompt template and assistant.',
+	'Recently used prompt template': 'Recently used prompt template',
+	"When using the 'Question' command, it will automatically update.":
+		"When using the 'Question' command, it will automatically update.",
+	'Recently used assistant tag': 'Recently used assistant tag',
+	"When using the 'Answer' command, it will automatically update.":
+		"When using the 'Answer' command, it will automatically update.",
+	'Delay before answer (Seconds)': 'Delay before answer (Seconds)',
+	'If you encounter errors with missing user messages, it may be due to the need for more time to parse the messages. Please slightly increase the answer delay time.':
+		'If you encounter errors with missing user messages, it may be due to the need for more time to parse the messages. Please slightly increase the answer delay time.',
 
 	// suggest.ts
 	'AI generate': 'AI generate',
 	'Text generated successfully': 'Text generated successfully',
-	'No text generated': 'No text generated',
 	'Check the developer console for error details. ': 'Check the developer console for error details. ',
 	'This is a non-streaming request, please wait...': 'This is a non-streaming request, please wait...',
 
 	promptFileName: 'prompt.en',
 	PRESET_PROMPT_TEMPLATES: `
-# 说明
+# 使用说明
 
-- If you wish to use English prompts, please adjust the settings accordingly.
+- 把你的常用提示词收集到这里，以便在Tars插件的“提问”命令中使用。
 - 本文件按照 obsidian 的幻灯片格式，用“---”来分隔每一页的内容
 - 第一页是说明，后面的每一页都是一个提示词模板
-- \`#\` 是标题。当启动命令“生成内容”，标题显示在弹窗列表中。插件会把 \`{{s}}\`替换为选中的文本，得到最终的提示词。开头的\`{{s}}\`可以省略。
+- 首先是模板的标题, 以markdown的标题格式。接下来都是模板的内容。标题和内容都不可缺少。
+- 如果内容有 \`{{s}}\`，会把 \`{{s}}\`替换为选中的文本
+- 如果没有 \`{{s}}\`，则追加
+- 如果没有选中的文本，那么会直接使用模板的内容
+- 如果某一页有语法错误，则不会出现在“提问”命令的弹窗列表中
+- 如果要检查有没有语法错误，执行命令“查看提示词模板: 检查语法”
+
 ---
 
-# 生成
+# 提示词例子
 
-{{s}} 
+给我讲个笑话
 
 ---
 
