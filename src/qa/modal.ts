@@ -1,6 +1,7 @@
 import { App, FuzzyMatch, FuzzySuggestModal, Modal } from 'obsidian'
 import { t } from 'src/lang/helper'
 import { ProviderSettings } from 'src/providers'
+import { getTemplateTitle } from './promptTemplate'
 import { PromptTemplate } from './types'
 
 const truncateString = (str: string, frontLen: number, backLen: number) => {
@@ -36,11 +37,11 @@ export class SelectPromptTemplateModal extends FuzzySuggestModal<PromptTemplate>
 	}
 
 	getItemText(template: PromptTemplate): string {
-		return template.title ?? t('BASIC_PROMPT_TEMPLATE')
+		return getTemplateTitle(template)
 	}
 
 	renderSuggestion(template: FuzzyMatch<PromptTemplate>, el: HTMLElement) {
-		const title = template.item.title ?? t('BASIC_PROMPT_TEMPLATE')
+		const title = getTemplateTitle(template.item)
 		let lastIndex = 0
 
 		const div = el.createEl('div')
@@ -132,7 +133,7 @@ export class ReporterModal extends Modal {
 		const { contentEl } = this
 
 		contentEl.createEl('h1', {
-			text: 'Report'
+			text: t('Syntax Error Report')
 		})
 
 		const text = this.reporter.join('\n')

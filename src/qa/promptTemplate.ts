@@ -5,6 +5,8 @@ import { PromptTemplate } from './types'
 
 const APP_FOLDER = 'Tars'
 
+export const getTemplateTitle = (template: PromptTemplate) => template.title ?? t('BASIC_PROMPT_TEMPLATE')
+
 export const viewPromptTemplatesCmd = (app: App): Command => ({
 	id: 'view-prompt-templates',
 	name: 'View prompt templates',

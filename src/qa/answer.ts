@@ -139,10 +139,10 @@ const insertText = (editor: Editor, text: string) => {
 }
 
 const insertMarkSlowMo = async (editor: Editor, mark: string, delayDuration: number) => {
-	if (mark.length < 2) {
-		throw new Error('text length must be greater than 2')
-	}
 	const steps = mark.length - 2
+	if (steps <= 0) {
+		throw new Error('mark length must be greater than 2')
+	}
 	const delay = Math.round(delayDuration / steps)
 
 	let lnToWrite = insertText(editor, mark[0] + mark[1]) // 先插入带#号的前两个字符
@@ -153,7 +153,7 @@ const insertMarkSlowMo = async (editor: Editor, mark: string, delayDuration: num
 	return lnToWrite
 }
 
-const prioritizeLastUsed = (provider: ProviderSettings[], lastUsedProviderTag?: string) => {
+export const prioritizeLastUsed = (provider: ProviderSettings[], lastUsedProviderTag?: string) => {
 	if (!lastUsedProviderTag) {
 		return provider
 	}

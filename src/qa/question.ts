@@ -36,10 +36,10 @@ export const questionCmd = (app: App, settings: PluginSettings, saveSettings: ()
 })
 
 export const getSortedPromptTemplates = async (app: App, settings: PluginSettings): Promise<PromptTemplate[]> => {
-	const { promptTemplates, reporter } = await fetchOrCreateTemplates(app, false)
-	if (reporter.length > 0) {
-		new Notice('Warning in prompt template file, please View prompt templates')
-	}
+	const { promptTemplates } = await fetchOrCreateTemplates(app, false)
+	// if (reporter.length > 0) { // annoying
+	// 	new Notice('Warning in prompt template file, please View prompt templates')
+	// }
 	const sortedPromptTemplates = prioritizeLastUsedTemplate(
 		[BASIC_PROMPT_TEMPLATE, ...promptTemplates],
 		settings.lastUsedTemplateTitle
@@ -167,9 +167,6 @@ const addUserTag = (editor: Editor, anchor: EditorPosition, head: EditorPosition
 	}
 }
 
-/**
- * Apply the selected template to the selected text, 后续如何改进？
- */
 const applyTemplate = (editor: Editor, promptTemplate: PromptTemplate) => {
 	const selectedText = editor.getSelection()
 	console.debug('selectedText', selectedText)
