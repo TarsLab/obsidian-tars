@@ -1,5 +1,6 @@
 import { App, Command, HeadingCache, normalizePath, Notice, SectionCache } from 'obsidian'
 import { t } from 'src/lang/helper'
+import { ReporterModal } from './modal'
 import { PromptTemplate } from './types'
 
 const APP_FOLDER = 'Tars'
@@ -8,12 +9,14 @@ export const viewPromptTemplatesCmd = (app: App): Command => ({
 	id: 'view-prompt-templates',
 	name: 'View prompt templates',
 	callback: async () => {
-		await fetchOrCreateTemplates(app, true)
-		// 用 modal 展示promptTemplates
+		const { reporter } = await fetchOrCreateTemplates(app, true)
+		if (reporter.length > 0) {
+			new ReporterModal(app, reporter).open()
+		}
 	}
 })
 
-export const fetchOrCreateTemplates = async (app: App, open: boolean) => {
+export const fetchOrCreateTemplates = async (app: App, open: boolean = false) => {
 	if (!(await app.vault.adapter.exists(normalizePath(APP_FOLDER)))) {
 		await app.vault.createFolder(APP_FOLDER)
 		new Notice(t('Create tars folder'))
@@ -25,16 +28,14 @@ export const fetchOrCreateTemplates = async (app: App, open: boolean) => {
 		new Notice('Create prompt template file')
 	}
 
-	if (open) {
-		console.debug('open prompt file')
+	if (open && app.workspace.getActiveFile()?.path != promptFilePath) {
 		await app.workspace.openLinkText('', promptFilePath, true)
 	}
 
-	const promptTemplates = await getPromptTemplatesFromFile(app)
-	return promptTemplates
+	return await getPromptTemplatesFromFile(app)
 }
 
-const getPromptTemplatesFromFile = async (app: App): Promise<PromptTemplate[]> => {
+const getPromptTemplatesFromFile = async (app: App) => {
 	const promptFilePath = normalizePath(`${APP_FOLDER}/${t('promptFileName')}.md`)
 	const promptFile = app.vault.getFileByPath(promptFilePath)
 
@@ -83,9 +84,20 @@ const getPromptTemplatesFromFile = async (app: App): Promise<PromptTemplate[]> =
 
 	const slides = sectionGroups.slice(1) // Remove the intro slide
 	console.debug('slides', slides)
-	const promptTemplates = slides.map((slide) => toPromptTemplate(slide, headings, fileText))
+
+	const promptTemplates: PromptTemplate[] = []
+	const reporter: string[] = []
+	for (const s of slides) {
+		try {
+			const promptTemplate = toPromptTemplate(s, headings, fileText)
+			promptTemplates.push(promptTemplate)
+		} catch (error) {
+			reporter.push(error.message)
+		}
+	}
 	console.debug('promptTemplates', promptTemplates)
-	return promptTemplates
+	console.debug('reporter', reporter)
+	return { promptTemplates, reporter }
 }
 
 const toPromptTemplate = (slide: SectionCache[], headings: HeadingCache[], fileText: string): PromptTemplate => {
@@ -97,9 +109,12 @@ const toPromptTemplate = (slide: SectionCache[], headings: HeadingCache[], fileT
 	}
 	const heading = headings.find((heading) => heading.position.start.line === slide[0].position.start.line)
 	if (!heading) {
-		throw new Error('No heading found')
+		throw new Error(`Line ${slide[0].position.start.line + 1}, Expected heading`)
 	}
-	const title = heading.heading
+	const title = heading.heading.trim()
+	if (!title) {
+		throw new Error(`Line ${heading.position.start.line + 1}, Expected heading title`)
+	}
 	console.debug('title', title)
 
 	const startOffset = slide[1].position.start.offset

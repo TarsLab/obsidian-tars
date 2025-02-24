@@ -5,15 +5,14 @@ import { PluginSettings } from 'src/settings'
 import { toSpeakMark } from 'src/suggest'
 import { SelectPromptTemplateModal } from './modal'
 import { fetchOrCreateTemplates } from './promptTemplate'
-import { BASIC_PROMPT_TEMPLATE, PromptTemplate } from './types'
+import { BASIC_PROMPT_TEMPLATE, HARD_LINE_BREAK, PromptTemplate } from './types'
 
 export const questionCmd = (app: App, settings: PluginSettings, saveSettings: () => Promise<void>): Command => ({
 	id: 'question',
 	name: 'Question: selected sections / current section at cursor', // 这里隐藏了空行也行，在文档说明就好
 	editorCallback: async (editor: Editor, view: MarkdownView) => {
 		try {
-			const userTag = settings.userTags.first()
-			if (!userTag) {
+			if (settings.userTags.length === 0) {
 				new Notice('At least one user tag is required')
 				return
 			}
@@ -22,7 +21,7 @@ export const questionCmd = (app: App, settings: PluginSettings, saveSettings: ()
 				new Notice('Selected template: ' + template.title)
 				settings.lastUsedTemplateTitle = template.title
 				await saveSettings()
-				question(app, editor, userTag, template)
+				question(app, editor, settings.userTags, template)
 			}
 
 			new SelectPromptTemplateModal(app, sortedPromptTemplates, onChooseTemplate, settings.lastUsedTemplateTitle).open()
@@ -37,21 +36,24 @@ export const questionCmd = (app: App, settings: PluginSettings, saveSettings: ()
 })
 
 export const getSortedPromptTemplates = async (app: App, settings: PluginSettings): Promise<PromptTemplate[]> => {
-	const templatesFromFile = await fetchOrCreateTemplates(app, false)
+	const { promptTemplates, reporter } = await fetchOrCreateTemplates(app, false)
+	if (reporter.length > 0) {
+		new Notice('Warning in prompt template file, please View prompt templates')
+	}
 	const sortedPromptTemplates = prioritizeLastUsedTemplate(
-		[BASIC_PROMPT_TEMPLATE, ...templatesFromFile],
+		[BASIC_PROMPT_TEMPLATE, ...promptTemplates],
 		settings.lastUsedTemplateTitle
 	)
 	return sortedPromptTemplates
 }
 
-export const question = (app: App, editor: Editor, userTag: string, template: PromptTemplate) => {
+export const question = (app: App, editor: Editor, userTags: string[], template: PromptTemplate) => {
 	const { anchor, head } = refineSelection(app, editor)
 	editor.setSelection(anchor, head)
 
 	console.debug('anchor', anchor)
 	console.debug('head', head)
-	addUserTag(editor, anchor, head, userTag)
+	addUserTag(editor, anchor, head, userTags)
 	applyTemplate(editor, template)
 }
 
@@ -125,19 +127,52 @@ const refineSelection = (app: App, editor: Editor): EditorSelection => {
 	}
 }
 
-const addUserTag = async (editor: Editor, anchor: EditorPosition, head: EditorPosition, userTag: string) => {
-	const userMark = toSpeakMark(userTag)
-	// TODO , 检测前面是否有userTag，有则跳过userTag。
-	// TODO, 是否需要加空行？
-	editor.replaceRange(userMark, anchor, anchor)
-	// TODO，如果之前没有选中，还要调整 anchor 和 head
+const addUserTag = (editor: Editor, anchor: EditorPosition, head: EditorPosition, userTags: string[]) => {
+	const selectedText = editor.getSelection()
+	for (const t of userTags) {
+		if (selectedText.startsWith(toSpeakMark(t))) {
+			// TODO,前面一行非空, 加空行, 这种情况先不考虑。可能是用户手动输入的
+			editor.setSelection(
+				// 选择后面的内容
+				{
+					line: anchor.line,
+					ch: anchor.ch + toSpeakMark(t).length
+				},
+				head
+			)
+			console.debug('already added user tag', t)
+			return
+		}
+	}
+
+	const userMark = toSpeakMark(userTags[0])
+	let insertText = ''
+	let line = anchor.line
+	if (anchor.line > 0 && editor.getLine(anchor.line - 1).trim().length > 0) {
+		// 前面一行非空, 加空行
+		insertText = HARD_LINE_BREAK + '\n' + userMark
+		line += 1
+	} else {
+		insertText = userMark
+	}
+
+	editor.replaceRange(insertText, anchor, anchor)
+
+	// 如果之前没有选中，还要 把cursor设置到最后
+	if (editor.posToOffset(anchor) === editor.posToOffset(head)) {
+		editor.setCursor({
+			line,
+			ch: editor.getLine(line).length
+		})
+	}
 }
 
 /**
  * Apply the selected template to the selected text, 后续如何改进？
  */
-const applyTemplate = async (editor: Editor, promptTemplate: PromptTemplate) => {
+const applyTemplate = (editor: Editor, promptTemplate: PromptTemplate) => {
 	const selectedText = editor.getSelection()
+	console.debug('selectedText', selectedText)
 	const templateFn = Handlebars.compile(promptTemplate.template, { noEscape: true })
 	console.debug('selectedText', selectedText)
 	const substitution = templateFn({ s: selectedText })
@@ -145,6 +180,12 @@ const applyTemplate = async (editor: Editor, promptTemplate: PromptTemplate) => 
 	console.debug('newPrompt', newPrompt)
 	const { anchor, head } = getEditorSelection(editor)
 	editor.replaceRange(newPrompt, anchor, head)
+
+	const newSelection = getEditorSelection(editor)
+	editor.setCursor({
+		line: newSelection.head.line,
+		ch: editor.getLine(newSelection.head.line).length
+	})
 }
 
 const prioritizeLastUsedTemplate = (promptTemplates: PromptTemplate[], lastUsedTemplateTitle: null | string) => {

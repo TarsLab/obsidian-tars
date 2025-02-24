@@ -19,6 +19,7 @@ export interface PluginSettings {
 	userTags: string[]
 	lastUsedTemplateTitle: string | null
 	lastUsedProviderTag?: string
+	answerDelayInMilliseconds: number
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -26,7 +27,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	systemTags: ['System', '系统'],
 	newChatTags: ['NewChat', '新对话'],
 	userTags: ['User', '我'],
-	lastUsedTemplateTitle: null
+	lastUsedTemplateTitle: null,
+	answerDelayInMilliseconds: 2000
 }
 
 export const availableVendors: Vendor[] = [

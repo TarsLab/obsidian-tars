@@ -1,4 +1,4 @@
-import { App, FuzzyMatch, FuzzySuggestModal } from 'obsidian'
+import { App, FuzzyMatch, FuzzySuggestModal, Modal } from 'obsidian'
 import { t } from 'src/lang/helper'
 import { ProviderSettings } from 'src/providers'
 import { PromptTemplate } from './types'
@@ -117,5 +117,37 @@ export class SelectProviderSettingModal extends FuzzySuggestModal<ProviderSettin
 
 	onChooseItem(provider: ProviderSettings, evt: MouseEvent | KeyboardEvent) {
 		this.onChoose(provider)
+	}
+}
+
+export class ReporterModal extends Modal {
+	reporter: string[]
+
+	constructor(app: App, reporter: string[]) {
+		super(app)
+		this.reporter = reporter
+	}
+
+	onOpen() {
+		const { contentEl } = this
+
+		contentEl.createEl('h1', {
+			text: 'Report'
+		})
+
+		const text = this.reporter.join('\n')
+		contentEl.createEl('textarea', {
+			text,
+			attr: {
+				style: 'width: 100%;',
+				readonly: true,
+				rows: 5
+			}
+		})
+	}
+
+	onClose() {
+		const { contentEl } = this
+		contentEl.empty()
 	}
 }

@@ -5,9 +5,6 @@ import { answer, openProviderModal } from './answer'
 import { getSortedPromptTemplates, question } from './question'
 import { BASIC_PROMPT_TEMPLATE, PromptTemplate } from './types'
 
-// 创建一个延迟函数
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
-
 export const qaCmd = (
 	app: App,
 	settings: PluginSettings,
@@ -18,8 +15,7 @@ export const qaCmd = (
 	name: 'Question & Answer 📌',
 	editorCallback: async (editor: Editor, view: MarkdownView) => {
 		try {
-			const userTag = settings.userTags.first()
-			if (!userTag) {
+			if (settings.userTags.length === 0) {
 				new Notice('At least one user tag is required')
 				return
 			}
@@ -32,20 +28,24 @@ export const qaCmd = (
 			let promptTemplate: PromptTemplate | undefined
 			if (!matchedTemplate) {
 				new Notice('Last used template not found, reset to basic template')
+				console.debug('Last used template not found, reset to basic template')
 				promptTemplate = BASIC_PROMPT_TEMPLATE
 				settings.lastUsedTemplateTitle = promptTemplate.title
 				await saveSettings()
 			} else {
-				new Notice('Selected template: ' + matchedTemplate.title)
+				if (matchedTemplate.title !== BASIC_PROMPT_TEMPLATE.title) {
+					new Notice('Selected template: ' + matchedTemplate.title)
+					console.debug('Selected template: ' + matchedTemplate.title)
+				}
+
 				promptTemplate = matchedTemplate
 			}
 
-			question(app, editor, userTag, promptTemplate)
-			await delay(500)
+			question(app, editor, settings.userTags, promptTemplate)
 			const provider = settings.providers.find((p) => p.tag === settings.lastUsedProviderTag)
 
 			if (provider != undefined && settings.lastUsedProviderTag != undefined) {
-				await answer(app, editor, settings, statusBarItem, provider)
+				await answer(app, editor, settings, statusBarItem, provider, settings.answerDelayInMilliseconds)
 			} else {
 				await openProviderModal(app, editor, settings, statusBarItem, saveSettings)
 			}
