@@ -53,6 +53,7 @@ export default {
 
 	// qa/question.ts
 	'Question: selected sections / current section at cursor': '提问：选中的段落 / 光标处的段落',
+	'Waiting for metadata to be ready. Please try again.': '正在等待元数据准备就绪。请重试。',
 
 	// editor.ts
 	'Please add a user message before generating AI response': '请先添加用户消息，再用 AI 回答',

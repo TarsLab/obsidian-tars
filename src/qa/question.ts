@@ -61,7 +61,7 @@ const getSections = (app: App) => {
 	}
 	const fileMeta = app.metadataCache.getFileCache(activeFile)
 	if (!fileMeta) {
-		throw new Error('No cached metadata found')
+		throw new Error(t('Waiting for metadata to be ready. Please try again.'))
 	}
 	return fileMeta.sections
 }

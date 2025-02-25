@@ -62,7 +62,7 @@ export const buildRunEnv = async (app: App, settings: PluginSettings): Promise<R
 	const filePath = activeFile.path
 	const fileMeta = appMeta.getFileCache(activeFile)
 	if (!fileMeta) {
-		throw new Error('No cached metadata found')
+		throw new Error(t('Waiting for metadata to be ready. Please try again.'))
 	}
 
 	const ignoreSections = fileMeta.sections?.filter((s) => ignoreSectionTypes.includes(s.type)) || []

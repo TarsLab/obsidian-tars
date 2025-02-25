@@ -54,6 +54,7 @@ export default {
 
 	// qa/question.ts
 	'Question: selected sections / current section at cursor': 'Question: selected sections / current section at cursor',
+	'Waiting for metadata to be ready. Please try again.': 'Waiting for metadata to be ready. Please try again.',
 
 	// editor.ts
 	'Please add a user message before generating AI response': 'Please add a user message before generating AI response',
