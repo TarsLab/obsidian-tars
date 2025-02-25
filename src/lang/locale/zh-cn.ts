@@ -60,6 +60,7 @@ export default {
 	characters: '个字符',
 
 	// settingTab.ts
+	'Restore default': '恢复默认',
 	'AI assistants': 'AI 助手',
 	'New AI assistant': '新的AI助手',
 	"Select assistant from dropdown and click 'Add'. For those compatible with the OpenAI protocol, you can select OpenAI.":
@@ -78,6 +79,7 @@ export default {
 	'Web search': '网络搜索',
 	'Enable web search for AI': '为当前 AI 启用网络搜索',
 	'Enter your key': '输入你的 key',
+	'Default:': '默认:',
 	'Refer to the technical documentation': '参考技术文档',
 	'Keyword for tag must not contain #': '标签关键字不能包含#',
 	'Keyword for tag must not contain space': '标签关键字不能包含空格',
@@ -88,7 +90,6 @@ export default {
 	'Input the model to use': '输入要使用的模型',
 	'Please enter a number': '请输入一个数字',
 	'Minimum value is 256': '最小值是256',
-	'Proxy URL': '代理 URL',
 	'Invalid URL': '无效的 URL',
 	'Override input parameters': '覆盖输入参数',
 	'Developer feature, in JSON format. For example, if the model list doesn\'t have the model you want, enter {"model": "your desired model"}':

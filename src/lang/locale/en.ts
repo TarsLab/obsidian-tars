@@ -61,6 +61,7 @@ export default {
 	characters: 'characters',
 
 	// settingTab.ts
+	'Restore default': 'Restore default',
 	'AI assistants': 'AI assistants',
 	'New AI assistant': 'New AI assistant',
 	"Select assistant from dropdown and click 'Add'. For those compatible with the OpenAI protocol, you can select OpenAI.":
@@ -81,6 +82,7 @@ export default {
 	'Web search': 'Web search',
 	'Enable web search for AI': 'Enable web search for AI',
 	'Enter your key': 'Enter your key',
+	'Default:': 'Default:',
 	'Refer to the technical documentation': 'Refer to the technical documentation',
 	'Keyword for tag must not contain #': 'Keyword for tag must not contain #',
 	'Keyword for tag must not contain space': 'Keyword for tag must not contain space',
@@ -91,7 +93,6 @@ export default {
 	'Input the model to use': 'Input the model to use',
 	'Please enter a number': 'Please enter a number',
 	'Minimum value is 256': 'Minimum value is 256',
-	'Proxy URL': 'Proxy URL',
 	'Invalid URL': 'Invalid URL',
 	'Override input parameters': 'Override input parameters',
 	'Developer feature, in JSON format. For example, if the model list doesn\'t have the model you want, enter {"model": "your desired model"}':
