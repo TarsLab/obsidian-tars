@@ -59,7 +59,7 @@ Add an AI assistant in the settings page, set the API key, and then use the corr
 
 If you are not satisfied with the AI assistant's answer and want to retry. Use the plugin command "Select the message at the cursor", select and delete the AI assistant's response content, modify your question, and trigger the AI assistant again.
 
-If the model type you want is not in the AI assistant in the settings page, or the server address needs to be customized, you can configure it in the "Override input parameters" in the settings, input JSON format, for example `{"model":"your model", "baseURL": "your url"}`.
+If the model type you want is not in the AI assistant in the settings page, or the server address needs to be customized, you can configure it in the "Override input parameters" in the settings, input JSON format, for example `{"model":"your model"}`.
 
 ## Conversations syntax
 
