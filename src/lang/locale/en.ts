@@ -62,6 +62,8 @@ export default {
 	"Select assistant from dropdown and click 'Add'. For those compatible with the OpenAI protocol, you can select OpenAI.":
 		"Select assistant from dropdown and click 'Add'. For those compatible with the OpenAI protocol, you can select OpenAI.",
 	Add: 'Add',
+	'Please add at least one AI assistant to start using the plugin.':
+		'Please add at least one AI assistant to start using the plugin.',
 	'Message tags': 'Message tags',
 	'Keywords for tags in the text box are separated by spaces':
 		'Keywords for tags in the text box are separated by spaces',
@@ -88,8 +90,8 @@ export default {
 	'Proxy URL': 'Proxy URL',
 	'Invalid URL': 'Invalid URL',
 	'Override input parameters': 'Override input parameters',
-	'Developer feature, in JSON format. e.g. {"model": "your model", "baseURL": "your url"}':
-		'Developer feature, in JSON format. e.g. {"model": "your model", "baseURL": "your url"}',
+	'Developer feature, in JSON format. For example, if the model list doesn\'t have the model you want, enter {"model": "your desired model"}':
+		'Developer feature, in JSON format. For example, if the model list doesn\'t have the model you want, enter {"model": "your desired model"}',
 	'Remove AI assistant': 'Remove AI assistant',
 	Remove: 'Remove',
 	Endpoint: 'Endpoint',

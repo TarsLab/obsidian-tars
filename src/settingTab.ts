@@ -71,6 +71,10 @@ export class TarsSettingTab extends PluginSettingTab {
 				})
 			})
 
+		if (!this.plugin.settings.providers.length) {
+			new Setting(containerEl).setDesc(t('Please add at least one AI assistant to start using the plugin.'))
+		}
+
 		for (const [index, provider] of this.plugin.settings.providers.entries()) {
 			const isLast = index === this.plugin.settings.providers.length - 1
 			this.createProviderSetting(index, provider, isLast && expandLastProvider)
@@ -469,7 +473,11 @@ export class TarsSettingTab extends PluginSettingTab {
 	addParametersSection = (details: HTMLDetailsElement, options: BaseOptions) =>
 		new Setting(details)
 			.setName(t('Override input parameters'))
-			.setDesc(t('Developer feature, in JSON format. e.g. {"model": "your model", "baseURL": "your url"}'))
+			.setDesc(
+				t(
+					'Developer feature, in JSON format. For example, if the model list doesn\'t have the model you want, enter {"model": "your desired model"}'
+				)
+			)
 			.addTextArea((text) =>
 				text
 					.setPlaceholder('{}')

@@ -41,8 +41,8 @@ export default {
 
 	// qa/promptTemplate.ts
 	BASIC_PROMPT_TEMPLATE: '✨ (原文) ✨',
-	'View prompt templates: check syntax': '查看提示模板：检查语法',
-	'Prompt template file is syntactically correct': '提示模板文件语法正确',
+	'View prompt templates: check syntax': '查看提示词模板：检查语法',
+	'Prompt template file is syntactically correct': '提示词模板文件语法正确',
 	'Create tars folder': '创建 tars 文件夹',
 	'Create prompt template file': '创建提示词模板文件',
 	'Expected at least 2 sections, heading and content': '至少需要 2 个部分，标题和内容',
@@ -62,6 +62,7 @@ export default {
 	"Select assistant from dropdown and click 'Add'. For those compatible with the OpenAI protocol, you can select OpenAI.":
 		'从下拉框选择助手类型，点击新增按钮。对于兼容OpenAI协议的，可以选择OpenAI.',
 	Add: '新增',
+	'Please add at least one AI assistant to start using the plugin.': '请至少添加一个AI助手，以便开始使用插件',
 	'Message tags': '消息标签',
 	'Keywords for tags in the text box are separated by spaces': '在文本框中的标签关键字用空格分隔',
 	'New chat tags': '新对话的标签',
@@ -87,8 +88,8 @@ export default {
 	'Proxy URL': '代理 URL',
 	'Invalid URL': '无效的 URL',
 	'Override input parameters': '覆盖输入参数',
-	'Developer feature, in JSON format. e.g. {"model": "your model", "baseURL": "your url"}':
-		'开发者功能，以 JSON 格式。例如 {"model": "你想要的model", "baseURL": "自定义地址"}',
+	'Developer feature, in JSON format. For example, if the model list doesn\'t have the model you want, enter {"model": "your desired model"}':
+		'开发者功能，以 JSON 格式。例如：模型列表中没有你需要的模型时，可以填入 {"model": "你想要的model"}',
 	'Remove AI assistant': '移除 AI 助手',
 	Remove: '移除',
 	Endpoint: '终结点',
