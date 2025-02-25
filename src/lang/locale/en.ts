@@ -35,6 +35,8 @@ export default {
 	// qa/combine.ts
 	'Question & Answer: Recently used template and assistant': 'Question & Answer: Recently used template and assistant',
 	'At least one user tag is required': 'At least one user tag is required',
+	'Selected template: ': 'Selected template: ',
+	'Last used template not found, reset to basic template': 'Last used template not found, reset to basic template',
 
 	// qa/modal.ts
 	'Syntax Error Report': 'Syntax Error Report',
@@ -45,6 +47,8 @@ export default {
 	'Prompt template file is syntactically correct': 'Prompt template file is syntactically correct',
 	'Create tars folder': 'Create tars folder',
 	'Create prompt template file': 'Create prompt template file',
+	'File was just created, waiting for metadata to be ready. Please try again.':
+		'File was just created, waiting for metadata to be ready. Please try again.',
 	'Expected at least 2 sections, heading and content': 'Expected at least 2 sections, heading and content',
 	'Expected heading': 'Expected heading',
 
@@ -118,36 +122,35 @@ export default {
 	'This is a non-streaming request, please wait...': 'This is a non-streaming request, please wait...',
 
 	promptFileName: 'prompt.en',
-	PRESET_PROMPT_TEMPLATES: `
-# 使用说明
+	PRESET_PROMPT_TEMPLATES: `# Instructions
 
-- 把你的常用提示词收集到这里，以便在Tars插件的“提问”命令中使用。
-- 本文件按照 obsidian 的幻灯片格式，用“---”来分隔每一页的内容
-- 第一页是说明，后面的每一页都是一个提示词模板
-- 首先是模板的标题, 以markdown的标题格式。接下来都是模板的内容。标题和内容都不可缺少。
-- 如果内容有 \`{{s}}\`，会把 \`{{s}}\`替换为选中的文本
-- 如果没有 \`{{s}}\`，则追加
-- 如果没有选中的文本，那么会直接使用模板的内容
-- 如果某一页有语法错误，则不会出现在“提问”命令的弹窗列表中
-- 如果要检查有没有语法错误，执行命令“查看提示词模板: 检查语法”
-
----
-
-# 提示词例子
-
-给我讲个笑话
+- Collect your commonly used prompts here for use with the "Question" command in the Tars plugin.
+- This file follows Obsidian's slide format, using \`---\` to separate each page.
+- The first page contains instructions, and each subsequent page is a prompt template.
+- Each template starts with a title in Markdown heading format, followed by the content. Both title and content are required.
+- If the content contains \`{{s}}\`, it will be replaced with your selected text.
+- If there's no \`{{s}}\`, the selected text will be appended.
+- If no text is selected, the template content will be used as is.
+- If a page contains syntax errors, it won't appear in the popup list for the "Question" command.
+- To check for syntax errors, run the command "View prompt templates: check syntax".
 
 ---
 
-# 翻译
+# Prompt example
 
-把以下内容翻译为中文：{{s}}
+Tell me a joke
 
 ---
 
-# 总结
+# Translation
 
-总结以下内容：{{s}}
+Translate the following content into English：{{s}}
+
+---
+
+# One-sentence summary
+
+{{s}} Summarize the above content in one sentence
 
 `
 }

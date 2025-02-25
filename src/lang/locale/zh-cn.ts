@@ -35,6 +35,8 @@ export default {
 	// qa/combine.ts
 	'Question & Answer: Recently used template and assistant': '提问和回答: 最近使用的模板和助手',
 	'At least one user tag is required': '至少需要一个用户标签',
+	'Selected template: ': '已选择模板: ',
+	'Last used template not found, reset to basic template': '最近使用的模板未找到，重置为基本模板',
 
 	// qa/modal.ts
 	'Syntax Error Report': '语法错误报告',
@@ -45,6 +47,7 @@ export default {
 	'Prompt template file is syntactically correct': '提示词模板文件语法正确',
 	'Create tars folder': '创建 tars 文件夹',
 	'Create prompt template file': '创建提示词模板文件',
+	'File was just created, waiting for metadata to be ready. Please try again.': '文件刚创建，没来得及解析信息，请重试',
 	'Expected at least 2 sections, heading and content': '至少需要 2 个部分，标题和内容',
 	'Expected heading': '需要标题',
 
@@ -98,14 +101,14 @@ export default {
 
 	'Question & Answer': '提问和回答',
 	'The question and answer command will directly select the most recently used prompt template and assistant.':
-		'"提问和回答"命令, 会直接选择最近使用的提示词模板和助手。',
+		'"提问和回答"命令, 会直接选择最近使用的提示词模板和助手',
 	'Recently used prompt template': '最近使用的提示词模板',
 	"When using the 'Question' command, it will automatically update.": "使用 '提问' 命令时，会自动更新",
 	'Recently used assistant tag': '最近使用的助手标签',
 	"When using the 'Answer' command, it will automatically update.": "使用 '回答' 命令时，会自动更新",
 	'Delay before answer (Seconds)': '回答前的延迟（秒）',
 	'If you encounter errors with missing user messages, it may be due to the need for more time to parse the messages. Please slightly increase the answer delay time.':
-		'如果遇到缺少用户消息的错误，可能是因为需要更多时间来解析消息。请稍微增加回答延迟时间。',
+		'如果遇到缺少用户消息的错误，可能是因为需要更多时间来解析消息，请稍微增加延迟',
 
 	// suggest.ts
 	'AI generate': 'AI 生成',
@@ -114,18 +117,17 @@ export default {
 	'This is a non-streaming request, please wait...': '这是一个非流式请求，请稍候...',
 
 	promptFileName: 'prompt.zh',
-	PRESET_PROMPT_TEMPLATES: `
-# 使用说明
+	PRESET_PROMPT_TEMPLATES: `# 使用说明
 
 - 把你的常用提示词收集到这里，以便在Tars插件的“提问”命令中使用。
-- 本文件按照 obsidian 的幻灯片格式，用“---”来分隔每一页的内容
+- 本文件按照 obsidian 的幻灯片格式，用\`---\`来分隔每一页
 - 第一页是说明，后面的每一页都是一个提示词模板
 - 首先是模板的标题, 以markdown的标题格式。接下来都是模板的内容。标题和内容都不可缺少。
 - 如果内容有 \`{{s}}\`，会把 \`{{s}}\`替换为选中的文本
 - 如果没有 \`{{s}}\`，则追加
-- 如果没有选中的文本，那么会直接使用模板的内容
+- 如果没有选中的文本，则直接使用模板的内容
 - 如果某一页有语法错误，则不会出现在“提问”命令的弹窗列表中
-- 如果要检查有没有语法错误，执行命令“查看提示词模板: 检查语法”
+- 如果要检查有没有语法错误，执行命令“查看提示词模板：检查语法”
 
 ---
 
@@ -141,9 +143,9 @@ export default {
 
 ---
 
-# 总结
+# 一句话总结
 
-总结以下内容：{{s}}
-	
+{{s}} 用一句话总结以上内容
+
 `
 }

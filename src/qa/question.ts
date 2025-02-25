@@ -13,12 +13,12 @@ export const questionCmd = (app: App, settings: PluginSettings, saveSettings: ()
 	editorCallback: async (editor: Editor, view: MarkdownView) => {
 		try {
 			if (settings.userTags.length === 0) {
-				new Notice('At least one user tag is required')
+				new Notice(t('At least one user tag is required'))
 				return
 			}
 			const sortedPromptTemplates = await getSortedPromptTemplates(app, settings)
 			const onChooseTemplate = async (template: PromptTemplate) => {
-				new Notice('Selected template: ' + template.title)
+				new Notice(t('Selected template: ') + template.title)
 				settings.lastUsedTemplateTitle = template.title
 				await saveSettings()
 				question(app, editor, settings.userTags, template)

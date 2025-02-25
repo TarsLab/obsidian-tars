@@ -50,7 +50,7 @@ const getPromptTemplatesFromFile = async (app: App) => {
 	const appMeta = app.metadataCache
 	const fileMeta = appMeta.getFileCache(promptFile)
 	if (!fileMeta) {
-		throw new Error('No cached metadata found. ' + promptFilePath)
+		throw new Error(t('File was just created, waiting for metadata to be ready. Please try again.'))
 	}
 
 	console.debug('fileMeta', fileMeta)
@@ -66,7 +66,7 @@ const getPromptTemplatesFromFile = async (app: App) => {
 	}
 
 	const fileText = await app.vault.cachedRead(promptFile)
-	console.debug('fileText', fileText)
+
 	// Group sections using reduce
 	const sectionGroups = sections
 		.reduce<SectionCache[][]>(
@@ -123,13 +123,11 @@ const toPromptTemplate = (slide: SectionCache[], headings: HeadingCache[], fileT
 	if (!title) {
 		throw new Error(`Line ${heading.position.start.line + 1}, ${t('Expected heading')}`)
 	}
-	console.debug('title', title)
 
 	const startOffset = slide[1].position.start.offset
 	const endOffset = slide[slide.length - 1].position.end.offset
 	const content = fileText.slice(startOffset, endOffset)
 	const trimmedContent = content.trim()
-	console.debug('trimmedContent', trimmedContent)
 
 	return {
 		title,
