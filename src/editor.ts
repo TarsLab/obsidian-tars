@@ -328,8 +328,6 @@ export const getMsgPositionByLine = (env: RunEnv, line: number) => {
 	return [startOffset, endOffset]
 }
 
-const formatDate = (d: Date) =>
-	`${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}:${d.getSeconds().toString().padStart(2, '0')}`
 const formatDuration = (d: number) => `${(d / 1000).toFixed(2)}s`
 
 export const generate = async (
@@ -352,23 +350,22 @@ export const generate = async (
 	if (!lastMsg || lastMsg.role !== 'user') {
 		throw new Error(t('Please add a user message before generating AI response'))
 	}
+	const round = messages.filter((m) => m.role === 'assistant').length + 1
 
 	const sendRequest = vendor.sendRequestFunc(provider.options)
 	const startTime = new Date()
-	console.debug('🚀 Begin : ', formatDate(startTime))
-	statusBarItem.setText(`🚀 ${t('AI generate')} ...`)
+	statusBarItem.setText(`Round ${round}:...`)
 
 	let accumulatedText = ''
 	for await (const text of sendRequest(messages)) {
 		insertText(editor, text)
 		accumulatedText += text
-		statusBarItem.setText(`✏️ ${accumulatedText.length} ${t('characters')}`)
+		statusBarItem.setText(`Round ${round}: ${accumulatedText.length}${t('characters')}`)
 	}
 
 	const endTime = new Date()
-	console.debug('🏁 Finish: ', formatDate(endTime))
-	statusBarItem.setText(`🏁 ${accumulatedText.length} ${t('characters')}`)
-	console.debug('⌛ Total : ', formatDuration(endTime.getTime() - startTime.getTime()))
+	const duration = formatDuration(endTime.getTime() - startTime.getTime())
+	statusBarItem.setText(`Round ${round}: ${accumulatedText.length}${t('characters')} ${duration}`)
 
 	if (accumulatedText.length === 0) {
 		throw new Error(t('No text generated'))
