@@ -17,8 +17,7 @@ export interface PluginSettings {
 	systemTags: string[]
 	newChatTags: string[]
 	userTags: string[]
-	lastUsedTemplateTitle: string | null
-	lastUsedProviderTag?: string
+	lastUsedTemplateTitle?: string
 	answerDelayInMilliseconds: number
 }
 
@@ -27,7 +26,6 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	systemTags: ['System', '系统'],
 	newChatTags: ['NewChat', '新对话'],
 	userTags: ['User', '我'],
-	lastUsedTemplateTitle: null,
 	answerDelayInMilliseconds: 2000
 }
 

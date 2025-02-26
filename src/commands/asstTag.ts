@@ -4,8 +4,34 @@ import { t } from 'src/lang/helper'
 import { ProviderSettings } from 'src/providers'
 import { PluginSettings } from 'src/settings'
 import { toSpeakMark } from 'src/suggest'
-import { SelectProviderSettingModal } from '../qa/modal'
-import { HARD_LINE_BREAK } from '../qa/types'
+import { TagCmdMeta } from './tagCmd'
+import { HARD_LINE_BREAK } from './utils'
+
+export const asstTagCmd = (
+	{ id, name, tag }: TagCmdMeta,
+	app: App,
+	settings: PluginSettings,
+	statusBarItem: HTMLElement
+): Command => ({
+	id,
+	name,
+	editorCallback: async (editor: Editor, view: MarkdownView) => {
+		try {
+			const provider = settings.providers.find((p) => p.tag === tag)
+			if (!provider) {
+				new Notice('Provider not found')
+				return
+			}
+			await answer(app, editor, settings, statusBarItem, provider, settings.answerDelayInMilliseconds)
+		} catch (error) {
+			console.error(error)
+			new Notice(
+				`🔴 ${Platform.isDesktopApp ? t('Check the developer console for error details. ') : ''}${error}`,
+				10 * 1000
+			)
+		}
+	}
+})
 
 export const answer = async (
 	app: App,
@@ -19,50 +45,6 @@ export const answer = async (
 	console.debug('messagesEndOffset', messagesEndOffset)
 	const env = await buildRunEnv(app, settings)
 	await generate(env, editor, providerSettings, messagesEndOffset, statusBarItem)
-}
-
-export const answerCmd = (
-	app: App,
-	settings: PluginSettings,
-	statusBarItem: HTMLElement,
-	saveSettings: () => Promise<void>
-): Command => ({
-	id: 'answer',
-	name: t('Answer: Select assistant'),
-	editorCallback: async (editor: Editor, view: MarkdownView) => {
-		if (!settings.providers.length) {
-			new Notice(t('Please add one assistant in the settings first'))
-			return
-		}
-		await openProviderModal(app, editor, settings, statusBarItem, saveSettings)
-	}
-})
-
-export const openProviderModal = async (
-	app: App,
-	editor: Editor,
-	settings: PluginSettings,
-	statusBarItem: HTMLElement,
-	saveSettings: () => Promise<void>
-) => {
-	const onChooseProvider = async (provider: ProviderSettings) => {
-		settings.lastUsedProviderTag = provider.tag
-		await saveSettings()
-		console.debug('Selected provider: ' + provider.tag)
-		const delayDuration = 1000
-		try {
-			await answer(app, editor, settings, statusBarItem, provider, delayDuration)
-		} catch (error) {
-			console.error(error)
-			new Notice(
-				`🔴 ${Platform.isDesktopApp ? t('Check the developer console for error details. ') : ''}${error}`,
-				10 * 1000
-			)
-		}
-	}
-
-	const prioritizedProviders = prioritizeLastUsed(settings.providers, settings.lastUsedProviderTag)
-	new SelectProviderSettingModal(app, prioritizedProviders, onChooseProvider, settings.lastUsedProviderTag).open()
 }
 
 /** 遵循对话语法。这里主要是设置空行 */
@@ -153,22 +135,6 @@ const insertMarkSlowMo = async (editor: Editor, mark: string, delayDuration: num
 		lnToWrite = insertText(editor, mark[i])
 	}
 	return lnToWrite
-}
-
-export const prioritizeLastUsed = (provider: ProviderSettings[], lastUsedProviderTag?: string) => {
-	if (!lastUsedProviderTag) {
-		return provider
-	}
-	const lastUsedProviderIndex = provider.findIndex((p) => p.tag === lastUsedProviderTag)
-	if (lastUsedProviderIndex === -1) {
-		return provider
-	}
-
-	return [
-		provider[lastUsedProviderIndex],
-		...provider.slice(0, lastUsedProviderIndex),
-		...provider.slice(lastUsedProviderIndex + 1)
-	]
 }
 
 const isStartWithAssistantTag = (lineContent: string, providers: ProviderSettings[]) => {

@@ -13,8 +13,10 @@ import { buildRunEnv, generate } from './editor'
 import { t } from './lang/helper'
 import { PluginSettings } from './settings'
 
+export type TagRole = 'user' | 'assistant' | 'system' | 'newChat'
+
 interface TagEntry {
-	readonly type: 'user' | 'assistant' | 'system' | 'newChat'
+	readonly type: TagRole
 	readonly tag: string
 	readonly replacement: string
 }
@@ -22,7 +24,7 @@ interface TagEntry {
 // 冒号前面加空格，对中文输入更友好。中文输入#tag后需要空格，才能输入中文的冒号
 export const toSpeakMark = (tag: string) => `#${tag} : `
 
-const toNewChatMark = (tag: string) => `#${tag} `
+export const toNewChatMark = (tag: string) => `#${tag} `
 
 // “#tag” 触发会有问题，可能会被 obsidian的标签补全拦截
 const toTriggerPhrase = (w: string) => [

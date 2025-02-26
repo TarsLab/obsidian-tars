@@ -1,5 +1,7 @@
+export type MsgRole = 'user' | 'assistant' | 'system'
+
 export interface Message {
-	readonly role: 'user' | 'assistant' | 'system'
+	readonly role: MsgRole
 	readonly content: string
 }
 
@@ -12,6 +14,7 @@ export interface Vendor {
 	readonly models: string[]
 	readonly websiteToObtainKey: string
 }
+
 export interface BaseOptions {
 	apiKey: string
 	baseURL: string

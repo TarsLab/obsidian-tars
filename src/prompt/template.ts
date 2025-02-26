@@ -1,24 +1,14 @@
-import { App, Command, HeadingCache, normalizePath, Notice, SectionCache } from 'obsidian'
+import { App, HeadingCache, normalizePath, Notice, SectionCache } from 'obsidian'
 import { t } from 'src/lang/helper'
-import { ReporterModal } from './modal'
-import { PromptTemplate } from './types'
 
 const APP_FOLDER = 'Tars'
 
-export const getTemplateTitle = (template: PromptTemplate) => template.title ?? t('BASIC_PROMPT_TEMPLATE')
+export interface PromptTemplate {
+	readonly title: string
+	readonly template: string
+}
 
-export const viewPromptTemplatesCmd = (app: App): Command => ({
-	id: 'view-prompt-templates',
-	name: t('View prompt templates: check syntax'),
-	callback: async () => {
-		const { reporter } = await fetchOrCreateTemplates(app, true)
-		if (reporter.length > 0) {
-			new ReporterModal(app, reporter).open()
-		} else {
-			new Notice(t('Prompt template file is syntactically correct'))
-		}
-	}
-})
+export const getTemplateTitle = (template: PromptTemplate) => template.title ?? t('BASIC_PROMPT_TEMPLATE')
 
 export const fetchOrCreateTemplates = async (app: App, open: boolean = false) => {
 	if (!(await app.vault.adapter.exists(normalizePath(APP_FOLDER)))) {

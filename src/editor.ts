@@ -14,6 +14,7 @@ import {
 import { t } from 'src/lang/helper'
 import { Message, ProviderSettings } from './providers'
 import { PluginSettings, availableVendors } from './settings'
+import { TagRole } from './suggest'
 
 export interface RunEnv {
 	readonly appMeta: MetadataCache
@@ -31,7 +32,7 @@ export interface RunEnv {
 }
 
 interface Tag extends Omit<Message, 'content'> {
-	readonly tag: string
+	readonly tag: TagRole
 	readonly lowerCaseTag: string
 	readonly tagRange: [number, number]
 	readonly tagLine: number

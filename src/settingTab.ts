@@ -6,11 +6,6 @@ import { BaseOptions, Optional, ProviderSettings } from './providers'
 import { ollamaVendor } from './providers/ollama'
 import { fetchModels, siliconFlowVendor } from './providers/siliconflow'
 import { ZhipuOptions, zhipuVendor } from './providers/zhipu'
-import { prioritizeLastUsed } from './qa/answer'
-import { SelectPromptTemplateModal, SelectProviderSettingModal } from './qa/modal'
-import { getTemplateTitle } from './qa/promptTemplate'
-import { getSortedPromptTemplates } from './qa/question'
-import { PromptTemplate } from './qa/types'
 import { DEFAULT_SETTINGS, availableVendors } from './settings'
 
 export class TarsSettingTab extends PluginSettingTab {
@@ -19,6 +14,10 @@ export class TarsSettingTab extends PluginSettingTab {
 	constructor(app: App, plugin: TarsPlugin) {
 		super(app, plugin)
 		this.plugin = plugin
+	}
+
+	hide(): void {
+		this.plugin.rebuildTagCommands()
 	}
 
 	display(expandLastProvider = false): void {
@@ -159,79 +158,7 @@ export class TarsSettingTab extends PluginSettingTab {
 			)
 
 		containerEl.createEl('br')
-		new Setting(containerEl)
-			.setName(t('Question & Answer'))
-			.setDesc(
-				t('The question and answer command will directly select the most recently used prompt template and assistant.')
-			)
-			.setHeading()
-
-		new Setting(containerEl)
-			.setName(t('Recently used prompt template'))
-			.setDesc(t("When using the 'Question' command, it will automatically update."))
-			.addButton((btn) => {
-				btn
-					.setButtonText(
-						this.plugin.settings.lastUsedTemplateTitle == null
-							? t('BASIC_PROMPT_TEMPLATE')
-							: this.plugin.settings.lastUsedTemplateTitle
-					)
-					.onClick(async () => {
-						try {
-							const sortedPromptTemplates = await getSortedPromptTemplates(this.app, this.plugin.settings)
-							const onChooseTemplate = async (template: PromptTemplate) => {
-								this.plugin.settings.lastUsedTemplateTitle = template.title
-								await this.plugin.saveSettings()
-								btn.setButtonText(getTemplateTitle(template))
-							}
-
-							new SelectPromptTemplateModal(
-								this.app,
-								sortedPromptTemplates,
-								onChooseTemplate,
-								this.plugin.settings.lastUsedTemplateTitle
-							).open()
-						} catch (error) {
-							new Notice('🔴' + error)
-						}
-					})
-			})
-
-		new Setting(containerEl)
-			.setName(t('Recently used assistant tag'))
-			.setDesc(t("When using the 'Answer' command, it will automatically update."))
-			.addButton((btn) => {
-				btn
-					.setButtonText(
-						this.plugin.settings.lastUsedProviderTag ? this.plugin.settings.lastUsedProviderTag : t('Select assistant')
-					)
-					.onClick(async () => {
-						try {
-							if (!this.plugin.settings.providers.length) {
-								new Notice(t('Please add one assistant in the settings first'))
-								return
-							}
-							const onChooseProvider = async (provider: ProviderSettings) => {
-								this.plugin.settings.lastUsedProviderTag = provider.tag
-								await this.plugin.saveSettings()
-								btn.setButtonText(provider.tag)
-							}
-
-							const prioritizedProviders = prioritizeLastUsed(
-								this.plugin.settings.providers,
-								this.plugin.settings.lastUsedProviderTag
-							)
-							new SelectProviderSettingModal(
-								this.app,
-								prioritizedProviders,
-								onChooseProvider,
-								this.plugin.settings.lastUsedProviderTag
-							).open()
-						} catch (error) {
-							new Notice('🔴' + error)
-						}
-					})
-			})
+		new Setting(containerEl).setName('Advanced').setHeading()
 
 		new Setting(containerEl)
 			.setName(t('Delay before answer (Seconds)'))
