@@ -19,6 +19,12 @@ export interface PluginSettings {
 	userTags: string[]
 	lastUsedTemplateTitle?: string
 	answerDelayInMilliseconds: number
+	advancedCmd: AdvancedCmdFlags
+}
+
+export interface AdvancedCmdFlags {
+	enableExportToJSONL: boolean
+	enableReplaceTag: boolean
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -26,7 +32,11 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	systemTags: ['System', '系统'],
 	newChatTags: ['NewChat', '新对话'],
 	userTags: ['User', '我'],
-	answerDelayInMilliseconds: 2000
+	answerDelayInMilliseconds: 2000,
+	advancedCmd: {
+		enableExportToJSONL: false,
+		enableReplaceTag: false
+	}
 }
 
 export const availableVendors: Vendor[] = [

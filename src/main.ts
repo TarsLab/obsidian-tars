@@ -30,13 +30,13 @@ export default class TarsPlugin extends Plugin {
 		this.registerEditorSuggest(new TagEditorSuggest(this.app, this.settings, this.statusBarItem))
 
 		this.buildTagCommands()
+		this.addCommand(selectMsgAtCursorCmd(this.app, this.settings))
 
 		this.addCommand(viewPromptTemplatesCmd(this.app))
 		this.addCommand(promptTemplateCmd(this.app, this.settings, () => this.saveSettings()))
 
-		this.addCommand(selectMsgAtCursorCmd(this.app, this.settings))
-		this.addCommand(replaceCmd(this.app))
-		this.addCommand(exportCmd(this.app, this.settings))
+		if (this.settings.advancedCmd.enableReplaceTag) this.addCommand(replaceCmd(this.app))
+		if (this.settings.advancedCmd.enableExportToJSONL) this.addCommand(exportCmd(this.app, this.settings))
 
 		this.addSettingTab(new TarsSettingTab(this.app, this))
 	}

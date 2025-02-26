@@ -4,8 +4,10 @@ import { t } from 'src/lang/helper'
 import { Message } from 'src/providers'
 import { PluginSettings } from 'src/settings'
 
+export const exportCmdId = 'export-to-jsonl'
+
 export const exportCmd = (app: App, settings: PluginSettings) => ({
-	id: 'export-to-jsonl',
+	id: exportCmdId,
 	name: t('Export conversations to JSONL'),
 	callback: async () => {
 		await exportConversation(app, settings)

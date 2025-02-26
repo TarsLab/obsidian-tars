@@ -1,4 +1,6 @@
 import { App, Notice, PluginSettingTab, Setting } from 'obsidian'
+import { exportCmd, replaceCmd, replaceCmdId } from './commands'
+import { exportCmdId } from './commands/export'
 import { t } from './lang/helper'
 import TarsPlugin from './main'
 import { SelectModelModal } from './modal'
@@ -158,9 +160,11 @@ export class TarsSettingTab extends PluginSettingTab {
 			)
 
 		containerEl.createEl('br')
-		new Setting(containerEl).setName('Advanced').setHeading()
 
-		new Setting(containerEl)
+		const advancedSection = containerEl.createEl('details')
+		advancedSection.createEl('summary', { text: 'Advanced', cls: 'tars-setting-h4' })
+
+		new Setting(advancedSection)
 			.setName(t('Delay before answer (Seconds)'))
 			.setDesc(
 				t(
@@ -186,6 +190,36 @@ export class TarsSettingTab extends PluginSettingTab {
 						this.plugin.settings.answerDelayInMilliseconds = Math.round(value * 1000)
 						await this.plugin.saveSettings()
 					})
+			)
+
+		new Setting(advancedSection)
+			.setName('Replace tag Command')
+			.setDesc(t('Replace the names of the two most frequently occurring speakers with tag format.'))
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.advancedCmd.enableReplaceTag).onChange(async (value) => {
+					this.plugin.settings.advancedCmd.enableReplaceTag = value
+					await this.plugin.saveSettings()
+					if (value) {
+						this.plugin.addCommand(replaceCmd(this.app))
+					} else {
+						this.plugin.removeCommand(replaceCmdId)
+					}
+				})
+			)
+
+		new Setting(advancedSection)
+			.setName('Export to JSONL Command')
+			.setDesc(t('Export conversations to JSONL'))
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.advancedCmd.enableExportToJSONL).onChange(async (value) => {
+					this.plugin.settings.advancedCmd.enableExportToJSONL = value
+					await this.plugin.saveSettings()
+					if (value) {
+						this.plugin.addCommand(exportCmd(this.app, this.plugin.settings))
+					} else {
+						this.plugin.removeCommand(exportCmdId)
+					}
+				})
 			)
 	}
 
