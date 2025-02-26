@@ -82,13 +82,11 @@ Tars 是一个 Obsidian 插件，基于标签建议进行文本生成，支持 C
 - 标注部分 (callout) 将被忽略。你可以在标注里写内容，不将其发送到 AI 助手。callout 不是 markdown 语法，是 obsidian 的扩展语法。
 - 开始新对话，使用 `新对话` 标签。
 
-## 建议
+## 外观美化
 
-为了更好的外观，建议使用 [colored tags 插件](https://github.com/pfrankov/obsidian-colored-tags).
+建议使用 [colored tags 插件](https://github.com/pfrankov/obsidian-colored-tags).
 
 ![Colored tags plugin](docs/images/coloredTags.png)
-
-- 标签设置建议，把默认的标签修改为使用的模型简称，或者使用场景的简称。
 
 ## 常见问题
 
@@ -112,9 +110,11 @@ Tars 是一个 Obsidian 插件，基于标签建议进行文本生成，支持 C
 
 LLM的协议是有区别的，openAI，claude，gemini 差别很大，注意要选对。deepseek-r1 的思维链也和 openAI 不同。
 
-### HTTP状态码 404，400，4xx数字是什么意思？
+### 错误提示中的 404，400，4xx数字是什么意思？
 
-HTTP状态码402表示“需要付款”（Payment Required）。
-HTTP状态码404表示“未找到”（Not Found），通常是 baseURL 配置错误，或者模型名称错误。
-HTTP状态码400表示“错误请求”（Bad Request），可能是 API 密钥错误，缺失用户消息，标签解析失败导致消息缺失，模型错误等等。
-HTTP状态码429表示“太多请求”（Too Many Requests），可能是请求频率过高，或者是服务商限制了请求频率。
+这些是 HTTP 状态码：
+
+- 402表示“需要付款”（Payment Required）。
+- 404表示“未找到”（Not Found），通常是 baseURL 配置错误，或者模型名称错误。
+- 400表示“错误请求”（Bad Request），可能是 API 密钥错误，缺失用户消息，标签解析失败导致消息缺失，模型错误等等。
+- 429表示“太多请求”（Too Many Requests），可能是请求频率过高，或者是服务商限制了请求频率。

@@ -36,7 +36,8 @@ export default {
 	'Question & Answer: Recently used template and assistant': 'Question & Answer: Recently used template and assistant',
 	'At least one user tag is required': 'At least one user tag is required',
 	'Selected template: ': 'Selected template: ',
-	'Last used template not found, reset to basic template': 'Last used template not found, reset to basic template',
+	'Recently used template not found, reset to basic template':
+		'Recently used template not found, reset to basic template',
 
 	// qa/modal.ts
 	'Syntax Error Report': 'Syntax Error Report',

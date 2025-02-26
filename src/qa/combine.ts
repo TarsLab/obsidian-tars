@@ -27,8 +27,8 @@ export const qaCmd = (
 			const matchedTemplate = sortedPromptTemplates.find((t) => t.title === settings.lastUsedTemplateTitle)
 			let promptTemplate: PromptTemplate | undefined
 			if (!matchedTemplate) {
-				new Notice(t('Last used template not found, reset to basic template'))
-				console.debug('Last used template not found, reset to basic template')
+				new Notice(t('Recently used template not found, reset to basic template'))
+				console.debug('Recently used template not found, reset to basic template')
 				promptTemplate = BASIC_PROMPT_TEMPLATE
 				settings.lastUsedTemplateTitle = promptTemplate.title
 				await saveSettings()
