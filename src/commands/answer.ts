@@ -4,8 +4,8 @@ import { t } from 'src/lang/helper'
 import { ProviderSettings } from 'src/providers'
 import { PluginSettings } from 'src/settings'
 import { toSpeakMark } from 'src/suggest'
-import { SelectProviderSettingModal } from './modal'
-import { HARD_LINE_BREAK } from './types'
+import { SelectProviderSettingModal } from '../qa/modal'
+import { HARD_LINE_BREAK } from '../qa/types'
 
 export const answer = async (
 	app: App,
