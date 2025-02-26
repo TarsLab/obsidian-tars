@@ -270,9 +270,9 @@ export class TarsSettingTab extends PluginSettingTab {
 						})
 				})
 		} else if (vendor.models.length > 0) {
-			this.addModelDropDownSection(details, settings.options, vendor.models, index)
+			this.addModelDropDownSection(details, settings.options, vendor.models)
 		} else {
-			this.addModelTextSection(details, settings.options, index)
+			this.addModelTextSection(details, settings.options)
 		}
 
 		if (vendor.name === zhipuVendor.name) {
@@ -393,7 +393,7 @@ export class TarsSettingTab extends PluginSettingTab {
 					})
 			)
 
-	addModelDropDownSection = (details: HTMLDetailsElement, options: BaseOptions, models: string[], index: number) =>
+	addModelDropDownSection = (details: HTMLDetailsElement, options: BaseOptions, models: string[]) =>
 		new Setting(details)
 			.setName(t('Model'))
 			.setDesc(t('Select the model to use'))
@@ -412,7 +412,7 @@ export class TarsSettingTab extends PluginSettingTab {
 					})
 			)
 
-	addModelTextSection = (details: HTMLDetailsElement, options: BaseOptions, index: number) =>
+	addModelTextSection = (details: HTMLDetailsElement, options: BaseOptions) =>
 		new Setting(details)
 			.setName(t('Model'))
 			.setDesc(t('Input the model to use'))
