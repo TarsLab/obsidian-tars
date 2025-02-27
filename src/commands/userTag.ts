@@ -1,22 +1,46 @@
-import { App, Command, Editor, EditorPosition, MarkdownView, Notice, Platform } from 'obsidian'
+import { App, Command, Editor, MarkdownView, Notice, Platform } from 'obsidian'
 import { t } from 'src/lang/helper'
-import { refineSelection } from 'src/selection'
 import { PluginSettings } from 'src/settings'
 import { toSpeakMark } from 'src/suggest'
 import { TagCmdMeta } from './tagCmd'
-import { HARD_LINE_BREAK } from './utils'
+import {
+	getTagMeta,
+	insertMarkToBegin,
+	insertMarkToEmptyLines,
+	isEmptyLines,
+	refineRange,
+	replaceTag
+} from './tagUtils'
 
 export const userTagCmd = ({ id, name, tag }: TagCmdMeta, app: App, settings: PluginSettings): Command => ({
 	id,
 	name,
 	editorCallback: async (editor: Editor, view: MarkdownView) => {
 		try {
-			const { anchor, head } = refineSelection(app, editor)
-			editor.setSelection(anchor, head)
+			const mark = toSpeakMark(tag)
+			const range = refineRange(app, editor)
 
-			console.debug('anchor', anchor)
-			console.debug('head', head)
-			addUserTag(editor, anchor, head, settings.userTags, tag)
+			// 如果是空行，直接插入标签
+			if (isEmptyLines(editor, range)) {
+				return insertMarkToEmptyLines(editor, range, mark)
+			}
+
+			const tagMeta = getTagMeta(app, editor, range, settings)
+			// 如果是普通文本，前面插入标签
+			if (tagMeta.role === null) {
+				return insertMarkToBegin(editor, range, mark)
+			}
+
+			// 如果是 userTag，tag不同，则替换
+			if (tagMeta.role === 'user') {
+				if (tag !== tagMeta.tagContent) {
+					return replaceTag(editor, range, tagMeta, tag)
+				}
+			} else {
+				// 剩下的 asstTag， systemTag。newChat混合，不兼容类型，notice 提示选中的是xx消息，同时选中文本。
+				editor.setSelection(range.from, range.to)
+				new Notice(`role ${tagMeta.role}`)
+			}
 		} catch (error) {
 			console.error(error)
 			new Notice(
@@ -26,42 +50,3 @@ export const userTagCmd = ({ id, name, tag }: TagCmdMeta, app: App, settings: Pl
 		}
 	}
 })
-
-const addUserTag = (editor: Editor, anchor: EditorPosition, head: EditorPosition, userTags: string[], tag: string) => {
-	const selectedText = editor.getSelection()
-
-	if (selectedText.startsWith(toSpeakMark(tag))) {
-		// TODO,前面一行非空, 加空行, 这种情况先不考虑。可能是用户手动输入的
-		editor.setSelection(
-			// 选择后面的内容
-			{
-				line: anchor.line,
-				ch: anchor.ch + toSpeakMark(tag).length
-			},
-			head
-		)
-		new Notice('already added user tag')
-		return
-	}
-
-	const userMark = toSpeakMark(tag)
-	let insertText = ''
-	let line = anchor.line
-	if (anchor.line > 0 && editor.getLine(anchor.line - 1).trim().length > 0) {
-		// 前面一行非空, 加空行
-		insertText = HARD_LINE_BREAK + '\n' + userMark
-		line += 1
-	} else {
-		insertText = userMark
-	}
-
-	editor.replaceRange(insertText, anchor, anchor)
-
-	// 如果之前没有选中，还要 把cursor设置到最后
-	if (editor.posToOffset(anchor) === editor.posToOffset(head)) {
-		editor.setCursor({
-			line,
-			ch: editor.getLine(line).length
-		})
-	}
-}
