@@ -159,10 +159,19 @@ export class TarsSettingTab extends PluginSettingTab {
 					})
 			)
 
+		new Setting(containerEl)
+			.setName(t('Confirm before regeneration'))
+			.setDesc(t('Confirm before replacing existing assistant responses when using assistant commands'))
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.confirmRegenerate).onChange(async (value) => {
+					this.plugin.settings.confirmRegenerate = value
+					await this.plugin.saveSettings()
+				})
+			)
 		containerEl.createEl('br')
 
 		const advancedSection = containerEl.createEl('details')
-		advancedSection.createEl('summary', { text: 'Advanced', cls: 'tars-setting-h4' })
+		advancedSection.createEl('summary', { text: t('Advanced'), cls: 'tars-setting-h4' })
 
 		new Setting(advancedSection)
 			.setName(t('Delay before answer (Seconds)'))
@@ -193,7 +202,7 @@ export class TarsSettingTab extends PluginSettingTab {
 			)
 
 		new Setting(advancedSection)
-			.setName('Replace tag Command')
+			.setName(t('Replace tag Command'))
 			.setDesc(t('Replace the names of the two most frequently occurring speakers with tag format.'))
 			.addToggle((toggle) =>
 				toggle.setValue(this.plugin.settings.advancedCmd.enableReplaceTag).onChange(async (value) => {
@@ -208,7 +217,7 @@ export class TarsSettingTab extends PluginSettingTab {
 			)
 
 		new Setting(advancedSection)
-			.setName('Export to JSONL Command')
+			.setName(t('Export to JSONL Command'))
 			.setDesc(t('Export conversations to JSONL'))
 			.addToggle((toggle) =>
 				toggle.setValue(this.plugin.settings.advancedCmd.enableExportToJSONL).onChange(async (value) => {

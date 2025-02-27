@@ -18,6 +18,7 @@ export interface PluginSettings {
 	newChatTags: string[]
 	userTags: string[]
 	lastUsedTemplateTitle?: string
+	confirmRegenerate: boolean
 	answerDelayInMilliseconds: number
 	advancedCmd: AdvancedCmdFlags
 }
@@ -33,6 +34,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	newChatTags: ['NewChat', '新对话'],
 	userTags: ['User', '我'],
 	answerDelayInMilliseconds: 2000,
+	confirmRegenerate: false,
 	advancedCmd: {
 		enableExportToJSONL: false,
 		enableReplaceTag: false

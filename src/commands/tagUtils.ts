@@ -1,4 +1,4 @@
-import { App, Editor, EditorRange, EditorSelection, TagCache } from 'obsidian'
+import { App, Editor, EditorPosition, EditorRange, EditorSelection, TagCache } from 'obsidian'
 import { t } from 'src/lang/helper'
 import { PluginSettings } from 'src/settings'
 import { TagRole } from 'src/suggest'
@@ -14,6 +14,11 @@ export const getEditorSelection = (editor: Editor): EditorSelection => {
 	}
 	const selection = selections[0]
 	return selection
+}
+
+export const fetchTagMeta = (app: App, editor: Editor, settings: PluginSettings): TagMeta => {
+	const range = refineRange(app, editor)
+	return getTagMeta(app, editor, range, settings)
 }
 
 export const refineRange = (app: App, editor: Editor): EditorRange => {
@@ -80,8 +85,7 @@ export const isEmptyLines = (editor: Editor, range: EditorRange): boolean => {
 }
 
 // 判断前面是否要带空行
-export const insertMarkToEmptyLines = (editor: Editor, range: EditorRange, mark: string) => {
-	const { from } = range
+export const insertMarkToEmptyLines = (editor: Editor, from: EditorPosition, mark: string) => {
 	let toLine = from.line
 	let insertText = ''
 	if (from.line > 0 && editor.getLine(from.line - 1).trim().length > 0) {
@@ -98,6 +102,7 @@ export const insertMarkToEmptyLines = (editor: Editor, range: EditorRange, mark:
 		line: toLine,
 		ch: editor.getLine(toLine).length
 	})
+	return toLine
 }
 
 // 判断前面是否要带空行，如果range起始位置不是开头，就不管了
@@ -122,10 +127,10 @@ export const insertMarkToBegin = (editor: Editor, range: EditorRange, mark: stri
 	})
 }
 
-export const replaceTag = (editor: Editor, range: EditorRange, tagMeta: TagMeta, newTag: string) => {
+export const replaceTag = (editor: Editor, range: EditorRange, tagRange: EditorRange, newTag: string) => {
 	const { to } = range
-	if (tagMeta.tagRange) {
-		editor.replaceRange('#' + newTag, tagMeta.tagRange.from, tagMeta.tagRange.to)
+	if (tagRange) {
+		editor.replaceRange('#' + newTag, tagRange.from, tagRange.to)
 		editor.setCursor({
 			line: to.line,
 			ch: editor.getLine(to.line).length
@@ -141,7 +146,7 @@ export interface TagMeta {
 }
 
 // 这里的标签可能在段落中间，也可能在段落开头。段落中间也算正常情况，但是消息可能会不一样。
-export const getTagMeta = (app: App, editor: Editor, range: EditorRange, settings: PluginSettings): TagMeta => {
+const getTagMeta = (app: App, editor: Editor, range: EditorRange, settings: PluginSettings): TagMeta => {
 	const { tags } = getEnv(app)
 	if (!tags) {
 		return {
@@ -173,9 +178,9 @@ export const getTagMeta = (app: App, editor: Editor, range: EditorRange, setting
 			if (secondTag) {
 				// newChat情形，返回第二个标签的role
 				return {
-					tagContent: secondTag.tag,
+					tagContent: secondTag.tag.slice(1),
 					role: getTagRole(secondTag, { userTags, assistantTags, systemTags, newChatTags }),
-					range: { from: editor.offsetToPos(firstTag.position.end.offset), to: range.to }, // 从第一个标签的结尾到range的结尾
+					range: { from: editor.offsetToPos(firstTag.position.end.offset + 1), to: range.to }, // 从第一个标签的结尾到range的结尾
 					tagRange: {
 						from: editor.offsetToPos(secondTag.position.start.offset),
 						to: editor.offsetToPos(secondTag.position.end.offset)
@@ -184,9 +189,9 @@ export const getTagMeta = (app: App, editor: Editor, range: EditorRange, setting
 			} else {
 				// 只有一个newChat标签
 				return {
-					tagContent: firstTag.tag,
+					tagContent: firstTag.tag.slice(1),
 					role: null,
-					range: { from: editor.offsetToPos(firstTag.position.end.offset), to: range.to }, // 从第一个标签的结尾到range的结
+					range: { from: editor.offsetToPos(firstTag.position.end.offset + 1), to: range.to }, // 从第一个标签的结尾到range的结
 					tagRange: {
 						from: editor.offsetToPos(firstTag.position.start.offset),
 						to: editor.offsetToPos(firstTag.position.end.offset)
@@ -197,7 +202,7 @@ export const getTagMeta = (app: App, editor: Editor, range: EditorRange, setting
 
 		// 第一个标签
 		return {
-			tagContent: firstTag.tag,
+			tagContent: firstTag.tag.slice(1),
 			role: getTagRole(firstTag, { userTags, assistantTags, systemTags, newChatTags }),
 			range,
 			tagRange: {
@@ -250,4 +255,16 @@ const getEnv = (app: App) => {
 	}
 	const tags = fileMeta.tags
 	return { sections: fileMeta.sections, tags: tags }
+}
+
+export const insertText = (editor: Editor, text: string) => {
+	const current = editor.getCursor('to')
+	const lines = text.split('\n')
+	const newPos: EditorPosition = {
+		line: current.line + lines.length - 1,
+		ch: lines.length === 1 ? current.ch + text.length : lines[lines.length - 1].length
+	}
+	editor.replaceRange(text, current)
+	editor.setCursor(newPos)
+	return newPos.line
 }

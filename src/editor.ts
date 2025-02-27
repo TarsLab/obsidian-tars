@@ -76,12 +76,11 @@ export const buildRunEnv = async (app: App, settings: PluginSettings): Promise<R
 	console.debug('tagsInMeta', tagsInMeta)
 
 	const sectionsWithRefer = getSectionsWithRefer(fileMeta)
-	const assistantTags = settings.providers.map((p) => p.tag)
 
 	const options = {
 		newChatTags: settings.newChatTags,
 		userTags: settings.userTags,
-		assistantTags,
+		assistantTags: settings.providers.map((p) => p.tag),
 		systemTags: settings.systemTags
 	}
 

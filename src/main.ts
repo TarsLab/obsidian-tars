@@ -10,6 +10,7 @@ import {
 	systemTagCmd,
 	userTagCmd
 } from './commands'
+import { t } from './lang/helper'
 import { promptTemplateCmd, viewPromptTemplatesCmd } from './prompt'
 import { TarsSettingTab } from './settingTab'
 import { DEFAULT_SETTINGS, PluginSettings } from './settings'
@@ -50,7 +51,7 @@ export default class TarsPlugin extends Plugin {
 				this.addCommand(newChatTagCmd(tagCmdMeta))
 				break
 			case 'system':
-				this.addCommand(systemTagCmd(tagCmdMeta))
+				this.addCommand(systemTagCmd(tagCmdMeta, this.app, this.settings))
 				break
 			case 'user':
 				this.addCommand(userTagCmd(tagCmdMeta, this.app, this.settings))
@@ -76,16 +77,14 @@ export default class TarsPlugin extends Plugin {
 		toRemove.forEach((cmdId) => this.removeCommand(cmdId))
 		const removedTags = toRemove.map((cmdId) => getMeta(cmdId).tag)
 		if (removedTags.length > 0) {
-			console.debug('Removed tags', removedTags)
-			new Notice(`Removed commands: ${removedTags.join(', ')}`)
+			new Notice(`${t('Removed commands')}: ${removedTags.join(', ')}`)
 		}
 
 		const toAdd = newTagCmdIds.filter((cmdId) => !this.tagCmdIds.includes(cmdId))
 		toAdd.forEach((cmdId) => this.addTagCommand(cmdId))
 		const addedTags = toAdd.map((cmdId) => getMeta(cmdId).tag)
 		if (addedTags.length > 0) {
-			console.debug('Added tags', addedTags)
-			new Notice(`Added commands: ${addedTags.join(', ')}`)
+			new Notice(`${t('Added commands')}: ${addedTags.join(', ')}`)
 		}
 
 		this.tagCmdIds = newTagCmdIds

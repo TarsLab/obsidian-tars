@@ -3,6 +3,18 @@
 export default {
 	// Common
 	Error: '异常',
+	user: '用户',
+	system: '系统',
+	assistant: '助手',
+	newChat: '新对话',
+	'Conversion failed. Selected sections is a': '转换失败。选中的段落是',
+	message: '消息',
+	'Check the developer console for error details. ': '查看开发者控制台了解错误. ',
+
+	// commands/asstTag.ts
+	'Regenerate?': '重新生成?',
+	'This will delete the current response content. You can configure this in settings to not require confirmation.':
+		'这会删掉当前的回答内容。你可以在设置里配置不需要弹窗确认。',
 
 	// commands/export.ts
 	'Export conversations to JSONL': '导出对话到 JSONL',
@@ -27,40 +39,28 @@ export default {
 	'Model is required': '请配置对应的模型',
 	'API URL is required': '请配置对应的 API URL',
 
-	// qa/answer.ts
-	// 'Answer: Select assistant': '回答: 选择助手',
-	'Answer: the question above the cursor': '回答：光标上方的提问',
-	'Please add one assistant in the settings first': '请先在设置中添加一个助手',
-	'Regenerate Answer': '重新生成回答',
-
-	// qa/combine.ts
-	'Question & Answer: Recently used template and assistant': '提问和回答: 最近使用的模板和助手',
-	'At least one user tag is required': '至少需要一个用户标签',
-	'Selected template: ': '已选择模板: ',
-	'Recently used template not found, reset to basic template': '最近使用的模板未找到，重置为基本模板',
-
-	// qa/modal.ts
+	// prompt
 	'Syntax Error Report': '语法错误报告',
-
-	// qa/promptTemplate.ts
 	BASIC_PROMPT_TEMPLATE: '✨ (原文) ✨',
 	'View prompt templates: check syntax': '查看提示词模板: 检查语法',
 	'Prompt template file is syntactically correct': '提示词模板文件语法正确',
+	'Prompt template: selected sections / current section at cursor': '提示词模板: 选中/光标处的段落',
+	'Using template': '使用模板',
 	'Create tars folder': '创建 tars 文件夹',
 	'Create prompt template file': '创建提示词模板文件',
 	'File was just created, waiting for metadata to be ready. Please try again.': '文件刚创建，没来得及解析信息，请重试',
 	'Expected at least 2 sections, heading and content': '至少需要 2 个部分，标题和内容',
 	'Expected heading': '需要标题',
 
-	// qa/question.ts
-	'Question: selected sections / current section at cursor': '提问: 选中的段落 / 光标处的段落',
-	// 'Question: selected sections / current section at cursor': '提问：光标处/选中的段落',
-	'Waiting for metadata to be ready. Please try again.': '正在等待元数据准备就绪。请重试。',
-
 	// editor.ts
 	'Please add a user message before generating AI response': '请先添加用户消息，再用 AI 回答',
+	'Waiting for metadata to be ready. Please try again.': '正在等待元数据准备就绪。请重试。',
 	'No text generated': '没有生成文本',
 	characters: '个字符',
+
+	// main.ts
+	'Removed commands': '已移除命令',
+	'Added commands': '已添加命令',
 
 	// settingTab.ts
 	'Restore default': '恢复默认',
@@ -103,23 +103,19 @@ export default {
 	'API version': 'API 版本',
 	'Select assistant': '选择助手',
 
-	'Question & Answer': '提问和回答',
-	'The question and answer command will directly select the most recently used prompt template and assistant.':
-		'"提问和回答"命令, 会直接选择最近使用的提示词模板和助手',
-	'Recently used prompt template': '最近使用的提示词模板',
-	"This setting will automatically update when using the 'Question' command. You can also manually switch it for direct use next time.":
-		"此设置会在使用'提问'命令时自动更新。也可手动切换以便下次直接使用。",
-	'Recently used assistant tag': '最近使用的助手标签',
-	"This setting will automatically update when using the 'Answer' command. You can also manually switch it for direct use next time.":
-		"此设置会在使用'回答'命令时自动更新。也可手动切换以便下次直接使用。",
+	'Confirm before regeneration': '重新生成前是否需要确认',
+	'Confirm before replacing existing assistant responses when using assistant commands':
+		'在使用助手标签命令时，替换旧的助手消息，是否需要弹窗确认',
+	Advanced: '高级',
 	'Delay before answer (Seconds)': '回答前的延迟（秒）',
 	'If you encounter errors with missing user messages, it may be due to the need for more time to parse the messages. Please slightly increase the answer delay time.':
 		'如果遇到缺少用户消息的错误，可能是因为需要更多时间来解析消息，请稍微增加延迟',
+	'Replace tag Command': '替换标签命令',
+	'Export to JSONL Command': '导出到 JSONL 命令',
 
 	// suggest.ts
 	'AI generate': 'AI 生成',
 	'Text generated successfully': '文本生成成功',
-	'Check the developer console for error details. ': '查看开发者控制台了解错误. ',
 	'This is a non-streaming request, please wait...': '这是一个非流式请求，请稍候...',
 
 	promptFileName: 'prompt.zh',

@@ -1,11 +1,18 @@
-import { App, Command, Editor, EditorPosition, MarkdownView, Notice, Platform } from 'obsidian'
+import { App, Command, Editor, EditorRange, MarkdownView, Modal, Notice, Platform, Setting } from 'obsidian'
 import { buildRunEnv, generate } from 'src/editor'
 import { t } from 'src/lang/helper'
 import { ProviderSettings } from 'src/providers'
 import { PluginSettings } from 'src/settings'
 import { toSpeakMark } from 'src/suggest'
 import { TagCmdMeta } from './tagCmd'
-import { HARD_LINE_BREAK } from './utils'
+import {
+	fetchTagMeta,
+	HARD_LINE_BREAK,
+	insertMarkToBegin,
+	insertMarkToEmptyLines,
+	insertText,
+	isEmptyLines
+} from './tagUtils'
 
 export const asstTagCmd = (
 	{ id, name, tag }: TagCmdMeta,
@@ -19,10 +26,62 @@ export const asstTagCmd = (
 		try {
 			const provider = settings.providers.find((p) => p.tag === tag)
 			if (!provider) {
-				new Notice('Provider not found')
+				new Notice(`Assistant ${tag} not found`)
 				return
 			}
-			await answer(app, editor, settings, statusBarItem, provider, settings.answerDelayInMilliseconds)
+			const defaultUserMark = toSpeakMark(settings.userTags[0])
+			const mark = toSpeakMark(tag)
+			const { range, role, tagContent, tagRange } = fetchTagMeta(app, editor, settings)
+			console.debug('asstTagCmd', { range, role, tagContent, tagRange })
+
+			// 如果是空行，直接插入标签
+			if (isEmptyLines(editor, range)) {
+				const lnToWrite = insertMarkToEmptyLines(editor, range.from, mark)
+				const messagesEndOffset = editor.posToOffset({
+					line: lnToWrite,
+					ch: 0
+				})
+				const env = await buildRunEnv(app, settings)
+				await generate(env, editor, provider, messagesEndOffset, statusBarItem)
+				return
+			}
+
+			// 如果是普通文本，插入 userTag，新增一行（只有这种情况需要slowMo)
+			if (role === null) {
+				insertMarkToBegin(editor, range, defaultUserMark)
+
+				editor.setCursor({ line: range.to.line, ch: editor.getLine(range.to.line).length })
+				insertText(editor, HARD_LINE_BREAK + '\n')
+				const lnToWrite = await insertMarkSlowMo(editor, mark, settings.answerDelayInMilliseconds)
+
+				const messagesEndOffset = editor.posToOffset({
+					line: lnToWrite,
+					ch: 0
+				})
+				const env = await buildRunEnv(app, settings)
+				await generate(env, editor, provider, messagesEndOffset, statusBarItem)
+			} else if (role === 'assistant') {
+				// 如果是asstTag，弹窗问用户是否重新生成
+				if (settings.confirmRegenerate) {
+					await regenerate(app, settings, statusBarItem, editor, provider, range, mark)
+				} else {
+					const onConfirm = async () => {
+						await regenerate(app, settings, statusBarItem, editor, provider, range, mark)
+					}
+					new ConfirmModal(app, onConfirm).open()
+				}
+			} else {
+				// 如果是userTag，systemTag（稍后警告），newChat混合等等，新增一行, 插入助手标签。交给后续做判断。
+				editor.setCursor({ line: range.to.line, ch: editor.getLine(range.to.line).length })
+				const lnToWrite = insertText(editor, HARD_LINE_BREAK + '\n' + mark)
+
+				const messagesEndOffset = editor.posToOffset({
+					line: lnToWrite,
+					ch: 0
+				})
+				const env = await buildRunEnv(app, settings)
+				await generate(env, editor, provider, messagesEndOffset, statusBarItem)
+			}
 		} catch (error) {
 			console.error(error)
 			new Notice(
@@ -33,93 +92,55 @@ export const asstTagCmd = (
 	}
 })
 
-export const answer = async (
+const regenerate = async (
 	app: App,
-	editor: Editor,
 	settings: PluginSettings,
 	statusBarItem: HTMLElement,
-	providerSettings: ProviderSettings,
-	delayDuration: number
-) => {
-	const messagesEndOffset = await setAssistantTag(editor, providerSettings.tag, settings.providers, delayDuration)
-	console.debug('messagesEndOffset', messagesEndOffset)
-	const env = await buildRunEnv(app, settings)
-	await generate(env, editor, providerSettings, messagesEndOffset, statusBarItem)
-}
-
-/** 遵循对话语法。这里主要是设置空行 */
-export const setAssistantTag = async (
 	editor: Editor,
-	tag: string,
-	providers: ProviderSettings[],
-	delayDuration: number
+	provider: ProviderSettings,
+	range: EditorRange,
+	mark: string
 ) => {
-	const cursor = editor.getCursor()
-	const assistantMark = toSpeakMark(tag)
-	const currentLine = cursor.line
-	let lnToWrite = null
-	if (editor.getLine(currentLine).trim().length > 0) {
-		// 当前行非空
-		if (isStartWithAssistantTag(editor.getLine(currentLine), providers)) {
-			// 当前行以助手标签开头, 替换当前行
-			editor.replaceRange(
-				'',
-				{
-					line: currentLine,
-					ch: 0
-				},
-				{
-					line: currentLine,
-					ch: editor.getLine(currentLine).length
-				}
-			) // 清掉当前行
-			editor.setCursor({ line: currentLine, ch: 0 })
-			lnToWrite = await insertMarkSlowMo(editor, assistantMark, delayDuration)
+	editor.replaceRange(mark, range.from, range.to)
+	editor.setCursor({
+		line: range.from.line,
+		ch: editor.getLine(range.from.line).length
+	})
 
-			if (lnToWrite != currentLine) console.error('lnToWrite != currentLine')
-
-			// TODO, 这里会删除用户内容，有没有更优的用户体验？
-			new Notice(t('Regenerate Answer'))
-		} else {
-			// 不清楚的内容，换行，新一行
-			editor.setCursor({ line: currentLine, ch: editor.getLine(currentLine).length })
-			insertText(editor, HARD_LINE_BREAK + '\n')
-			lnToWrite = await insertMarkSlowMo(editor, assistantMark, delayDuration)
-
-			if (lnToWrite != currentLine + 2) console.error('lnToWrite != currentLine + 2')
-		}
-	} else if (currentLine >= 1 && editor.getLine(currentLine - 1).trim().length > 0) {
-		// 当前行空，前面一行非空。新一行
-		editor.setCursor({ line: currentLine, ch: 0 })
-		insertText(editor, '\n')
-		lnToWrite = await insertMarkSlowMo(editor, assistantMark, delayDuration)
-
-		if (lnToWrite != currentLine + 1) console.error('lnToWrite != current + 1')
-	} else {
-		// 当前行空，前面一行也空。
-		editor.setCursor({ line: currentLine, ch: 0 })
-		lnToWrite = await insertMarkSlowMo(editor, assistantMark, delayDuration)
-
-		if (lnToWrite != currentLine) console.error('lnToWrite != currentLine')
-	}
-	// editor.setCursor({ line: lnToWrite, ch: editor.getLine(lnToWrite).length })
-	const messageEndPosition = {
-		line: lnToWrite,
+	const messagesEndOffset = editor.posToOffset({
+		line: range.from.line,
 		ch: 0
-	}
-	return editor.posToOffset(messageEndPosition)
+	})
+	const env = await buildRunEnv(app, settings)
+	await generate(env, editor, provider, messagesEndOffset, statusBarItem)
 }
 
-const insertText = (editor: Editor, text: string) => {
-	const current = editor.getCursor('to')
-	const lines = text.split('\n')
-	const newPos: EditorPosition = {
-		line: current.line + lines.length - 1,
-		ch: lines.length === 1 ? current.ch + text.length : lines[lines.length - 1].length
+class ConfirmModal extends Modal {
+	onConfirm: () => void
+	constructor(app: App, onConfirm: () => void) {
+		super(app)
+		this.onConfirm = onConfirm
 	}
-	editor.replaceRange(text, current)
-	editor.setCursor(newPos)
-	return newPos.line
+
+	onOpen() {
+		const { contentEl } = this
+		contentEl.createEl('h2', { text: t('Regenerate?') })
+		contentEl.createEl('p', {
+			text: t(
+				'This will delete the current response content. You can configure this in settings to not require confirmation.'
+			)
+		})
+
+		new Setting(contentEl).addButton((btn) =>
+			btn
+				.setButtonText('确认')
+				.setCta()
+				.onClick(async () => {
+					this.close()
+					await this.onConfirm()
+				})
+		)
+	}
 }
 
 const insertMarkSlowMo = async (editor: Editor, mark: string, delayDuration: number) => {
@@ -135,18 +156,4 @@ const insertMarkSlowMo = async (editor: Editor, mark: string, delayDuration: num
 		lnToWrite = insertText(editor, mark[i])
 	}
 	return lnToWrite
-}
-
-const isStartWithAssistantTag = (lineContent: string, providers: ProviderSettings[]) => {
-	// TODO，这里的逻辑需要考虑更多场景，这里先匹配常见的重试场景
-	if (!lineContent.startsWith('#')) {
-		return false
-	}
-	const stripped = lineContent.slice(1)
-	for (const provider of providers) {
-		if (stripped.startsWith(provider.tag)) {
-			return true
-		}
-	}
-	return false
 }
