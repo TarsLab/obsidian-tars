@@ -40,19 +40,14 @@ export default {
 	'API URL is required': 'API URL is required',
 
 	// prompt
+	'Load template file: ': 'Load template file: ',
 	'Syntax Error Report': 'Syntax Error Report',
-	BASIC_PROMPT_TEMPLATE: '✨ (Original) ✨',
-	'View prompt templates: check syntax': 'View prompt templates: check syntax',
-	'Prompt template file is syntactically correct': 'Prompt template file is syntactically correct',
-	'Prompt template: selected sections / current section at cursor':
-		'Prompt template: selected sections / current section at cursor',
-	'Using template': 'Using template',
-	'Create tars folder': 'Create tars folder',
 	'Create prompt template file': 'Create prompt template file',
-	'File was just created, waiting for metadata to be ready. Please try again.':
-		'File was just created, waiting for metadata to be ready. Please try again.',
 	'Expected at least 2 sections, heading and content': 'Expected at least 2 sections, heading and content',
 	'Expected heading': 'Expected heading',
+	"File was just created. Please run 'Load template file' command later":
+		"File was just created. Please run 'Load template file' command later",
+	'Duplicate title:': 'Duplicate title:',
 
 	// editor.ts
 	'Please add a user message before generating AI response': 'Please add a user message before generating AI response',
@@ -125,15 +120,15 @@ export default {
 	promptFileName: 'prompt.en',
 	PRESET_PROMPT_TEMPLATES: `# Instructions
 
-- Collect your commonly used prompts here for use with the "Question" command in the Tars plugin.
+- Collect your commonly used prompts here for use with the Tars plugin commands.
 - This file follows Obsidian's slide format, using \`---\` to separate each page.
 - The first page contains instructions, and each subsequent page is a prompt template.
-- Each template starts with a title in Markdown heading format, followed by the content. Both title and content are required.
+- Each template starts with a title in Markdown heading format, titles cannot be repeated. This is followed by the template content. Both title and content are required.
 - If the content contains \`{{s}}\`, it will be replaced with your selected text.
 - If there's no \`{{s}}\`, the selected text will be appended.
 - If no text is selected, the template content will be used as is.
-- If a page contains syntax errors, it won't appear in the popup list for the "Question" command.
-- To check for syntax errors, run the command "View prompt templates: check syntax".
+- If a page contains syntax errors, it won't appear in the command list.
+- If this file is updated, run the "Load template file" command, which will also check for syntax errors and display them in a popup.
 
 ---
 

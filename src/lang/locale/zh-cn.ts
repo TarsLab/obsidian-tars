@@ -40,17 +40,14 @@ export default {
 	'API URL is required': '请配置对应的 API URL',
 
 	// prompt
+	'Load template file: ': '加载模板文件: ',
 	'Syntax Error Report': '语法错误报告',
-	BASIC_PROMPT_TEMPLATE: '✨ (原文) ✨',
-	'View prompt templates: check syntax': '查看提示词模板: 检查语法',
-	'Prompt template file is syntactically correct': '提示词模板文件语法正确',
-	'Prompt template: selected sections / current section at cursor': '提示词模板: 选中/光标处的段落',
-	'Using template': '使用模板',
-	'Create tars folder': '创建 tars 文件夹',
 	'Create prompt template file': '创建提示词模板文件',
-	'File was just created, waiting for metadata to be ready. Please try again.': '文件刚创建，没来得及解析信息，请重试',
 	'Expected at least 2 sections, heading and content': '至少需要 2 个部分，标题和内容',
 	'Expected heading': '需要标题',
+	"File was just created. Please run 'Load template file' command later":
+		"文件刚刚创建，请稍后运行 '加载模板文件' 命令",
+	'Duplicate title:': '重复的标题:',
 
 	// editor.ts
 	'Please add a user message before generating AI response': '请先添加用户消息，再用 AI 回答',
@@ -121,15 +118,15 @@ export default {
 	promptFileName: 'prompt.zh',
 	PRESET_PROMPT_TEMPLATES: `# 使用说明
 
-- 把你的常用提示词收集到这里，以便在Tars插件的“提问”命令中使用。
+- 把你的常用提示词收集到这里，以便在Tars插件的命令中使用。
 - 本文件按照 obsidian 的幻灯片格式，用\`---\`来分隔每一页
 - 第一页是说明，后面的每一页都是一个提示词模板
-- 首先是模板的标题, 以markdown的标题格式。接下来都是模板的内容。标题和内容都不可缺少。
+- 首先是模板的标题, 以markdown的标题格式, 标题不能重复。接下来都是模板的内容。标题和内容都不可缺少。
 - 如果内容有 \`{{s}}\`，会把 \`{{s}}\`替换为选中的文本
 - 如果没有 \`{{s}}\`，则追加
 - 如果没有选中的文本，则直接使用模板的内容
-- 如果某一页有语法错误，则不会出现在“提问”命令的弹窗列表中
-- 如果要检查有没有语法错误，执行命令“查看提示词模板: 检查语法”
+- 如果某一页有语法错误，则不会出现在命令中
+- 如果该文件有更新，执行命令“加载模板文件”，该命令同时会检查语法错误并弹窗显示。
 
 ---
 

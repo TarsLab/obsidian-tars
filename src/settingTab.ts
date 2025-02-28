@@ -19,7 +19,7 @@ export class TarsSettingTab extends PluginSettingTab {
 	}
 
 	hide(): void {
-		this.plugin.rebuildTagCommands()
+		this.plugin.buildTagCommands()
 	}
 
 	display(expandLastProvider = false): void {

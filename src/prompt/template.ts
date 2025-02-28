@@ -1,32 +1,36 @@
 import { App, HeadingCache, normalizePath, Notice, SectionCache } from 'obsidian'
 import { t } from 'src/lang/helper'
 
-const APP_FOLDER = 'Tars'
+export const APP_FOLDER = 'Tars'
 
 export interface PromptTemplate {
 	readonly title: string
 	readonly template: string
 }
 
-export const getTemplateTitle = (template: PromptTemplate) => template.title ?? t('BASIC_PROMPT_TEMPLATE')
-
-export const fetchOrCreateTemplates = async (app: App, open: boolean = false) => {
+export const fetchOrCreateTemplates = async (app: App) => {
+	let isCreated = false
 	if (!(await app.vault.adapter.exists(normalizePath(APP_FOLDER)))) {
 		await app.vault.createFolder(APP_FOLDER)
-		new Notice(t('Create tars folder'))
 	}
 
 	const promptFilePath = normalizePath(`${APP_FOLDER}/${t('promptFileName')}.md`)
 	if (!(await app.vault.adapter.exists(promptFilePath))) {
 		await app.vault.create(promptFilePath, t('PRESET_PROMPT_TEMPLATES'))
-		new Notice(t('Create prompt template file'))
+		new Notice(t('Create prompt template file') + ' ' + `${APP_FOLDER}/${t('promptFileName')}.md`)
+		isCreated = true
 	}
 
-	if (open && app.workspace.getActiveFile()?.path != promptFilePath) {
-		await app.workspace.openLinkText('', promptFilePath, true)
+	if (isCreated) {
+		return { isCreated, promptTemplates: [], reporter: [] }
 	}
 
-	return await getPromptTemplatesFromFile(app)
+	const { promptTemplates, reporter } = await getPromptTemplatesFromFile(app)
+	return {
+		isCreated,
+		promptTemplates,
+		reporter
+	}
 }
 
 const getPromptTemplatesFromFile = async (app: App) => {
@@ -40,7 +44,7 @@ const getPromptTemplatesFromFile = async (app: App) => {
 	const appMeta = app.metadataCache
 	const fileMeta = appMeta.getFileCache(promptFile)
 	if (!fileMeta) {
-		throw new Error(t('File was just created, waiting for metadata to be ready. Please try again.'))
+		throw new Error(t(`File was just created. Please run 'Load template file' command later`))
 	}
 
 	console.debug('fileMeta', fileMeta)
@@ -83,8 +87,11 @@ const getPromptTemplatesFromFile = async (app: App) => {
 	const reporter: string[] = []
 	for (const s of slides) {
 		try {
-			const promptTemplate = toPromptTemplate(s, headings, fileText)
-			promptTemplates.push(promptTemplate)
+			const template = toPromptTemplate(s, headings, fileText)
+			if (promptTemplates.some((t) => t.title === template.title)) {
+				throw new Error(`${t('Duplicate title:')} ${template.title}`)
+			}
+			promptTemplates.push(template)
 		} catch (error) {
 			reporter.push(error.message)
 		}

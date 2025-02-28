@@ -63,12 +63,12 @@ export const asstTagCmd = (
 			} else if (role === 'assistant') {
 				// 如果是asstTag，弹窗问用户是否重新生成
 				if (settings.confirmRegenerate) {
-					await regenerate(app, settings, statusBarItem, editor, provider, range, mark)
-				} else {
 					const onConfirm = async () => {
 						await regenerate(app, settings, statusBarItem, editor, provider, range, mark)
 					}
 					new ConfirmModal(app, onConfirm).open()
+				} else {
+					await regenerate(app, settings, statusBarItem, editor, provider, range, mark)
 				}
 			} else {
 				// 如果是userTag，systemTag（稍后警告），newChat混合等等，新增一行, 插入助手标签。交给后续做判断。
