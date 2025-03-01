@@ -1,4 +1,6 @@
 import { App, Notice, PluginSettingTab, Setting } from 'obsidian'
+import { exportCmd, replaceCmd, replaceCmdId } from './commands'
+import { exportCmdId } from './commands/export'
 import { t } from './lang/helper'
 import TarsPlugin from './main'
 import { SelectModelModal } from './modal'
@@ -14,6 +16,10 @@ export class TarsSettingTab extends PluginSettingTab {
 	constructor(app: App, plugin: TarsPlugin) {
 		super(app, plugin)
 		this.plugin = plugin
+	}
+
+	hide(): void {
+		this.plugin.buildTagCommands()
 	}
 
 	display(expandLastProvider = false): void {
@@ -66,6 +72,10 @@ export class TarsSettingTab extends PluginSettingTab {
 				})
 			})
 
+		if (!this.plugin.settings.providers.length) {
+			new Setting(containerEl).setDesc(t('Please add at least one AI assistant to start using the plugin.'))
+		}
+
 		for (const [index, provider] of this.plugin.settings.providers.entries()) {
 			const isLast = index === this.plugin.settings.providers.length - 1
 			this.createProviderSetting(index, provider, isLast && expandLastProvider)
@@ -77,41 +87,149 @@ export class TarsSettingTab extends PluginSettingTab {
 			.setDesc(t('Keywords for tags in the text box are separated by spaces'))
 			.setHeading()
 
-		new Setting(containerEl).setName(t('New chat tags')).addText((text) =>
-			text
-				.setPlaceholder(DEFAULT_SETTINGS.newChatTags.join(' '))
-				.setValue(this.plugin.settings.newChatTags.join(' '))
-				.onChange(async (value) => {
-					const tags = value.split(' ').filter((e) => e.length > 0)
-					if (!validateTagList(tags)) return
-					this.plugin.settings.newChatTags = tags
-					await this.plugin.saveSettings()
-				})
-		)
+		new Setting(containerEl)
+			.setName(t('New chat tags'))
+			.addExtraButton((btn) => {
+				btn
+					.setIcon('reset')
+					.setTooltip(t('Restore default'))
+					.onClick(async () => {
+						this.plugin.settings.newChatTags = DEFAULT_SETTINGS.newChatTags
+						await this.plugin.saveSettings()
+						this.display()
+					})
+			})
+			.addText((text) =>
+				text
+					.setPlaceholder(DEFAULT_SETTINGS.newChatTags.join(' '))
+					.setValue(this.plugin.settings.newChatTags.join(' '))
+					.onChange(async (value) => {
+						const tags = value.split(' ').filter((e) => e.length > 0)
+						if (!validateTagList(tags)) return
+						this.plugin.settings.newChatTags = tags
+						await this.plugin.saveSettings()
+					})
+			)
 
-		new Setting(containerEl).setName(t('User message tags')).addText((text) =>
-			text
-				.setPlaceholder(DEFAULT_SETTINGS.userTags.join(' '))
-				.setValue(this.plugin.settings.userTags.join(' '))
-				.onChange(async (value) => {
-					const tags = value.split(' ').filter((e) => e.length > 0)
-					if (!validateTagList(tags)) return
-					this.plugin.settings.userTags = tags
-					await this.plugin.saveSettings()
-				})
-		)
+		new Setting(containerEl)
+			.setName(t('User message tags'))
+			.addExtraButton((btn) => {
+				btn
+					.setIcon('reset')
+					.setTooltip(t('Restore default'))
+					.onClick(async () => {
+						this.plugin.settings.userTags = DEFAULT_SETTINGS.userTags
+						await this.plugin.saveSettings()
+						this.display()
+					})
+			})
+			.addText((text) =>
+				text
+					.setPlaceholder(DEFAULT_SETTINGS.userTags.join(' '))
+					.setValue(this.plugin.settings.userTags.join(' '))
+					.onChange(async (value) => {
+						const tags = value.split(' ').filter((e) => e.length > 0)
+						if (!validateTagList(tags)) return
+						this.plugin.settings.userTags = tags
+						await this.plugin.saveSettings()
+					})
+			)
 
-		new Setting(containerEl).setName(t('System message tags')).addText((text) =>
-			text
-				.setPlaceholder(DEFAULT_SETTINGS.systemTags.join(' '))
-				.setValue(this.plugin.settings.systemTags.join(' '))
-				.onChange(async (value) => {
-					const tags = value.split(' ').filter((e) => e.length > 0)
-					if (!validateTagList(tags)) return
-					this.plugin.settings.systemTags = tags
+		new Setting(containerEl)
+			.setName(t('System message tags'))
+			.addExtraButton((btn) => {
+				btn
+					.setIcon('reset')
+					.setTooltip(t('Restore default'))
+					.onClick(async () => {
+						this.plugin.settings.systemTags = DEFAULT_SETTINGS.systemTags
+						await this.plugin.saveSettings()
+						this.display()
+					})
+			})
+			.addText((text) =>
+				text
+					.setPlaceholder(DEFAULT_SETTINGS.systemTags.join(' '))
+					.setValue(this.plugin.settings.systemTags.join(' '))
+					.onChange(async (value) => {
+						const tags = value.split(' ').filter((e) => e.length > 0)
+						if (!validateTagList(tags)) return
+						this.plugin.settings.systemTags = tags
+						await this.plugin.saveSettings()
+					})
+			)
+
+		new Setting(containerEl)
+			.setName(t('Confirm before regeneration'))
+			.setDesc(t('Confirm before replacing existing assistant responses when using assistant commands'))
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.confirmRegenerate).onChange(async (value) => {
+					this.plugin.settings.confirmRegenerate = value
 					await this.plugin.saveSettings()
 				})
-		)
+			)
+		containerEl.createEl('br')
+
+		const advancedSection = containerEl.createEl('details')
+		advancedSection.createEl('summary', { text: t('Advanced'), cls: 'tars-setting-h4' })
+
+		new Setting(advancedSection)
+			.setName(t('Delay before answer (Seconds)'))
+			.setDesc(
+				t(
+					'If you encounter errors with missing user messages, it may be due to the need for more time to parse the messages. Please slightly increase the answer delay time.'
+				)
+			)
+			.addExtraButton((btn) => {
+				btn
+					.setIcon('reset')
+					.setTooltip(t('Restore default'))
+					.onClick(async () => {
+						this.plugin.settings.answerDelayInMilliseconds = DEFAULT_SETTINGS.answerDelayInMilliseconds
+						await this.plugin.saveSettings()
+						this.display()
+					})
+			})
+			.addSlider((slider) =>
+				slider
+					.setLimits(1.5, 4, 0.5)
+					.setValue(this.plugin.settings.answerDelayInMilliseconds / 1000)
+					.setDynamicTooltip()
+					.onChange(async (value) => {
+						this.plugin.settings.answerDelayInMilliseconds = Math.round(value * 1000)
+						await this.plugin.saveSettings()
+					})
+			)
+
+		new Setting(advancedSection)
+			.setName(t('Replace tag Command'))
+			.setDesc(t('Replace the names of the two most frequently occurring speakers with tag format.'))
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.advancedCmd.enableReplaceTag).onChange(async (value) => {
+					this.plugin.settings.advancedCmd.enableReplaceTag = value
+					await this.plugin.saveSettings()
+					if (value) {
+						this.plugin.addCommand(replaceCmd(this.app))
+					} else {
+						this.plugin.removeCommand(replaceCmdId)
+					}
+				})
+			)
+
+		new Setting(advancedSection)
+			.setName(t('Export to JSONL Command'))
+			.setDesc(t('Export conversations to JSONL'))
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.advancedCmd.enableExportToJSONL).onChange(async (value) => {
+					this.plugin.settings.advancedCmd.enableExportToJSONL = value
+					await this.plugin.saveSettings()
+					if (value) {
+						this.plugin.addCommand(exportCmd(this.app, this.plugin.settings))
+					} else {
+						this.plugin.removeCommand(exportCmdId)
+					}
+				})
+			)
 	}
 
 	createProviderSetting = (index: number, settings: ProviderSettings, isOpen: boolean = false) => {
@@ -161,9 +279,9 @@ export class TarsSettingTab extends PluginSettingTab {
 						})
 				})
 		} else if (vendor.models.length > 0) {
-			this.addModelDropDownSection(details, settings.options, vendor.models, index)
+			this.addModelDropDownSection(details, settings.options, vendor.models)
 		} else {
-			this.addModelTextSection(details, settings.options, index)
+			this.addModelTextSection(details, settings.options)
 		}
 
 		if (vendor.name === zhipuVendor.name) {
@@ -178,7 +296,7 @@ export class TarsSettingTab extends PluginSettingTab {
 				)
 		}
 
-		this.addBaseURLSection(details, settings.options as BaseOptions, 'e.g. ' + vendor.defaultOptions.baseURL)
+		this.addBaseURLSection(details, settings.options as BaseOptions, vendor.defaultOptions.baseURL)
 
 		if ('max_tokens' in settings.options)
 			this.addMaxTokensOptional(details, settings.options as BaseOptions & Pick<Optional, 'max_tokens'>)
@@ -231,10 +349,20 @@ export class TarsSettingTab extends PluginSettingTab {
 					})
 			)
 
-	addBaseURLSection = (details: HTMLDetailsElement, options: BaseOptions, desc: string = '') =>
+	addBaseURLSection = (details: HTMLDetailsElement, options: BaseOptions, defaultValue: string) =>
 		new Setting(details)
 			.setName('baseURL')
-			.setDesc(desc)
+			.setDesc(t('Default:') + ' ' + defaultValue)
+			.addExtraButton((btn) => {
+				btn
+					.setIcon('reset')
+					.setTooltip(t('Restore default'))
+					.onClick(async () => {
+						options.baseURL = defaultValue
+						await this.plugin.saveSettings()
+						this.display()
+					})
+			})
 			.addText((text) =>
 				text.setValue(options.baseURL).onChange(async (value) => {
 					options.baseURL = value
@@ -274,7 +402,7 @@ export class TarsSettingTab extends PluginSettingTab {
 					})
 			)
 
-	addModelDropDownSection = (details: HTMLDetailsElement, options: BaseOptions, models: string[], index: number) =>
+	addModelDropDownSection = (details: HTMLDetailsElement, options: BaseOptions, models: string[]) =>
 		new Setting(details)
 			.setName(t('Model'))
 			.setDesc(t('Select the model to use'))
@@ -293,7 +421,7 @@ export class TarsSettingTab extends PluginSettingTab {
 					})
 			)
 
-	addModelTextSection = (details: HTMLDetailsElement, options: BaseOptions, index: number) =>
+	addModelTextSection = (details: HTMLDetailsElement, options: BaseOptions) =>
 		new Setting(details)
 			.setName(t('Model'))
 			.setDesc(t('Input the model to use'))
@@ -371,7 +499,11 @@ export class TarsSettingTab extends PluginSettingTab {
 	addParametersSection = (details: HTMLDetailsElement, options: BaseOptions) =>
 		new Setting(details)
 			.setName(t('Override input parameters'))
-			.setDesc(t('Developer feature, in JSON format. e.g. {"model": "your model", "baseURL": "your url"}'))
+			.setDesc(
+				t(
+					'Developer feature, in JSON format. For example, if the model list doesn\'t have the model you want, enter {"model": "your desired model"}'
+				)
+			)
 			.addTextArea((text) =>
 				text
 					.setPlaceholder('{}')

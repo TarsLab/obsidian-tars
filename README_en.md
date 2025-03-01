@@ -59,7 +59,7 @@ Add an AI assistant in the settings page, set the API key, and then use the corr
 
 If you are not satisfied with the AI assistant's answer and want to retry. Use the plugin command "Select the message at the cursor", select and delete the AI assistant's response content, modify your question, and trigger the AI assistant again.
 
-If the model type you want is not in the AI assistant in the settings page, or the server address needs to be customized, you can configure it in the "Override input parameters" in the settings, input JSON format, for example `{"model":"your model", "baseURL": "your url"}`.
+If the model type you want is not in the AI assistant in the settings page, or the server address needs to be customized, you can configure it in the "Override input parameters" in the settings, input JSON format, for example `{"model":"your model"}`.
 
 ## Conversations syntax
 
@@ -78,3 +78,13 @@ For better appearance, it is recommended to use the [colored tags plugin](https:
 ![Colored tags plugin](docs/images/coloredTags.png)
 
 - Tag setting suggestion. Change the default tag to the abbreviation of the model used or the abbreviation of the usage scenario.
+
+## FAQ
+
+### How to view the developer console?
+
+- **Windows**：`CTRL + SHIFT + i`
+- **MacOS**：`CMD + OPTION + i`
+- **Linux**：`CTRL + SHIFT + i`
+
+[Capture console logs](https://help.obsidian.md/Help+and+support#Capture+console+logs)

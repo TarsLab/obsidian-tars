@@ -11,8 +11,10 @@ import {
 	parseLinktext,
 	resolveSubpath
 } from 'obsidian'
-import { Message } from './providers'
-import { PluginSettings } from './settings'
+import { t } from 'src/lang/helper'
+import { Message, ProviderSettings } from './providers'
+import { PluginSettings, availableVendors } from './settings'
+import { TagRole } from './suggest'
 
 export interface RunEnv {
 	readonly appMeta: MetadataCache
@@ -30,7 +32,7 @@ export interface RunEnv {
 }
 
 interface Tag extends Omit<Message, 'content'> {
-	readonly tag: string
+	readonly tag: TagRole
 	readonly lowerCaseTag: string
 	readonly tagRange: [number, number]
 	readonly tagLine: number
@@ -61,7 +63,7 @@ export const buildRunEnv = async (app: App, settings: PluginSettings): Promise<R
 	const filePath = activeFile.path
 	const fileMeta = appMeta.getFileCache(activeFile)
 	if (!fileMeta) {
-		throw new Error('No cached metadata found')
+		throw new Error(t('Waiting for metadata to be ready. Please try again.'))
 	}
 
 	const ignoreSections = fileMeta.sections?.filter((s) => ignoreSectionTypes.includes(s.type)) || []
@@ -74,12 +76,11 @@ export const buildRunEnv = async (app: App, settings: PluginSettings): Promise<R
 	console.debug('tagsInMeta', tagsInMeta)
 
 	const sectionsWithRefer = getSectionsWithRefer(fileMeta)
-	const assistantTags = settings.providers.map((p) => p.tag)
 
 	const options = {
 		newChatTags: settings.newChatTags,
 		userTags: settings.userTags,
-		assistantTags,
+		assistantTags: settings.providers.map((p) => p.tag),
 		systemTags: settings.systemTags
 	}
 
@@ -110,7 +111,7 @@ const fetchLinkTextContent = async (env: RunEnv, linkText: string) => {
 	}
 }
 
-export const fetchTagsWithSections = (env: RunEnv, startOffset: number, endOffset: number) => {
+const fetchTagsWithSections = (env: RunEnv, startOffset: number, endOffset: number) => {
 	const {
 		tagsInMeta,
 		sectionsWithRefer,
@@ -160,7 +161,7 @@ export const fetchTagsWithSections = (env: RunEnv, startOffset: number, endOffse
 	return tagsWithSections
 }
 
-export const fetchTextRange = async (
+const fetchTextRange = async (
 	env: RunEnv,
 	sectionWithRefer: SectionCacheWithRefer,
 	contentRange: readonly [number, number]
@@ -193,7 +194,7 @@ export const fetchTextRange = async (
 	}
 }
 
-export const fetchTextForTag = async (env: RunEnv, tagWithSections: TagWithSections) => {
+const fetchTextForTag = async (env: RunEnv, tagWithSections: TagWithSections) => {
 	const textRanges = await Promise.all(
 		tagWithSections.sections.map((section) => fetchTextRange(env, section, tagWithSections.contentRange))
 	)
@@ -205,7 +206,7 @@ export const fetchTextForTag = async (env: RunEnv, tagWithSections: TagWithSecti
 	return accumulated
 }
 
-export const fetchConversation = async (env: RunEnv, startOffset: number, endOffset: number) => {
+const fetchConversation = async (env: RunEnv, startOffset: number, endOffset: number) => {
 	const {
 		tagsInMeta,
 		options: { newChatTags }
@@ -229,7 +230,7 @@ export const fetchConversation = async (env: RunEnv, startOffset: number, endOff
 	return conversation
 }
 
-export const insertText = (editor: Editor, text: string) => {
+const insertText = (editor: Editor, text: string) => {
 	const current = editor.getCursor('to')
 	const lines = text.split('\n')
 	const newPos: EditorPosition = {
@@ -241,7 +242,7 @@ export const insertText = (editor: Editor, text: string) => {
 	editor.scrollIntoView({ from: newPos, to: newPos })
 }
 
-export const getSectionsWithRefer = (fileMeta: CachedMetadata) => {
+const getSectionsWithRefer = (fileMeta: CachedMetadata) => {
 	if (!fileMeta.sections) return []
 	const refersCache: ReferenceCache[] = [...(fileMeta.links || []), ...(fileMeta.embeds || [])].sort(
 		(a, b) => a.position.start.offset - b.position.start.offset // keep the order
@@ -325,4 +326,50 @@ export const getMsgPositionByLine = (env: RunEnv, line: number) => {
 	const endOffset = lastSection.position.end.offset
 	console.debug('startOff', startOffset, 'endOffset', endOffset)
 	return [startOffset, endOffset]
+}
+
+const formatDuration = (d: number) => `${(d / 1000).toFixed(2)}s`
+
+export const generate = async (
+	env: RunEnv,
+	editor: Editor,
+	provider: ProviderSettings,
+	endOffset: number,
+	statusBarItem: HTMLElement
+) => {
+	const vendor = availableVendors.find((v) => v.name === provider.vendor)
+	if (!vendor) {
+		throw new Error('No vendor found ' + provider.vendor)
+	}
+
+	const conversation = await fetchConversation(env, 0, endOffset)
+	const messages = conversation.map((c) => ({ role: c.role, content: c.content }))
+	console.debug('messages', messages)
+
+	const lastMsg = messages.last()
+	if (!lastMsg || lastMsg.role !== 'user') {
+		throw new Error(t('Please add a user message before generating AI response'))
+	}
+	const round = messages.filter((m) => m.role === 'assistant').length + 1
+
+	const sendRequest = vendor.sendRequestFunc(provider.options)
+	const startTime = new Date()
+	statusBarItem.setText(`Round ${round}:...`)
+
+	let accumulatedText = ''
+	for await (const text of sendRequest(messages)) {
+		insertText(editor, text)
+		accumulatedText += text
+		statusBarItem.setText(`Round ${round}: ${accumulatedText.length}${t('characters')}`)
+	}
+
+	const endTime = new Date()
+	const duration = formatDuration(endTime.getTime() - startTime.getTime())
+	statusBarItem.setText(`Round ${round}: ${accumulatedText.length}${t('characters')} ${duration}`)
+
+	if (accumulatedText.length === 0) {
+		throw new Error(t('No text generated'))
+	}
+
+	console.debug('✨ ' + t('AI generate') + ' ✨ ', accumulatedText)
 }

@@ -1,8 +1,10 @@
 import { App, Command, Modal, Notice, Setting } from 'obsidian'
 import { t } from 'src/lang/helper'
 
+export const replaceCmdId = 'replace-tag'
+
 export const replaceCmd = (app: App): Command => ({
-	id: 'replace-tag',
+	id: replaceCmdId,
 	name: t('Replace speaker with tag'),
 	callback: async () => {
 		const activeFile = app.workspace.getActiveFile()

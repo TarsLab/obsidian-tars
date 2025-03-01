@@ -9,20 +9,22 @@ import {
 	Platform,
 	TFile
 } from 'obsidian'
-import { buildRunEnv, fetchConversation, insertText } from './editor'
+import { buildRunEnv, generate } from './editor'
 import { t } from './lang/helper'
-import { PluginSettings, availableVendors } from './settings'
+import { PluginSettings } from './settings'
+
+export type TagRole = 'user' | 'assistant' | 'system' | 'newChat'
 
 interface TagEntry {
-	readonly type: 'user' | 'assistant' | 'system' | 'newChat'
+	readonly type: TagRole
 	readonly tag: string
 	readonly replacement: string
 }
 
 // 冒号前面加空格，对中文输入更友好。中文输入#tag后需要空格，才能输入中文的冒号
-const toSpeakMark = (tag: string) => `#${tag} : `
+export const toSpeakMark = (tag: string) => `#${tag} : `
 
-const toNewChatMark = (tag: string) => `#${tag} `
+export const toNewChatMark = (tag: string) => `#${tag} `
 
 // “#tag” 触发会有问题，可能会被 obsidian的标签补全拦截
 const toTriggerPhrase = (w: string) => [
@@ -32,17 +34,15 @@ const toTriggerPhrase = (w: string) => [
 	`#${w.toLowerCase()} ：` // 中文冒号
 ]
 
-const formatDate = (d: Date) =>
-	`${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}:${d.getSeconds().toString().padStart(2, '0')}`
-const formatDuration = (d: number) => `${(d / 1000).toFixed(2)}s`
-
 export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 	settings: PluginSettings
+	statusBarItem: HTMLElement
 
-	constructor(app: App, settings: PluginSettings) {
+	constructor(app: App, settings: PluginSettings, statusBarItem: HTMLElement) {
 		super(app)
 		this.app = app
 		this.settings = settings
+		this.statusBarItem = statusBarItem
 	}
 
 	onTrigger(cursor: EditorPosition, editor: Editor, file: TFile): EditorSuggestTriggerInfo | null {
@@ -150,43 +150,18 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 		editor.replaceRange(element.replacement, this.context.start, this.context.end)
 
 		if (element.type !== 'assistant') return
+		console.debug('element', element)
 
 		try {
-			const env = await buildRunEnv(this.app, this.settings)
-			const conversation = await fetchConversation(env, 0, editor.posToOffset(this.context.start))
-			const messages = conversation.map((c) => ({ role: c.role, content: c.content }))
-
-			console.debug('messages', messages)
-			console.debug('generate text: ')
-			console.debug('element', element)
 			const provider = this.settings.providers.find((p) => p.tag === element.tag)
 			if (!provider) {
 				throw new Error('No provider found ' + element.tag)
 			}
-			const vendor = availableVendors.find((v) => v.name === provider.vendor)
-			if (!vendor) {
-				throw new Error('No vendor found ' + provider.vendor)
-			}
-			const sendRequest = vendor.sendRequestFunc(provider.options)
 
-			const startTime = new Date()
-			console.debug('🚀 Begin : ', formatDate(startTime))
-
-			let accumulatedText = ''
-			for await (const text of sendRequest(messages)) {
-				insertText(editor, text)
-				accumulatedText += text
-			}
-
-			const endTime = new Date()
-			console.debug('🏁 Finish: ', formatDate(endTime))
-			console.debug('⌛ Total : ', formatDuration(endTime.getTime() - startTime.getTime()))
-
-			if (accumulatedText.length === 0) {
-				throw new Error(t('No text generated'))
-			}
-
-			console.debug('✨ ' + t('AI generate') + ' ✨ ', accumulatedText)
+			const env = await buildRunEnv(this.app, this.settings)
+			const messagesEndOffset = editor.posToOffset(this.context.start)
+			console.debug('endOffset', messagesEndOffset)
+			await generate(env, editor, provider, messagesEndOffset, this.statusBarItem)
 			new Notice(t('Text generated successfully'))
 		} catch (error) {
 			console.error('error', error)
