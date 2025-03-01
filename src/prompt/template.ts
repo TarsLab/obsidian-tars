@@ -1,40 +1,12 @@
-import { App, HeadingCache, normalizePath, Notice, SectionCache } from 'obsidian'
+import { App, HeadingCache, SectionCache } from 'obsidian'
 import { t } from 'src/lang/helper'
-
-export const APP_FOLDER = 'Tars'
 
 export interface PromptTemplate {
 	readonly title: string
 	readonly template: string
 }
 
-export const fetchOrCreateTemplates = async (app: App) => {
-	let isCreated = false
-	if (!(await app.vault.adapter.exists(normalizePath(APP_FOLDER)))) {
-		await app.vault.createFolder(APP_FOLDER)
-	}
-
-	const promptFilePath = normalizePath(`${APP_FOLDER}/${t('promptFileName')}.md`)
-	if (!(await app.vault.adapter.exists(promptFilePath))) {
-		await app.vault.create(promptFilePath, t('PRESET_PROMPT_TEMPLATES'))
-		new Notice(t('Create prompt template file') + ' ' + `${APP_FOLDER}/${t('promptFileName')}.md`)
-		isCreated = true
-	}
-
-	if (isCreated) {
-		return { isCreated, promptTemplates: [], reporter: [] }
-	}
-
-	const { promptTemplates, reporter } = await getPromptTemplatesFromFile(app)
-	return {
-		isCreated,
-		promptTemplates,
-		reporter
-	}
-}
-
-const getPromptTemplatesFromFile = async (app: App) => {
-	const promptFilePath = normalizePath(`${APP_FOLDER}/${t('promptFileName')}.md`)
+export const getPromptTemplatesFromFile = async (app: App, promptFilePath: string) => {
 	const promptFile = app.vault.getFileByPath(promptFilePath)
 
 	if (!promptFile) {
@@ -44,10 +16,9 @@ const getPromptTemplatesFromFile = async (app: App) => {
 	const appMeta = app.metadataCache
 	const fileMeta = appMeta.getFileCache(promptFile)
 	if (!fileMeta) {
-		throw new Error(t(`File was just created. Please run 'Load template file' command later`))
+		throw new Error(t('Waiting for metadata to be ready. Please try again.'))
 	}
 
-	console.debug('fileMeta', fileMeta)
 	console.debug('sections', fileMeta.sections)
 
 	const sections = fileMeta.sections
@@ -130,4 +101,29 @@ const toPromptTemplate = (slide: SectionCache[], headings: HeadingCache[], fileT
 		title,
 		template: trimmedContent
 	}
+}
+
+export const findChangedTemplates = (
+	oldTemplates: PromptTemplate[],
+	newTemplates: PromptTemplate[]
+): PromptTemplate[] => {
+	const result: PromptTemplate[] = []
+
+	// 创建一个旧模板的查找映射，便于快速访问
+	const oldTemplateMap = new Map<string, string>()
+	oldTemplates.forEach((template) => {
+		oldTemplateMap.set(template.title, template.template)
+	})
+
+	// 遍历新模板，检查标题相同但内容不同的元素
+	newTemplates.forEach((newTemplate) => {
+		const oldTemplate = oldTemplateMap.get(newTemplate.title)
+
+		// 如果标题存在于旧模板中，但内容不同
+		if (oldTemplate !== undefined && oldTemplate !== newTemplate.template) {
+			result.push(newTemplate)
+		}
+	})
+
+	return result
 }

@@ -2,41 +2,95 @@ import Handlebars from 'handlebars'
 import { App, Command, Editor, EditorSelection, MarkdownView, normalizePath, Notice, Platform } from 'obsidian'
 import { refineRange } from 'src/commands/tagUtils'
 import { t } from 'src/lang/helper'
+import { PluginSettings } from 'src/settings'
 import { ReporterModal } from './modal'
-import { APP_FOLDER, PromptTemplate } from './template'
+import { findChangedTemplates, getPromptTemplatesFromFile, PromptTemplate } from './template'
 
-export interface PromptCmdMeta extends PromptTemplate {
-	id: string
-}
-
+export const APP_FOLDER = 'Tars'
 export const templateToCmdId = (template: PromptTemplate): string => `Prompt#${template.title}`
 export const getTitleFromCmdId = (id: string): string => id.slice(id.indexOf('#') + 1)
 
-export const loadTemplateFileCommand = (app: App, loadTemplateFile: () => Promise<string[] | undefined>): Command => ({
+export const loadTemplateFileCommand = (
+	app: App,
+	settings: PluginSettings,
+	saveSettings: () => Promise<void>,
+	buildPromptCommands: () => void
+): Command => ({
 	id: 'LoadTemplateFile',
 	name: t('Load template file: ') + `${APP_FOLDER}/${t('promptFileName')}.md`,
 	callback: async () => {
-		const promptFilePath = normalizePath(`${APP_FOLDER}/${t('promptFileName')}.md`)
-		if (app.workspace.getActiveFile()?.path != promptFilePath) {
-			await app.workspace.openLinkText('', promptFilePath, true)
-		}
-		const reporter = await loadTemplateFile()
-		if (reporter && reporter.length > 0) {
-			new ReporterModal(app, reporter).open()
+		try {
+			const filePath = normalizePath(`${APP_FOLDER}/${t('promptFileName')}.md`)
+			const isCreated = await createPromptFileIfNotExists(app)
+
+			if (isCreated) {
+				await workspaceOpenFile(app, filePath)
+				await new Promise((resolve) => setTimeout(resolve, 2000)) // 等待文件metadata加载, 2s
+			}
+
+			const { promptTemplates, reporter } = await getPromptTemplatesFromFile(app, filePath)
+
+			// 找到这两个数组中，title 相同但是 template 不同的元素
+			const changed = findChangedTemplates(settings.promptTemplates, promptTemplates)
+			if (changed.length > 0) {
+				console.debug('changed', changed)
+				new Notice(t('Templates have been updated: ') + changed.map((t) => t.title).join(', '))
+			}
+
+			settings.promptTemplates = promptTemplates
+			await saveSettings()
+			buildPromptCommands()
+
+			if (reporter && reporter.length > 0) {
+				await workspaceOpenFile(app, filePath) // 有语法错误，界面打开文件
+				new ReporterModal(app, reporter).open()
+			}
+		} catch (error) {
+			console.error(error)
+			new Notice(
+				`🔴 ${Platform.isDesktopApp ? t('Check the developer console for error details. ') : ''}${error}`,
+				10 * 1000
+			)
 		}
 	}
 })
 
-export const promptTemplateCmd = ({ id, title, template }: PromptCmdMeta, app: App): Command => ({
+const createPromptFileIfNotExists = async (app: App) => {
+	let isCreated = false
+	if (!(await app.vault.adapter.exists(normalizePath(APP_FOLDER)))) {
+		await app.vault.createFolder(APP_FOLDER)
+	}
+
+	const promptFilePath = normalizePath(`${APP_FOLDER}/${t('promptFileName')}.md`)
+	if (!(await app.vault.adapter.exists(promptFilePath))) {
+		await app.vault.create(promptFilePath, t('PRESET_PROMPT_TEMPLATES'))
+		new Notice(t('Create prompt template file') + ' ' + `${APP_FOLDER}/${t('promptFileName')}.md`)
+		isCreated = true
+	}
+
+	return isCreated
+}
+
+const workspaceOpenFile = async (app: App, filePath: string) => {
+	if (app.workspace.getActiveFile()?.path != filePath) {
+		await app.workspace.openLinkText('', filePath, true)
+	}
+}
+
+export const promptTemplateCmd = (id: string, name: string, app: App, settings: PluginSettings): Command => ({
 	id,
-	name: title,
+	name,
 	editorCallback: async (editor: Editor, view: MarkdownView) => {
 		try {
+			const template = settings.promptTemplates.find((t) => t.title === name)
+			if (!template) {
+				throw new Error(`No template found. ${template}`)
+			}
 			const range = refineRange(app, editor)
 			const { from, to } = range
 			editor.setSelection(from, to)
 			await new Promise((resolve) => setTimeout(resolve, 500)) // 让用户看到选中的文本，可能体验会好些。但这不是必要的。
-			applyTemplate(editor, template)
+			applyTemplate(editor, template.template)
 		} catch (error) {
 			console.error(error)
 			new Notice(

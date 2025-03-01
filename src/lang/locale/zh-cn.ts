@@ -41,12 +41,11 @@ export default {
 
 	// prompt
 	'Load template file: ': '加载模板文件: ',
+	'Templates have been updated: ': '模板已更新: ',
 	'Syntax Error Report': '语法错误报告',
 	'Create prompt template file': '创建提示词模板文件',
 	'Expected at least 2 sections, heading and content': '至少需要 2 个部分，标题和内容',
 	'Expected heading': '需要标题',
-	"File was just created. Please run 'Load template file' command later":
-		"文件刚刚创建，请稍后运行 '加载模板文件' 命令",
 	'Duplicate title:': '重复的标题:',
 
 	// editor.ts
@@ -126,7 +125,7 @@ export default {
 - 如果没有 \`{{s}}\`，则追加
 - 如果没有选中的文本，则直接使用模板的内容
 - 如果某一页有语法错误，则不会出现在命令中
-- 如果该文件有更新，执行命令“加载模板文件”，该命令同时会检查语法错误并弹窗显示。
+- 如果你编辑了该文件，要把更新后的模板加载到命令中，==执行命令“加载模板文件”==，该命令同时会检查语法错误并弹窗显示。
 
 ---
 

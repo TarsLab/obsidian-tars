@@ -41,12 +41,11 @@ export default {
 
 	// prompt
 	'Load template file: ': 'Load template file: ',
+	'Templates have been updated: ': 'Templates have been updated: ',
 	'Syntax Error Report': 'Syntax Error Report',
 	'Create prompt template file': 'Create prompt template file',
 	'Expected at least 2 sections, heading and content': 'Expected at least 2 sections, heading and content',
 	'Expected heading': 'Expected heading',
-	"File was just created. Please run 'Load template file' command later":
-		"File was just created. Please run 'Load template file' command later",
 	'Duplicate title:': 'Duplicate title:',
 
 	// editor.ts
@@ -128,7 +127,7 @@ export default {
 - If there's no \`{{s}}\`, the selected text will be appended.
 - If no text is selected, the template content will be used as is.
 - If a page contains syntax errors, it won't appear in the command list.
-- If this file is updated, run the "Load template file" command, which will also check for syntax errors and display them in a popup.
+- If you've edited this file, to load the updated templates into commands, please ==run the 'Load template file' command==, which will also check for syntax errors and display them in a popup.
 
 ---
 
