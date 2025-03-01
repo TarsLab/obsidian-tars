@@ -62,7 +62,7 @@ export const kimiVendor: Vendor = {
 	name: 'Kimi',
 	defaultOptions: {
 		apiKey: '',
-		baseURL: 'https://api.moonshot.cn/v1',
+		baseURL: 'https://api.moonshot.cn/v1/chat/completions',
 		model: models[0],
 		parameters: {}
 	},
