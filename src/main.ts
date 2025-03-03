@@ -14,14 +14,14 @@ import { t } from './lang/helper'
 import { getTitleFromCmdId, loadTemplateFileCommand, promptTemplateCmd, templateToCmdId } from './prompt'
 import { TarsSettingTab } from './settingTab'
 import { DEFAULT_SETTINGS, PluginSettings } from './settings'
-import { getMaxTriggerLineLength, TagEditorSuggest, TagEntry, toNewChatMark, toSpeakMark } from './suggest'
+import { getMaxTriggerLineLength, TagEditorSuggest, TagEntry } from './suggest'
 
 export default class TarsPlugin extends Plugin {
 	settings: PluginSettings
 	statusBarItem: HTMLElement
 	tagCmdIds: string[] = []
 	promptCmdIds: string[] = []
-	tagLowerCaseMap: Map<string, TagEntry> = new Map()
+	tagLowerCaseMap: Map<string, Omit<TagEntry, 'replacement'>> = new Map()
 
 	async onload() {
 		await this.loadSettings()
@@ -92,11 +92,7 @@ export default class TarsPlugin extends Plugin {
 		toAdd.forEach((cmdId) => {
 			this.addTagCommand(cmdId)
 			const { role, tag } = getMeta(cmdId)
-			this.tagLowerCaseMap.set(tag.toLowerCase(), {
-				type: role,
-				tag,
-				replacement: role === 'newChat' ? toNewChatMark(tag) : toSpeakMark(tag)
-			})
+			this.tagLowerCaseMap.set(tag.toLowerCase(), { role, tag })
 		})
 
 		this.tagCmdIds = newTagCmdIds

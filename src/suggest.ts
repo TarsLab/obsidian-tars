@@ -16,7 +16,7 @@ import { PluginSettings } from './settings'
 export type TagRole = 'user' | 'assistant' | 'system' | 'newChat'
 
 export interface TagEntry {
-	readonly type: TagRole
+	readonly role: TagRole
 	readonly tag: string
 	readonly replacement: string
 }
@@ -25,6 +25,9 @@ export interface TagEntry {
 export const toSpeakMark = (tag: string) => `#${tag} : `
 
 export const toNewChatMark = (tag: string) => `#${tag} `
+
+export const toMark = (role: TagRole, tag: string, needNewLine: boolean = false) =>
+	needNewLine ? `\n#${tag}` : role === 'newChat' ? toNewChatMark(tag) : toSpeakMark(tag)
 
 const speakerPostFix = [' ', '  ', ' :', ' ：']
 
@@ -61,17 +64,22 @@ const extractWords = (input: string): string[] => {
 
 const needsNewLine = (cursor: EditorPosition, editor: Editor) => {
 	if (cursor.line >= 1) {
-		if (editor.getLine(cursor.line - 1).trim()) return true
+		if (editor.getLine(cursor.line - 1).trim().length > 0) return true
 	}
 	return false
 }
 
 export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 	settings: PluginSettings
-	tagLowerCaseMap: Map<string, TagEntry>
+	tagLowerCaseMap: Map<string, Omit<TagEntry, 'replacement'>>
 	statusBarItem: HTMLElement
 
-	constructor(app: App, settings: PluginSettings, tagLowerCaseMap: Map<string, TagEntry>, statusBarItem: HTMLElement) {
+	constructor(
+		app: App,
+		settings: PluginSettings,
+		tagLowerCaseMap: Map<string, Omit<TagEntry, 'replacement'>>,
+		statusBarItem: HTMLElement
+	) {
 		super(app)
 		this.app = app
 		this.settings = settings
@@ -94,14 +102,13 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 		if (!firstTag) return null
 		// console.log('fistTag', firstTag)
 
-		let secondTag: TagEntry | undefined = undefined
+		let secondTag: Omit<TagEntry, 'replacement'> | undefined = undefined
 		if (words.length === 2) {
 			secondTag = this.tagLowerCaseMap.get(words[1].toLowerCase())
 			if (!secondTag) return null
-			if (firstTag.type !== 'newChat') return null // 只有newChat标签后面才能跟标签
+			if (firstTag.role !== 'newChat') return null // 只有newChat标签后面才能跟标签
 		}
-
-		console.log('fistTag', firstTag, 'secondTag', secondTag)
+		// console.log('fistTag', firstTag, 'secondTag', secondTag)
 
 		const suggestTag = secondTag || firstTag
 		const word = words.length === 2 ? words[1] : words[0]
@@ -109,13 +116,11 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 		const index = text.indexOf(word)
 		const postFix = text.slice(index + word.length)
 		if (postFix) {
-			if (suggestTag.type === 'newChat') {
+			if (suggestTag.role === 'newChat') {
 				// newChat 后面有内容，不触发
-				// console.debug(`==newChat postFix: ${postFix}, word: ${word}.`)
 				return null
 			} else if (!speakerPostFix.includes(postFix)) {
 				// speaker 后面有内容, 但不是 speakerPostFix 里的内容，不触发
-				// console.debug(`==postFix: ${postFix}, word: ${word}.`)
 				return null
 			}
 		}
@@ -125,9 +130,8 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 			start: { line: cursor.line, ch: index > 0 && text[index - 1] === '#' ? index - 1 : index },
 			end: { line: cursor.line, ch: cursor.ch },
 			query: JSON.stringify({
-				type: suggestTag.type,
-				tag: suggestTag.tag,
-				replacement: shouldInsertNewLine ? '\n' + suggestTag.replacement : suggestTag.replacement
+				...suggestTag,
+				replacement: toMark(suggestTag.role, suggestTag.tag, shouldInsertNewLine)
 			} as TagEntry)
 		}
 	}
@@ -137,7 +141,12 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 	}
 
 	renderSuggestion(element: TagEntry, el: HTMLElement) {
-		switch (element.type) {
+		if (element.replacement.includes('\n')) {
+			el.createSpan({ text: element.replacement })
+			return
+		}
+
+		switch (element.role) {
 			case 'assistant': {
 				el.createSpan({ text: element.replacement + '  ✨ ' + t('AI generate') + ' ✨  ' })
 				break
@@ -165,7 +174,10 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 		const editor = this.context.editor
 		editor.replaceRange(element.replacement, this.context.start, this.context.end)
 
-		if (element.type !== 'assistant') return
+		if (element.role !== 'assistant' || element.replacement.includes('\n')) {
+			this.close()
+			return
+		}
 		console.debug('element', element)
 
 		try {
