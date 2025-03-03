@@ -230,6 +230,20 @@ export class TarsSettingTab extends PluginSettingTab {
 					}
 				})
 			)
+
+		new Setting(advancedSection)
+			.setName(t('Tag suggest'))
+			.setDesc(
+				t(
+					'If you only use commands without needing tag suggestions, you can disable this feature. Changes will take effect after restarting the plugin.'
+				)
+			)
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.tagSuggest.enable).onChange(async (value) => {
+					this.plugin.settings.tagSuggest.enable = value
+					await this.plugin.saveSettings()
+				})
+			)
 	}
 
 	createProviderSetting = (index: number, settings: ProviderSettings, isOpen: boolean = false) => {

@@ -109,7 +109,9 @@ export default {
 		'在选中文本执行助手命令的时候，如果遇到缺少用户消息的错误，可能是需要更多时间来解析消息，请稍微增加延迟',
 	'Replace tag Command': '替换标签命令',
 	'Export to JSONL Command': '导出到 JSONL 命令',
-
+	'Tag suggest': '标签建议',
+	'If you only use commands without needing tag suggestions, you can disable this feature. Changes will take effect after restarting the plugin.':
+		'如果你只使用命令而不需要标签建议，可以禁用此功能。更改将在重新启动插件后生效。',
 	// suggest.ts
 	'AI generate': 'AI 生成',
 	'Text generated successfully': '文本生成成功',

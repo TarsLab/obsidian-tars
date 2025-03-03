@@ -32,8 +32,6 @@ export default class TarsPlugin extends Plugin {
 		this.statusBarItem.setText('Tars')
 
 		this.buildTagCommands(true)
-		this.registerEditorSuggest(new TagEditorSuggest(this.app, this.settings, this.tagLowerCaseMap, this.statusBarItem))
-
 		this.buildPromptCommands(true)
 
 		this.addCommand(selectMsgAtCursorCmd(this.app, this.settings))
@@ -46,6 +44,11 @@ export default class TarsPlugin extends Plugin {
 			)
 		)
 
+		if (this.settings.tagSuggest.enable) {
+			this.registerEditorSuggest(
+				new TagEditorSuggest(this.app, this.settings, this.tagLowerCaseMap, this.statusBarItem)
+			)
+		}
 		if (this.settings.advancedCmd.enableReplaceTag) this.addCommand(replaceCmd(this.app))
 		if (this.settings.advancedCmd.enableExportToJSONL) this.addCommand(exportCmd(this.app, this.settings))
 

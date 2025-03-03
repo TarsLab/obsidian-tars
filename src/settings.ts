@@ -21,6 +21,7 @@ export interface PluginSettings {
 	promptTemplates: PromptTemplate[]
 	confirmRegenerate: boolean
 	tagSuggest: {
+		enable: boolean
 		maxTriggerLineLength: number
 	}
 	answerDelayInMilliseconds: number
@@ -41,6 +42,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	answerDelayInMilliseconds: 2000,
 	confirmRegenerate: true,
 	tagSuggest: {
+		enable: true,
 		maxTriggerLineLength: 20
 	},
 	advancedCmd: {

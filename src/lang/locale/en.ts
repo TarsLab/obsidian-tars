@@ -111,6 +111,9 @@ export default {
 		'If you encounter errors with missing user messages when executing assistant commands on selected text, it may be due to the need for more time to parse the messages. Please slightly increase the delay time.',
 	'Replace tag Command': 'Replace tag Command',
 	'Export to JSONL Command': 'Export to JSONL Command',
+	'Tag suggest': 'Tag suggest',
+	'If you only use commands without needing tag suggestions, you can disable this feature. Changes will take effect after restarting the plugin.':
+		'If you only use commands without needing tag suggestions, you can disable this feature. Changes will take effect after restarting the plugin.',
 
 	// suggest.ts
 	'AI generate': 'AI generate',
