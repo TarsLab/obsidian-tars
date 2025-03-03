@@ -15,7 +15,7 @@ import { PluginSettings } from './settings'
 
 export type TagRole = 'user' | 'assistant' | 'system' | 'newChat'
 
-interface TagEntry {
+export interface TagEntry {
 	readonly type: TagRole
 	readonly tag: string
 	readonly replacement: string
@@ -26,106 +26,110 @@ export const toSpeakMark = (tag: string) => `#${tag} : `
 
 export const toNewChatMark = (tag: string) => `#${tag} `
 
-// “#tag” 触发会有问题，可能会被 obsidian的标签补全拦截
-const toTriggerPhrase = (w: string) => [
-	w.toLowerCase(),
-	`#${w.toLowerCase()} `,
-	`#${w.toLowerCase()} :`, // 英文冒号
-	`#${w.toLowerCase()} ：` // 中文冒号
-]
+const speakerPostFix = [' ', '  ', ' :', ' ：']
+
+export const getMaxTriggerLineLength = (settings: PluginSettings) => {
+	const maxNewChatLength = Math.max(0, ...settings.newChatTags.map((tag) => tag.length))
+	const maxOtherLength = Math.max(
+		0,
+		...settings.systemTags.map((tag) => tag.length),
+		...settings.userTags.map((tag) => tag.length),
+		...settings.providers.map((p) => p.tag.length)
+	)
+	return 4 + (maxNewChatLength + 1) + (maxOtherLength + 2)
+}
+
+/**
+ * 从字符串中提取单词，忽略特定的特殊符号（排除 #, 英文:, 中文：）
+ * 针对最多只需要3个单词的场景优化
+ */
+const extractWords = (input: string): string[] => {
+	// 使用正则匹配最多两个单词并直接返回
+	const matches = []
+	const regex = /[^\s#:：]+/g
+	let match
+
+	// 只查找最多3个匹配
+	for (let i = 0; i < 3; i++) {
+		match = regex.exec(input)
+		if (!match) break
+		matches.push(match[0])
+	}
+
+	return matches
+}
+
+const needsNewLine = (cursor: EditorPosition, editor: Editor) => {
+	if (cursor.line >= 1) {
+		if (editor.getLine(cursor.line - 1).trim()) return true
+	}
+	return false
+}
 
 export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 	settings: PluginSettings
+	tagLowerCaseMap: Map<string, TagEntry>
 	statusBarItem: HTMLElement
 
-	constructor(app: App, settings: PluginSettings, statusBarItem: HTMLElement) {
+	constructor(app: App, settings: PluginSettings, tagLowerCaseMap: Map<string, TagEntry>, statusBarItem: HTMLElement) {
 		super(app)
 		this.app = app
 		this.settings = settings
+		this.tagLowerCaseMap = tagLowerCaseMap
 		this.statusBarItem = statusBarItem
 	}
 
+	/** Based on the editor line and cursor position, determine if this EditorSuggest should be triggered at this moment. Typically, you would run a regular expression on the current line text before the cursor. Return null to indicate that this editor suggest is not supposed to be triggered.
+	Please be mindful of performance when implementing this function, as it will be triggered very often (on each keypress). Keep it simple, and return null as early as possible if you determine that it is not the right time. **/
 	onTrigger(cursor: EditorPosition, editor: Editor, file: TFile): EditorSuggestTriggerInfo | null {
-		// 为了避免干扰，基于新的段落触发
-		if (cursor.line >= 1) {
-			// 如果前面有一行，那么前面那行必须是空行
-			if (editor.getLine(cursor.line - 1).trim()) return null
-		}
-		let ch = 0
-		const rawLine = editor.getLine(cursor.line)
-		// 如果前面是 newChatTags, 把 newChatTag 截断
-		const newTagsText = this.settings.newChatTags.map(toNewChatMark)
-		for (const t of newTagsText) {
-			if (rawLine.startsWith(t)) {
-				ch = t.length
-				break
-			}
-		}
-		let selected = rawLine.slice(ch, cursor.ch)
-		const indexOfFirstNonWhitespace = selected.search(/\S/)
-		if (indexOfFirstNonWhitespace === -1) return null
-		ch += indexOfFirstNonWhitespace
-		selected = rawLine.slice(ch, cursor.ch)
+		if (cursor.ch < 1 || cursor.ch > this.settings.tagSuggest.maxTriggerLineLength) return null
+		const text = editor.getLine(cursor.line)
+		if (text.length > cursor.ch) return null // 光标不在行末尾
 
-		const selectedInLowerCase = selected.toLowerCase()
-		const triggerInfo = {
-			start: { line: cursor.line, ch: ch },
-			end: { line: cursor.line, ch: cursor.ch }
+		const words = extractWords(text)
+		if (words.length === 0 || words.length >= 3) return null
+
+		// words.length 1, 2
+		const firstTag = this.tagLowerCaseMap.get(words[0].toLowerCase())
+		if (!firstTag) return null
+		// console.log('fistTag', firstTag)
+
+		let secondTag: TagEntry | undefined = undefined
+		if (words.length === 2) {
+			secondTag = this.tagLowerCaseMap.get(words[1].toLowerCase())
+			if (!secondTag) return null
+			if (firstTag.type !== 'newChat') return null // 只有newChat标签后面才能跟标签
 		}
 
-		for (const t of this.settings.newChatTags) {
-			if (toTriggerPhrase(t).includes(selectedInLowerCase)) {
-				return {
-					...triggerInfo,
-					query: JSON.stringify({
-						type: 'newChat',
-						tag: t,
-						replacement: toNewChatMark(t)
-					} as TagEntry)
-				}
-			}
-		}
+		console.log('fistTag', firstTag, 'secondTag', secondTag)
 
-		for (const t of this.settings.userTags) {
-			if (toTriggerPhrase(t).includes(selectedInLowerCase)) {
-				return {
-					...triggerInfo,
-					query: JSON.stringify({
-						type: 'user',
-						tag: t,
-						replacement: toSpeakMark(t)
-					} as TagEntry)
-				}
+		const suggestTag = secondTag || firstTag
+		const word = words.length === 2 ? words[1] : words[0]
+
+		const index = text.indexOf(word)
+		const postFix = text.slice(index + word.length)
+		if (postFix) {
+			if (suggestTag.type === 'newChat') {
+				// newChat 后面有内容，不触发
+				// console.debug(`==newChat postFix: ${postFix}, word: ${word}.`)
+				return null
+			} else if (!speakerPostFix.includes(postFix)) {
+				// speaker 后面有内容, 但不是 speakerPostFix 里的内容，不触发
+				// console.debug(`==postFix: ${postFix}, word: ${word}.`)
+				return null
 			}
 		}
 
-		const providerTags = this.settings.providers.map((p) => p.tag)
-		for (const t of providerTags) {
-			if (toTriggerPhrase(t).includes(selectedInLowerCase)) {
-				return {
-					...triggerInfo,
-					query: JSON.stringify({
-						type: 'assistant',
-						tag: t,
-						replacement: toSpeakMark(t)
-					} as TagEntry)
-				}
-			}
+		const shouldInsertNewLine = needsNewLine(cursor, editor)
+		return {
+			start: { line: cursor.line, ch: index > 0 && text[index - 1] === '#' ? index - 1 : index },
+			end: { line: cursor.line, ch: cursor.ch },
+			query: JSON.stringify({
+				type: suggestTag.type,
+				tag: suggestTag.tag,
+				replacement: shouldInsertNewLine ? '\n' + suggestTag.replacement : suggestTag.replacement
+			} as TagEntry)
 		}
-
-		for (const t of this.settings.systemTags) {
-			if (toTriggerPhrase(t).includes(selectedInLowerCase)) {
-				return {
-					...triggerInfo,
-					query: JSON.stringify({
-						type: 'system',
-						tag: t,
-						replacement: toSpeakMark(t)
-					} as TagEntry)
-				}
-			}
-		}
-		return null
 	}
 
 	async getSuggestions(ctx: EditorSuggestContext) {
@@ -136,6 +140,18 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 		switch (element.type) {
 			case 'assistant': {
 				el.createSpan({ text: element.replacement + '  ✨ ' + t('AI generate') + ' ✨  ' })
+				break
+			}
+			case 'user': {
+				el.createSpan({ text: element.replacement + '  💬  ' })
+				break
+			}
+			case 'system': {
+				el.createSpan({ text: element.replacement + '  💬  ' })
+				break
+			}
+			case 'newChat': {
+				el.createSpan({ text: element.replacement + '  🚀  ' })
 				break
 			}
 			default: {
