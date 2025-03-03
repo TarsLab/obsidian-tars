@@ -205,8 +205,8 @@ export class TarsSettingTab extends PluginSettingTab {
 			.setName(t('Replace tag Command'))
 			.setDesc(t('Replace the names of the two most frequently occurring speakers with tag format.'))
 			.addToggle((toggle) =>
-				toggle.setValue(this.plugin.settings.advancedCmd.enableReplaceTag).onChange(async (value) => {
-					this.plugin.settings.advancedCmd.enableReplaceTag = value
+				toggle.setValue(this.plugin.settings.enableReplaceTag).onChange(async (value) => {
+					this.plugin.settings.enableReplaceTag = value
 					await this.plugin.saveSettings()
 					if (value) {
 						this.plugin.addCommand(replaceCmd(this.app))
@@ -220,8 +220,8 @@ export class TarsSettingTab extends PluginSettingTab {
 			.setName(t('Export to JSONL Command'))
 			.setDesc(t('Export conversations to JSONL'))
 			.addToggle((toggle) =>
-				toggle.setValue(this.plugin.settings.advancedCmd.enableExportToJSONL).onChange(async (value) => {
-					this.plugin.settings.advancedCmd.enableExportToJSONL = value
+				toggle.setValue(this.plugin.settings.enableExportToJSONL).onChange(async (value) => {
+					this.plugin.settings.enableExportToJSONL = value
 					await this.plugin.saveSettings()
 					if (value) {
 						this.plugin.addCommand(exportCmd(this.app, this.plugin.settings))
@@ -239,8 +239,8 @@ export class TarsSettingTab extends PluginSettingTab {
 				)
 			)
 			.addToggle((toggle) =>
-				toggle.setValue(this.plugin.settings.tagSuggest.enable).onChange(async (value) => {
-					this.plugin.settings.tagSuggest.enable = value
+				toggle.setValue(this.plugin.settings.enableTagSuggest).onChange(async (value) => {
+					this.plugin.settings.enableTagSuggest = value
 					await this.plugin.saveSettings()
 				})
 			)

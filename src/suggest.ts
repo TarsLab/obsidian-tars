@@ -90,7 +90,7 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 	/** Based on the editor line and cursor position, determine if this EditorSuggest should be triggered at this moment. Typically, you would run a regular expression on the current line text before the cursor. Return null to indicate that this editor suggest is not supposed to be triggered.
 	Please be mindful of performance when implementing this function, as it will be triggered very often (on each keypress). Keep it simple, and return null as early as possible if you determine that it is not the right time. **/
 	onTrigger(cursor: EditorPosition, editor: Editor, file: TFile): EditorSuggestTriggerInfo | null {
-		if (cursor.ch < 1 || cursor.ch > this.settings.tagSuggest.maxTriggerLineLength) return null
+		if (cursor.ch < 1 || cursor.ch > this.settings.tagSuggestMaxLineLength) return null
 		const text = editor.getLine(cursor.line)
 		if (text.length > cursor.ch) return null // 光标不在行末尾
 
