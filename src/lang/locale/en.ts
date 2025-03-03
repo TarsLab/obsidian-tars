@@ -49,7 +49,8 @@ export default {
 	'Duplicate title:': 'Duplicate title:',
 
 	// editor.ts
-	'Please add a user message before generating AI response': 'Please add a user message before generating AI response',
+	'Please add a user message first, or wait for the user message to be parsed.':
+		'Please add a user message first, or wait for the user message to be parsed.',
 	'Waiting for metadata to be ready. Please try again.': 'Waiting for metadata to be ready. Please try again.',
 	'No text generated': 'No text generated',
 	characters: 'characters',

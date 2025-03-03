@@ -49,7 +49,8 @@ export default {
 	'Duplicate title:': '重复的标题:',
 
 	// editor.ts
-	'Please add a user message before generating AI response': '请先添加用户消息，再用 AI 回答',
+	'Please add a user message first, or wait for the user message to be parsed.':
+		'请先添加用户消息，或者稍等用户消息解析完成',
 	'Waiting for metadata to be ready. Please try again.': '正在等待元数据准备就绪。请重试。',
 	'No text generated': '没有生成文本',
 	characters: '个字符',
