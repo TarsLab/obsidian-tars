@@ -104,8 +104,8 @@ export default {
 		'在使用助手标签命令时，替换旧的助手消息，是否需要弹窗确认',
 	Advanced: '高级',
 	'Delay before answer (Seconds)': '回答前的延迟（秒）',
-	'If you encounter errors with missing user messages, it may be due to the need for more time to parse the messages. Please slightly increase the answer delay time.':
-		'如果遇到缺少用户消息的错误，可能是因为需要更多时间来解析消息，请稍微增加延迟',
+	'If you encounter errors with missing user messages when executing assistant commands on selected text, it may be due to the need for more time to parse the messages. Please slightly increase the delay time.':
+		'在选中文本执行助手命令的时候，如果遇到缺少用户消息的错误，可能是需要更多时间来解析消息，请稍微增加延迟',
 	'Replace tag Command': '替换标签命令',
 	'Export to JSONL Command': '导出到 JSONL 命令',
 

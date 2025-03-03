@@ -177,7 +177,7 @@ export class TarsSettingTab extends PluginSettingTab {
 			.setName(t('Delay before answer (Seconds)'))
 			.setDesc(
 				t(
-					'If you encounter errors with missing user messages, it may be due to the need for more time to parse the messages. Please slightly increase the answer delay time.'
+					'If you encounter errors with missing user messages when executing assistant commands on selected text, it may be due to the need for more time to parse the messages. Please slightly increase the delay time.'
 				)
 			)
 			.addExtraButton((btn) => {

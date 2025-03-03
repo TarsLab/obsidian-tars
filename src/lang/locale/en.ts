@@ -106,8 +106,8 @@ export default {
 		'Confirm before replacing existing assistant responses when using assistant commands',
 	Advanced: 'Advanced',
 	'Delay before answer (Seconds)': 'Delay before answer (Seconds)',
-	'If you encounter errors with missing user messages, it may be due to the need for more time to parse the messages. Please slightly increase the answer delay time.':
-		'If you encounter errors with missing user messages, it may be due to the need for more time to parse the messages. Please slightly increase the answer delay time.',
+	'If you encounter errors with missing user messages when executing assistant commands on selected text, it may be due to the need for more time to parse the messages. Please slightly increase the delay time.':
+		'If you encounter errors with missing user messages when executing assistant commands on selected text, it may be due to the need for more time to parse the messages. Please slightly increase the delay time.',
 	'Replace tag Command': 'Replace tag Command',
 	'Export to JSONL Command': 'Export to JSONL Command',
 

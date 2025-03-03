@@ -20,6 +20,9 @@ export interface PluginSettings {
 	userTags: string[]
 	promptTemplates: PromptTemplate[]
 	confirmRegenerate: boolean
+	tagSuggest: {
+		maxTriggerLineLength: number
+	}
 	answerDelayInMilliseconds: number
 	advancedCmd: AdvancedCmdFlags
 }
@@ -37,6 +40,9 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	promptTemplates: [],
 	answerDelayInMilliseconds: 2000,
 	confirmRegenerate: true,
+	tagSuggest: {
+		maxTriggerLineLength: 20
+	},
 	advancedCmd: {
 		enableExportToJSONL: false,
 		enableReplaceTag: false
