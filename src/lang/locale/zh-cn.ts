@@ -49,7 +49,8 @@ export default {
 	'Duplicate title:': '重复的标题:',
 
 	// editor.ts
-	'Please add a user message before generating AI response': '请先添加用户消息，再用 AI 回答',
+	'Please add a user message first, or wait for the user message to be parsed.':
+		'请先添加用户消息，或者稍等用户消息解析完成',
 	'Waiting for metadata to be ready. Please try again.': '正在等待元数据准备就绪。请重试。',
 	'No text generated': '没有生成文本',
 	characters: '个字符',
@@ -104,11 +105,13 @@ export default {
 		'在使用助手标签命令时，替换旧的助手消息，是否需要弹窗确认',
 	Advanced: '高级',
 	'Delay before answer (Seconds)': '回答前的延迟（秒）',
-	'If you encounter errors with missing user messages, it may be due to the need for more time to parse the messages. Please slightly increase the answer delay time.':
-		'如果遇到缺少用户消息的错误，可能是因为需要更多时间来解析消息，请稍微增加延迟',
+	'If you encounter errors with missing user messages when executing assistant commands on selected text, it may be due to the need for more time to parse the messages. Please slightly increase the delay time.':
+		'在选中文本执行助手命令的时候，如果遇到缺少用户消息的错误，可能是需要更多时间来解析消息，请稍微增加延迟',
 	'Replace tag Command': '替换标签命令',
 	'Export to JSONL Command': '导出到 JSONL 命令',
-
+	'Tag suggest': '标签建议',
+	'If you only use commands without needing tag suggestions, you can disable this feature. Changes will take effect after restarting the plugin.':
+		'如果你只使用命令而不需要标签建议，可以禁用此功能。更改将在重新启动插件后生效。',
 	// suggest.ts
 	'AI generate': 'AI 生成',
 	'Text generated successfully': '文本生成成功',

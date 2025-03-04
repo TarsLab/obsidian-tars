@@ -14,13 +14,14 @@ import { t } from './lang/helper'
 import { getTitleFromCmdId, loadTemplateFileCommand, promptTemplateCmd, templateToCmdId } from './prompt'
 import { TarsSettingTab } from './settingTab'
 import { DEFAULT_SETTINGS, PluginSettings } from './settings'
-import { TagEditorSuggest } from './suggest'
+import { getMaxTriggerLineLength, TagEditorSuggest, TagEntry } from './suggest'
 
 export default class TarsPlugin extends Plugin {
 	settings: PluginSettings
 	statusBarItem: HTMLElement
 	tagCmdIds: string[] = []
 	promptCmdIds: string[] = []
+	tagLowerCaseMap: Map<string, Omit<TagEntry, 'replacement'>> = new Map()
 
 	async onload() {
 		await this.loadSettings()
@@ -29,7 +30,6 @@ export default class TarsPlugin extends Plugin {
 
 		this.statusBarItem = this.addStatusBarItem()
 		this.statusBarItem.setText('Tars')
-		this.registerEditorSuggest(new TagEditorSuggest(this.app, this.settings, this.statusBarItem))
 
 		this.buildTagCommands(true)
 		this.buildPromptCommands(true)
@@ -44,8 +44,13 @@ export default class TarsPlugin extends Plugin {
 			)
 		)
 
-		if (this.settings.advancedCmd.enableReplaceTag) this.addCommand(replaceCmd(this.app))
-		if (this.settings.advancedCmd.enableExportToJSONL) this.addCommand(exportCmd(this.app, this.settings))
+		if (this.settings.enableTagSuggest) {
+			this.registerEditorSuggest(
+				new TagEditorSuggest(this.app, this.settings, this.tagLowerCaseMap, this.statusBarItem)
+			)
+		}
+		if (this.settings.enableReplaceTag) this.addCommand(replaceCmd(this.app))
+		if (this.settings.enableExportToJSONL) this.addCommand(exportCmd(this.app, this.settings))
 
 		this.addSettingTab(new TarsSettingTab(this.app, this))
 	}
@@ -73,13 +78,25 @@ export default class TarsPlugin extends Plugin {
 	}
 
 	buildTagCommands(suppressNotifications: boolean = false) {
+		this.settings.tagSuggestMaxLineLength = getMaxTriggerLineLength(this.settings)
+		// console.debug('maxTriggerLineLength', this.settings.tagSuggest.maxTriggerLineLength)
+		// console.debug('triggerMap:', JSON.stringify(Object.fromEntries(this.tagLowerCaseMap), null, 2))
+
 		const newTagCmdIds = getTagCmdIdsFromSettings(this.settings)
 
 		const toRemove = this.tagCmdIds.filter((cmdId) => !newTagCmdIds.includes(cmdId))
-		toRemove.forEach((cmdId) => this.removeCommand(cmdId))
+		toRemove.forEach((cmdId) => {
+			this.removeCommand(cmdId)
+			const { tag } = getMeta(cmdId)
+			this.tagLowerCaseMap.delete(tag.toLowerCase())
+		})
 
 		const toAdd = newTagCmdIds.filter((cmdId) => !this.tagCmdIds.includes(cmdId))
-		toAdd.forEach((cmdId) => this.addTagCommand(cmdId))
+		toAdd.forEach((cmdId) => {
+			this.addTagCommand(cmdId)
+			const { role, tag } = getMeta(cmdId)
+			this.tagLowerCaseMap.set(tag.toLowerCase(), { role, tag })
+		})
 
 		this.tagCmdIds = newTagCmdIds
 		if (suppressNotifications) return

@@ -20,11 +20,9 @@ export interface PluginSettings {
 	userTags: string[]
 	promptTemplates: PromptTemplate[]
 	confirmRegenerate: boolean
+	enableTagSuggest: boolean
+	tagSuggestMaxLineLength: number
 	answerDelayInMilliseconds: number
-	advancedCmd: AdvancedCmdFlags
-}
-
-export interface AdvancedCmdFlags {
 	enableExportToJSONL: boolean
 	enableReplaceTag: boolean
 }
@@ -37,10 +35,10 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	promptTemplates: [],
 	answerDelayInMilliseconds: 2000,
 	confirmRegenerate: true,
-	advancedCmd: {
-		enableExportToJSONL: false,
-		enableReplaceTag: false
-	}
+	enableTagSuggest: true,
+	tagSuggestMaxLineLength: 20,
+	enableExportToJSONL: false,
+	enableReplaceTag: false
 }
 
 export const availableVendors: Vendor[] = [

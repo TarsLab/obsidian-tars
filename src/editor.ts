@@ -347,8 +347,8 @@ export const generate = async (
 	console.debug('messages', messages)
 
 	const lastMsg = messages.last()
-	if (!lastMsg || lastMsg.role !== 'user') {
-		throw new Error(t('Please add a user message before generating AI response'))
+	if (!lastMsg || lastMsg.role !== 'user' || lastMsg.content.trim().length === 0) {
+		throw new Error(t('Please add a user message first, or wait for the user message to be parsed.'))
 	}
 	const round = messages.filter((m) => m.role === 'assistant').length + 1
 

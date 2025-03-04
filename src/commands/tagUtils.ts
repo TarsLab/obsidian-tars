@@ -98,7 +98,7 @@ export const insertMarkToEmptyLines = (editor: Editor, from: EditorPosition, mar
 
 	editor.replaceRange(insertText, from, from)
 
-	editor.setCursor({
+	editor.setSelection({
 		line: toLine,
 		ch: editor.getLine(toLine).length
 	})
@@ -121,7 +121,7 @@ export const insertMarkToBegin = (editor: Editor, range: EditorRange, mark: stri
 
 	editor.replaceRange(insertText, from, from)
 
-	editor.setCursor({
+	editor.setSelection({
 		line: toLine,
 		ch: editor.getLine(toLine).length
 	})
@@ -131,7 +131,7 @@ export const replaceTag = (editor: Editor, range: EditorRange, tagRange: EditorR
 	const { to } = range
 	if (tagRange) {
 		editor.replaceRange('#' + newTag, tagRange.from, tagRange.to)
-		editor.setCursor({
+		editor.setSelection({
 			line: to.line,
 			ch: editor.getLine(to.line).length
 		})

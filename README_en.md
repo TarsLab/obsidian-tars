@@ -83,8 +83,8 @@ For better appearance, it is recommended to use the [colored tags plugin](https:
 
 ### How to view the developer console?
 
-- **Windows**：`CTRL + SHIFT + i`
-- **MacOS**：`CMD + OPTION + i`
-- **Linux**：`CTRL + SHIFT + i`
+- **Windows**: `CTRL + SHIFT + i`
+- **MacOS**: `CMD + OPTION + i`
+- **Linux**: `CTRL + SHIFT + i`
 
 [Capture console logs](https://help.obsidian.md/Help+and+support#Capture+console+logs)
