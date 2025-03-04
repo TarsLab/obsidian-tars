@@ -7,15 +7,25 @@
 
 # Introduction
 
-Tars is an Obsidian plugin that supports text generation based on tag suggestions, using services like Claude, OpenAI, Gemini, Ollama, Kimi, Doubao, Qwen, Zhipu, 🔥DeepSeek, QianFan & more. The name Tars comes from the robot Tars in the movie "Interstellar".
+Tars is an Obsidian plugin that supports text generation based on tag suggestions, using services like Claude, OpenAI, Gemini, Ollama, Kimi, Doubao, Qwen, Zhipu, 🔥DeepSeek, QianFan & more. The name Tars comes from the robot Tars in the movie "Interstellar". The plugin supports both desktop and mobile devices.
+
+## Major Updates in Version 2.x
+
+- 🔥 Added tag commands, all tags are available in the command list. Tag commands insert the appropriate tags based on selected sections or the section at cursor position.  
+  Quick response: Move the cursor to the line (or select multiple paragraphs), choose an assistant tag (like `#DeepSeek :`) from the command list to generate a response.
+
+![deepseek](docs/images/deepSeek.gif)
+
+- 🔥 Custom prompt templates, run the "Load template file" command when using for the first time.
+- 🔥 Status bar that displays real-time information about character count, rounds, and time spent.
+- 🔥 Tag suggestions with redesigned trigger logic that better aligns with software design principles and significantly improved performance.  
+  Type `#`, use Obsidian's native tag completion, then input space to trigger.  
+  On mobile devices where typing `#` might be inconvenient, you can type the complete tag (without #) to trigger.  
+  Assistant tags will generate AI responses when triggered.
+
+![tagSuggest](docs/images/tagSuggest.gif)
 
 ## Features
-
-- Text generation AI assistant triggered by tags
-
-![Text generation triggered by tag](docs/images/write%20a%20story%20with%20Kimi.gif)
-
-> ⚠️ **Note**: Do not add "#" in front. It is triggered by entering the "tag", not entering "#tag". In the above picture, the input is "kimi", not "#kimi".
 
 - Support for internal links
 
@@ -49,7 +59,13 @@ If the AI provider you want is not in the list above, you can propose a specific
 
 ## How to use
 
-Add an AI assistant in the settings page, set the API key, and then use the corresponding tag in the editor to trigger the AI assistant. Trigger through a conversation form, with user messages first, then trigger the AI assistant to answer questions.
+- Add an AI assistant in the settings page, set the API key, and configure the model.
+- Enter a question, like "1+1=?", then select "#User :" from the command list to transform it into - "#User : 1+1=?"
+- Select an assistant from the command list, like "#Claude :", to trigger the AI assistant to answer the question.
+- You can also directly type `#`, enter the tag, and then type a space to trigger the AI assistant.
+- Follow the conversation order rules of large language models: system messages always appear first (can be omitted), then user and assistant messages alternate like a ping-pong match.
+
+A simple conversation example:
 
 ```text
 #User : 1+1=?（user message）
@@ -57,9 +73,14 @@ Add an AI assistant in the settings page, set the API key, and then use the corr
 #Claude :（trigger）
 ```
 
-If you are not satisfied with the AI assistant's answer and want to retry. Use the plugin command "Select the message at the cursor", select and delete the AI assistant's response content, modify your question, and trigger the AI assistant again.
+Conversation order rules:
 
-If the model type you want is not in the AI assistant in the settings page, or the server address needs to be customized, you can configure it in the "Override input parameters" in the settings, input JSON format, for example `{"model":"your model"}`.
+```mermaid
+graph LR
+    A[System message] --> B[User message] --> C[Assistant message] --> B
+```
+
+If you are not satisfied with the AI assistant's answer and want to retry. Use the plugin command "Select the message at the cursor", select and delete the AI assistant's response content, modify your question, and trigger the AI assistant again. Or select the response content and use a command like "#Claude :" to retrigger the AI assistant, which will delete the previous response and generate a new one.
 
 ## Conversations syntax
 
@@ -71,15 +92,38 @@ A paragraph cannot contain multiple messages. Messages should be separated by bl
 - Callout sections will be ignored. You can write content in the callout without sending it to the AI assistant. Callout is not markdown syntax, it is an obsidian extension syntax.
 - Start a new conversation with `NewChat` tag.
 
-## Recommended
+Tag commands are based on the paragraph at the cursor or in the selection. A Markdown paragraph can be:
 
-For better appearance, it is recommended to use the [colored tags plugin](https://github.com/pfrankov/obsidian-colored-tags).
+- Multiple lines of plain text not separated by empty lines
+- A code block
+
+With correct syntax, when you input a space after #tag, it will trigger tag completion. For example:
+
+```markdown
+#NewChat
+
+#System :
+
+#User :
+
+#NewChat #System :
+
+#NewChat #User :
+
+#Claude : (AI generate)
+```
+
+## Appearance customization
+
+We recommend using the [colored tags plugin](https://github.com/pfrankov/obsidian-colored-tags).
 
 ![Colored tags plugin](docs/images/coloredTags.png)
 
-- Tag setting suggestion. Change the default tag to the abbreviation of the model used or the abbreviation of the usage scenario.
-
 ## FAQ
+
+### Can't find the model you want in the settings?
+
+You can configure it in the "Override input parameters" section in the settings by entering JSON format, such as `{"model":"your-desired-model"}`.
 
 ### How to view the developer console?
 
@@ -88,3 +132,20 @@ For better appearance, it is recommended to use the [colored tags plugin](https:
 - **Linux**: `CTRL + SHIFT + i`
 
 [Capture console logs](https://help.obsidian.md/Help+and+support#Capture+console+logs)
+
+### How to enter the baseUrl when using third-party services?
+
+Modify the baseURL in the settings, copy and paste the corresponding address from the service provider's documentation, and finally check if the URL is complete.
+
+### Which assistant type to choose for third-party service providers?
+
+LLM protocols differ significantly between openAI, claude, and gemini. Make sure to select the correct one. The chain of thought in deepseek-r1 is also different from openAI.
+
+### What do the 404, 400, 4xx numbers in error messages mean?
+
+These are HTTP status codes:
+
+- 402 means "Payment Required".
+- 404 means "Not Found", usually due to incorrect baseURL configuration or model name.
+- 400 means "Bad Request", possibly due to incorrect API key, missing user messages, tag parsing failure - leading to missing messages, model errors, etc.
+- 429 means "Too Many Requests", possibly due to high request frequency or service provider rate limits.
