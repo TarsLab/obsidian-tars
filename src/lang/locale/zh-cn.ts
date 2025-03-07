@@ -15,6 +15,7 @@ export default {
 	'Regenerate?': '重新生成?',
 	'This will delete the current response content. You can configure this in settings to not require confirmation.':
 		'这会删掉当前的回答内容。你可以在设置里配置不需要弹窗确认。',
+	Yes: '是',
 
 	// commands/export.ts
 	'Export conversations to JSONL': '导出对话到 JSONL',

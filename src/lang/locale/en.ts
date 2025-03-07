@@ -15,6 +15,7 @@ export default {
 	'Regenerate?': 'Regenerate?',
 	'This will delete the current response content. You can configure this in settings to not require confirmation.':
 		'This will delete the current response content. You can configure this in settings to not require confirmation.',
+	Yes: 'Yes',
 
 	// commands/export.ts
 	'Export conversations to JSONL': 'Export conversations to JSONL',

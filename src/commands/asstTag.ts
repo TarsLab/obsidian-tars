@@ -133,7 +133,7 @@ class ConfirmModal extends Modal {
 
 		new Setting(contentEl).addButton((btn) =>
 			btn
-				.setButtonText('确认')
+				.setButtonText(t('Yes'))
 				.setCta()
 				.onClick(async () => {
 					this.close()
