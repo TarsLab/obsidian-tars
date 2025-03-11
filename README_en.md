@@ -145,6 +145,7 @@ LLM protocols differ significantly between openAI, claude, and gemini. Make sure
 
 These are HTTP status codes:
 
+- 401 means "Unauthorized", possibly due to an incorrect API key.
 - 402 means "Payment Required".
 - 404 means "Not Found", usually due to incorrect baseURL configuration or model name.
 - 400 means "Bad Request", possibly due to incorrect API key, missing user messages, tag parsing failure - leading to missing messages, model errors, etc.

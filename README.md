@@ -145,6 +145,7 @@ LLM的协议是有区别的，openAI，claude，gemini 差别很大，注意要�
 
 这些是 HTTP 状态码：
 
+- 401表示“未授权”（Unauthorized），可能是 API 密钥错误。
 - 402表示“需要付款”（Payment Required）。
 - 404表示“未找到”（Not Found），通常是 baseURL 配置错误，或者模型名称错误。
 - 400表示“错误请求”（Bad Request），可能是 API 密钥错误，缺失用户消息，标签解析失败导致消息缺失，模型错误等等。
