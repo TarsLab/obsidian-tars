@@ -90,7 +90,9 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 	/** Based on the editor line and cursor position, determine if this EditorSuggest should be triggered at this moment. Typically, you would run a regular expression on the current line text before the cursor. Return null to indicate that this editor suggest is not supposed to be triggered.
 	Please be mindful of performance when implementing this function, as it will be triggered very often (on each keypress). Keep it simple, and return null as early as possible if you determine that it is not the right time. **/
 	onTrigger(cursor: EditorPosition, editor: Editor, file: TFile): EditorSuggestTriggerInfo | null {
+		if (this.settings.editorStatus.isTextInserting) return null
 		if (cursor.ch < 1 || cursor.ch > this.settings.tagSuggestMaxLineLength) return null
+		// console.debug('---- onTrigger ---------')
 		const text = editor.getLine(cursor.line)
 		if (text.length > cursor.ch) return null // 光标不在行末尾
 
@@ -100,7 +102,6 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 		// words.length 1, 2
 		const firstTag = this.tagLowerCaseMap.get(words[0].toLowerCase())
 		if (!firstTag) return null
-		// console.log('fistTag', firstTag)
 
 		let secondTag: Omit<TagEntry, 'replacement'> | undefined = undefined
 		if (words.length === 2) {
@@ -108,7 +109,6 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 			if (!secondTag) return null
 			if (firstTag.role !== 'newChat') return null // 只有newChat标签后面才能跟标签
 		}
-		// console.log('fistTag', firstTag, 'secondTag', secondTag)
 
 		const suggestTag = secondTag || firstTag
 		const word = words.length === 2 ? words[1] : words[0]
@@ -189,9 +189,10 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 			const env = await buildRunEnv(this.app, this.settings)
 			const messagesEndOffset = editor.posToOffset(this.context.start)
 			console.debug('endOffset', messagesEndOffset)
-			await generate(env, editor, provider, messagesEndOffset, this.statusBarItem)
+			await generate(env, editor, provider, messagesEndOffset, this.statusBarItem, this.settings.editorStatus)
 			new Notice(t('Text generated successfully'))
 		} catch (error) {
+			this.settings.editorStatus.isTextInserting = false
 			console.error('error', error)
 			new Notice(
 				`🔴 ${Platform.isDesktopApp ? t('Check the developer console for error details. ') : ''}${error}`,

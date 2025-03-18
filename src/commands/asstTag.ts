@@ -42,7 +42,7 @@ export const asstTagCmd = (
 					ch: 0
 				})
 				const env = await buildRunEnv(app, settings)
-				await generate(env, editor, provider, messagesEndOffset, statusBarItem)
+				await generate(env, editor, provider, messagesEndOffset, statusBarItem, settings.editorStatus)
 				return
 			}
 
@@ -59,7 +59,7 @@ export const asstTagCmd = (
 					ch: 0
 				})
 				const env = await buildRunEnv(app, settings)
-				await generate(env, editor, provider, messagesEndOffset, statusBarItem)
+				await generate(env, editor, provider, messagesEndOffset, statusBarItem, settings.editorStatus)
 			} else if (role === 'assistant') {
 				// 如果是asstTag，弹窗问用户是否重新生成
 				if (settings.confirmRegenerate) {
@@ -80,9 +80,10 @@ export const asstTagCmd = (
 					ch: 0
 				})
 				const env = await buildRunEnv(app, settings)
-				await generate(env, editor, provider, messagesEndOffset, statusBarItem)
+				await generate(env, editor, provider, messagesEndOffset, statusBarItem, settings.editorStatus)
 			}
 		} catch (error) {
+			settings.editorStatus.isTextInserting = false
 			console.error(error)
 			new Notice(
 				`🔴 ${Platform.isDesktopApp ? t('Check the developer console for error details. ') : ''}${error}`,
@@ -112,7 +113,7 @@ const regenerate = async (
 		ch: 0
 	})
 	const env = await buildRunEnv(app, settings)
-	await generate(env, editor, provider, messagesEndOffset, statusBarItem)
+	await generate(env, editor, provider, messagesEndOffset, statusBarItem, settings.editorStatus)
 }
 
 class ConfirmModal extends Modal {

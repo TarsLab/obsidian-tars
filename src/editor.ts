@@ -7,12 +7,13 @@ import {
 	SectionCache,
 	TagCache,
 	Vault,
+	debounce,
 	parseLinktext,
 	resolveSubpath
 } from 'obsidian'
 import { t } from 'src/lang/helper'
 import { Message, ProviderSettings } from './providers'
-import { PluginSettings, availableVendors } from './settings'
+import { EditorStatus, PluginSettings, availableVendors } from './settings'
 import { TagRole } from './suggest'
 
 export interface RunEnv {
@@ -229,7 +230,16 @@ const fetchConversation = async (env: RunEnv, startOffset: number, endOffset: nu
 	return conversation
 }
 
-const insertText = (editor: Editor, text: string) => {
+const debouncedResetInsertState = debounce(
+	(editorStatus: EditorStatus) => {
+		editorStatus.isTextInserting = false
+	},
+	1000,
+	true
+)
+
+const insertText = (editor: Editor, text: string, editorStatus: EditorStatus) => {
+	editorStatus.isTextInserting = true
 	let cursor = editor.getCursor('to')
 	const lineAtCursor = editor.getLine(cursor.line)
 	if (lineAtCursor.length > cursor.ch) {
@@ -242,6 +252,7 @@ const insertText = (editor: Editor, text: string) => {
 		line: cursor.line,
 		ch: cursor.ch + text.length
 	})
+	debouncedResetInsertState(editorStatus)
 }
 
 const getSectionsWithRefer = (fileMeta: CachedMetadata) => {
@@ -337,7 +348,8 @@ export const generate = async (
 	editor: Editor,
 	provider: ProviderSettings,
 	endOffset: number,
-	statusBarItem: HTMLElement
+	statusBarItem: HTMLElement,
+	editorStatus: EditorStatus
 ) => {
 	const vendor = availableVendors.find((v) => v.name === provider.vendor)
 	if (!vendor) {
@@ -360,7 +372,7 @@ export const generate = async (
 
 	let accumulatedText = ''
 	for await (const text of sendRequest(messages)) {
-		insertText(editor, text)
+		insertText(editor, text, editorStatus)
 		accumulatedText += text
 		statusBarItem.setText(`Round ${round}: ${accumulatedText.length}${t('characters')}`)
 	}

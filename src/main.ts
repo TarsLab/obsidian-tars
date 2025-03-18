@@ -44,11 +44,12 @@ export default class TarsPlugin extends Plugin {
 			)
 		)
 
-		if (this.settings.enableTagSuggest) {
+		this.settings.editorStatus = { isTextInserting: false }
+		if (this.settings.enableTagSuggest)
 			this.registerEditorSuggest(
 				new TagEditorSuggest(this.app, this.settings, this.tagLowerCaseMap, this.statusBarItem)
 			)
-		}
+
 		if (this.settings.enableReplaceTag) this.addCommand(replaceCmd(this.app))
 		if (this.settings.enableExportToJSONL) this.addCommand(exportCmd(this.app, this.settings))
 
@@ -79,8 +80,6 @@ export default class TarsPlugin extends Plugin {
 
 	buildTagCommands(suppressNotifications: boolean = false) {
 		this.settings.tagSuggestMaxLineLength = getMaxTriggerLineLength(this.settings)
-		// console.debug('maxTriggerLineLength', this.settings.tagSuggest.maxTriggerLineLength)
-		// console.debug('triggerMap:', JSON.stringify(Object.fromEntries(this.tagLowerCaseMap), null, 2))
 
 		const newTagCmdIds = getTagCmdIdsFromSettings(this.settings)
 
