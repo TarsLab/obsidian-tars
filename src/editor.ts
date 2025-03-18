@@ -2,7 +2,6 @@ import {
 	App,
 	CachedMetadata,
 	Editor,
-	EditorPosition,
 	MetadataCache,
 	ReferenceCache,
 	SectionCache,
@@ -231,15 +230,18 @@ const fetchConversation = async (env: RunEnv, startOffset: number, endOffset: nu
 }
 
 const insertText = (editor: Editor, text: string) => {
-	const current = editor.getCursor('to')
-	const lines = text.split('\n')
-	const newPos: EditorPosition = {
-		line: current.line + lines.length - 1,
-		ch: lines.length === 1 ? current.ch + text.length : lines[lines.length - 1].length
+	let cursor = editor.getCursor('to')
+	const lineAtCursor = editor.getLine(cursor.line)
+	if (lineAtCursor.length > cursor.ch) {
+		cursor = { line: cursor.line, ch: lineAtCursor.length }
+		console.debug('Update cursor to end of line', cursor)
 	}
-	editor.replaceRange(text, current)
-	editor.setCursor(newPos)
-	editor.scrollIntoView({ from: newPos, to: newPos })
+
+	editor.replaceRange(text, cursor)
+	editor.setCursor({
+		line: cursor.line,
+		ch: cursor.ch + text.length
+	})
 }
 
 const getSectionsWithRefer = (fileMeta: CachedMetadata) => {
