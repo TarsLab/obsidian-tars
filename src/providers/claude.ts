@@ -81,7 +81,12 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 		}
 	}
 
-const models = ['claude-3-5-sonnet-latest', 'claude-3-opus-latest', 'claude-3-5-haiku-latest']
+const models = [
+	'claude-3-7-sonnet-latest',
+	'claude-3-5-sonnet-latest',
+	'claude-3-opus-latest',
+	'claude-3-5-haiku-latest'
+]
 
 export const claudeVendor: Vendor = {
 	name: 'Claude',
