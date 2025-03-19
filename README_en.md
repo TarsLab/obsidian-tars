@@ -54,7 +54,7 @@ If the AI provider you want is not in the list above, you can propose a specific
 
 - Azure: Supports o1, deepseek-r1, gpt-4o, etc.
 - 🔥DeepSeek: The reasoning model deepseek-reasoner's CoT is output in callout format
-- Doubao: Supports bot API, [supports deepseek networking](https://github.com/TarsLab/obsidian-tars/issues/68)
+- Doubao: Supports bot API, [Supports DeepSeek web search plugin and knowledge base plugin](https://github.com/TarsLab/obsidian-tars/issues/68)
 - 🔥SiliconFlow: Supports many models such as DeepSeek V3/R1
 - Zhipu: Web search option
 

@@ -54,7 +54,7 @@ Tars 是一个 Obsidian 插件，基于标签建议进行文本生成，支持 C
 
 - Azure: 支持 o1，deepseek-r1，gpt-4o 等等
 - 🔥DeepSeek：推理模型 deepseek-reasoner 的思维链以 callout 格式输出
-- Doubao: 支持应用（bot）API，[支持deepseek联网](https://github.com/TarsLab/obsidian-tars/issues/68)
+- Doubao: 支持应用（bot）API，[支持 deepseek 联网插件和知识库插件](https://github.com/TarsLab/obsidian-tars/issues/68)
 - 🔥SiliconFlow：支持 DeepSeek V3/R1 等等众多模型
 - Zhipu：网络搜索选项
 
