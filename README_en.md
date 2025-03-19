@@ -54,6 +54,7 @@ If the AI provider you want is not in the list above, you can propose a specific
 
 - Azure: Supports o1, deepseek-r1, gpt-4o, etc.
 - 🔥DeepSeek: The reasoning model deepseek-reasoner's CoT is output in callout format
+- Doubao: Supports bot API, [supports deepseek networking](https://github.com/TarsLab/obsidian-tars/issues/68)
 - 🔥SiliconFlow: Supports many models such as DeepSeek V3/R1
 - Zhipu: Web search option
 
@@ -150,3 +151,10 @@ These are HTTP status codes:
 - 404 means "Not Found", usually due to incorrect baseURL configuration or model name.
 - 400 means "Bad Request", possibly due to incorrect API key, missing user messages, tag parsing failure - leading to missing messages, model errors, etc.
 - 429 means "Too Many Requests", possibly due to high request frequency or service provider rate limits.
+
+### Text generation is very long and complex, causing rendering performance issues or app freezing
+
+- Try using the default theme. Some third-party themes can negatively impact rendering performance; switch to a more efficient theme.
+- Try using "Source mode" for conversation interaction. When you expect long text output, change the editing mode from "Live preview" to "Source mode" so Obsidian doesn't need to render the content. After the output is complete, switch back to "Live preview" mode.
+
+[Related issue](https://github.com/TarsLab/obsidian-tars/issues/78)

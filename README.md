@@ -54,6 +54,7 @@ Tars 是一个 Obsidian 插件，基于标签建议进行文本生成，支持 C
 
 - Azure: 支持 o1，deepseek-r1，gpt-4o 等等
 - 🔥DeepSeek：推理模型 deepseek-reasoner 的思维链以 callout 格式输出
+- Doubao: 支持应用（bot）API，[支持deepseek联网](https://github.com/TarsLab/obsidian-tars/issues/68)
 - 🔥SiliconFlow：支持 DeepSeek V3/R1 等等众多模型
 - Zhipu：网络搜索选项
 
@@ -150,3 +151,10 @@ LLM的协议是有区别的，openAI，claude，gemini 差别很大，注意要�
 - 404表示“未找到”（Not Found），通常是 baseURL 配置错误，或者模型名称错误。
 - 400表示“错误请求”（Bad Request），可能是 API 密钥错误，缺失用户消息，标签解析失败导致消息缺失，模型错误等等。
 - 429表示“太多请求”（Too Many Requests），可能是请求频率过高，或者是服务商限制了请求频率。
+
+### 生成文本很长，格式复杂，导致渲染性能问题或者程序假死
+
+- 尝试使用默认主题，有些第三方主题对渲染性能有负面影响，改用高效率的主题。
+- 尝试使用“源码模式”进行对话交互。当你觉得要输出长文本的时候，把编辑模式从“实时阅览”改为“源码模式”，这样obsidian不用去渲染，等输出完成后，再把编辑模式改回“实时阅览”。
+
+[相关的issue](https://github.com/TarsLab/obsidian-tars/issues/78)
