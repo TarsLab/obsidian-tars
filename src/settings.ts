@@ -8,6 +8,7 @@ import { geminiVendor } from './providers/gemini'
 import { kimiVendor } from './providers/kimi'
 import { ollamaVendor } from './providers/ollama'
 import { openAIVendor } from './providers/openAI'
+import { openRouterVendor } from './providers/openRouter'
 import { qianFanVendor } from './providers/qianFan'
 import { qwenVendor } from './providers/qwen'
 import { siliconFlowVendor } from './providers/siliconflow'
@@ -57,6 +58,7 @@ export const availableVendors: Vendor[] = [
 	geminiVendor,
 	kimiVendor,
 	ollamaVendor,
+	openRouterVendor,
 	qianFanVendor,
 	qwenVendor,
 	siliconFlowVendor,
