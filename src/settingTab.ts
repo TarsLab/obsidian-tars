@@ -6,6 +6,7 @@ import TarsPlugin from './main'
 import { SelectModelModal } from './modal'
 import { BaseOptions, Optional, ProviderSettings } from './providers'
 import { ollamaVendor } from './providers/ollama'
+import { fetchOpenRouterModels, openRouterVendor } from './providers/openRouter'
 import { fetchModels, siliconFlowVendor } from './providers/siliconflow'
 import { ZhipuOptions, zhipuVendor } from './providers/zhipu'
 import { DEFAULT_SETTINGS, availableVendors } from './settings'
@@ -281,6 +282,27 @@ export class TarsSettingTab extends PluginSettingTab {
 							}
 							try {
 								const models = await fetchModels(settings.options.apiKey)
+								const onChoose = async (selectedModel: string) => {
+									settings.options.model = selectedModel
+									await this.plugin.saveSettings()
+									btn.setButtonText(selectedModel)
+								}
+								new SelectModelModal(this.app, models, onChoose).open()
+							} catch (error) {
+								new Notice('🔴' + error)
+							}
+						})
+				})
+		} else if (vendor.name === openRouterVendor.name) {
+			new Setting(details)
+				.setName(t('Model'))
+				.setDesc(t('Select the model to use'))
+				.addButton((btn) => {
+					btn
+						.setButtonText(settings.options.model ? settings.options.model : t('Select the model to use'))
+						.onClick(async () => {
+							try {
+								const models = await fetchOpenRouterModels()
 								const onChoose = async (selectedModel: string) => {
 									settings.options.model = selectedModel
 									await this.plugin.saveSettings()
