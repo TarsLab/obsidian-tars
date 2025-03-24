@@ -8,7 +8,7 @@ export const newChatTagCmd = ({ id, name, tag }: TagCmdMeta): Command => ({
 	name,
 	editorCallback: async (editor: Editor, view: MarkdownView) => {
 		try {
-			// 先用最简单的方式，直接insert。不作其他判断，也不考虑换行
+			// Simple approach, direct insert. No other judgments or line break considerations
 			const cursor = editor.getCursor()
 			const mark = toNewChatMark(tag)
 			editor.replaceRange(mark, cursor)

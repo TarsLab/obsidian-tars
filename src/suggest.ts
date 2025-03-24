@@ -21,7 +21,7 @@ export interface TagEntry {
 	readonly replacement: string
 }
 
-// 冒号前面加空格，对中文输入更友好。中文输入#tag后需要空格，才能输入中文的冒号
+// Add space before colon for better input experience. Space is needed after #tag to input colon
 export const toSpeakMark = (tag: string) => `#${tag} : `
 
 export const toNewChatMark = (tag: string) => `#${tag} `
@@ -43,16 +43,16 @@ export const getMaxTriggerLineLength = (settings: PluginSettings) => {
 }
 
 /**
- * 从字符串中提取单词，忽略特定的特殊符号（排除 #, 英文:, 中文：）
- * 针对最多只需要3个单词的场景优化
+ * Extract words from string, ignore specific special characters (exclude #, English:, Chinese：)
+ * Optimized for scenarios where only up to 3 words are needed
  */
 const extractWords = (input: string): string[] => {
-	// 使用正则匹配最多两个单词并直接返回
+	// Use regular expression to match up to two words and return directly
 	const matches = []
 	const regex = /[^\s#:：]+/g
 	let match
 
-	// 只查找最多3个匹配
+	// Only find up to 3 matches
 	for (let i = 0; i < 3; i++) {
 		match = regex.exec(input)
 		if (!match) break
@@ -94,7 +94,7 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 		if (cursor.ch < 1 || cursor.ch > this.settings.tagSuggestMaxLineLength) return null
 		// console.debug('---- onTrigger ---------')
 		const text = editor.getLine(cursor.line)
-		if (text.length > cursor.ch) return null // 光标不在行末尾
+		if (text.length > cursor.ch) return null // Cursor is not at the end of the line
 
 		const words = extractWords(text)
 		if (words.length === 0 || words.length >= 3) return null
@@ -107,7 +107,7 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 		if (words.length === 2) {
 			secondTag = this.tagLowerCaseMap.get(words[1].toLowerCase())
 			if (!secondTag) return null
-			if (firstTag.role !== 'newChat') return null // 只有newChat标签后面才能跟标签
+			if (firstTag.role !== 'newChat') return null // Only newChat tags can follow newChat tags
 		}
 
 		const suggestTag = secondTag || firstTag
@@ -117,10 +117,10 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 		const postFix = text.slice(index + word.length)
 		if (postFix) {
 			if (suggestTag.role === 'newChat') {
-				// newChat 后面有内容，不触发
+				// newChat followed by content, do not trigger
 				return null
 			} else if (!speakerPostFix.includes(postFix)) {
-				// speaker 后面有内容, 但不是 speakerPostFix 里的内容，不触发
+				// speaker followed by content, but not content in speakerPostFix, do not trigger
 				return null
 			}
 		}

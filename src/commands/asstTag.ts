@@ -34,7 +34,7 @@ export const asstTagCmd = (
 			const { range, role, tagContent, tagRange } = fetchTagMeta(app, editor, settings)
 			console.debug('asstTagCmd', { range, role, tagContent, tagRange })
 
-			// 如果是空行，直接插入标签
+			// If it's an empty line, directly insert the tag
 			if (isEmptyLines(editor, range)) {
 				const lnToWrite = insertMarkToEmptyLines(editor, range.from, mark)
 				const messagesEndOffset = editor.posToOffset({
@@ -46,7 +46,7 @@ export const asstTagCmd = (
 				return
 			}
 
-			// 如果是普通文本，插入 userTag，新增一行（只有这种情况需要slowMo)
+			// If it's normal text, insert userTag, add a new line (only this case needs slowMo)
 			if (role === null) {
 				insertMarkToBegin(editor, range, defaultUserMark)
 
@@ -61,7 +61,7 @@ export const asstTagCmd = (
 				const env = await buildRunEnv(app, settings)
 				await generate(env, editor, provider, messagesEndOffset, statusBarItem, settings.editorStatus)
 			} else if (role === 'assistant') {
-				// 如果是asstTag，弹窗问用户是否重新生成
+				// If it's an asstTag, prompt the user whether to regenerate
 				if (settings.confirmRegenerate) {
 					const onConfirm = async () => {
 						await regenerate(app, settings, statusBarItem, editor, provider, range, mark)
@@ -71,7 +71,7 @@ export const asstTagCmd = (
 					await regenerate(app, settings, statusBarItem, editor, provider, range, mark)
 				}
 			} else {
-				// 如果是userTag，systemTag（稍后警告），newChat混合等等，新增一行, 插入助手标签。交给后续做判断。
+				// If it's a userTag, systemTag (warn later), newChat mixed, etc., add a new line, insert assistant tag. Let subsequent code handle the judgment
 				editor.setCursor({ line: range.to.line, ch: editor.getLine(range.to.line).length })
 				const lnToWrite = insertText(editor, HARD_LINE_BREAK + '\n' + mark)
 
@@ -151,7 +151,7 @@ const insertMarkSlowMo = async (editor: Editor, mark: string, delayDuration: num
 	}
 	const delay = Math.round(delayDuration / steps)
 
-	let lnToWrite = insertText(editor, mark[0] + mark[1]) // 先插入带#号的前两个字符
+	let lnToWrite = insertText(editor, mark[0] + mark[1]) // First insert the first two characters including the # symbol
 	for (let i = 2; i < mark.length; i++) {
 		await new Promise((resolve) => setTimeout(resolve, delay))
 		lnToWrite = insertText(editor, mark[i])

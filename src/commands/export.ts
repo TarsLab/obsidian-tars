@@ -61,7 +61,7 @@ const to_query_response_history = (conversation: readonly Message[]) => {
 		system = messages.shift()?.content
 	}
 
-	// TODO, 如果最后一条是 user
+	// TODO, handle if the last message is a user message
 	const history: [string, string][] = []
 	while (messages.length > 0) {
 		const user = messages.shift()

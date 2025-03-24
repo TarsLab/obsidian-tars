@@ -3,17 +3,17 @@ import OpenAI from 'openai'
 import { t } from 'src/lang/helper'
 import { BaseOptions, Message, SendRequest, Vendor } from '.'
 
-const CALLOUT_BLOCK_START = '\n\n> [!quote]-  \n> ' // TODO, 后续可以考虑增加配置项，配置 callout 类型，比如 quote, note
+const CALLOUT_BLOCK_START = '\n\n> [!quote]-  \n> ' // TODO, consider adding configuration options for callout types, such as quote, note
 const CALLOUT_BLOCK_END = '\n\n'
 
 type DeepSeekDelta = OpenAI.ChatCompletionChunk.Choice.Delta & {
 	reasoning_content?: string
-} // hack, deepseek-reasoner 增加了 reasoning_content 字段
+} // hack, deepseek-reasoner added a reasoning_content field
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 	async function* (messages: Message[]) {
 		const { parameters, ...optionsExcludingParams } = settings
-		const options = { ...optionsExcludingParams, ...parameters } // 这样的设计，让parameters 可以覆盖掉前面的设置 optionsExcludingParams
+		const options = { ...optionsExcludingParams, ...parameters } // This design allows parameters to override the previous settings in optionsExcludingParams
 		const { apiKey, baseURL, model, ...remains } = options
 		if (!apiKey) throw new Error(t('API key is required'))
 
@@ -37,7 +37,7 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 
 			if (reasonContent) {
 				const prefix = !startReasoning ? ((startReasoning = true), CALLOUT_BLOCK_START) : ''
-				yield prefix + reasonContent.replace(/\n/g, '\n> ') // callout的每行前面都要加上 >
+				yield prefix + reasonContent.replace(/\n/g, '\n> ') // Add > before each line in callout
 			} else {
 				const prefix = startReasoning ? ((startReasoning = false), CALLOUT_BLOCK_END) : ''
 				if (delta?.content) yield prefix + delta?.content

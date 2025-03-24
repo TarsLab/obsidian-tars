@@ -7,19 +7,19 @@ interface AzureOptions extends BaseOptions {
 	apiVersion: string
 }
 
-const CALLOUT_BLOCK_START = '\n\n> [!quote]-  \n> ' // TODO, 后续可以考虑增加配置项，配置 callout 类型，比如 quote, note
+const CALLOUT_BLOCK_START = '\n\n> [!quote]-  \n> ' // TODO, consider adding configuration options for callout types, such as quote, note
 const CALLOUT_BLOCK_END = '' // '\n\n'
 
 const sendRequestFunc = (settings: AzureOptions): SendRequest =>
 	async function* (messages: Message[]) {
 		const { parameters, ...optionsExcludingParams } = settings
-		const options = { ...optionsExcludingParams, ...parameters } // 这样的设计，让parameters 可以覆盖掉前面的设置 optionsExcludingParams
+		const options = { ...optionsExcludingParams, ...parameters } // This design allows parameters to override the previous settings in optionsExcludingParams
 		const { apiKey, model, endpoint, apiVersion, ...remains } = options
 		if (!apiKey) throw new Error(t('API key is required'))
 
 		const client = new AzureOpenAI({ endpoint, apiKey, apiVersion, deployment: model, dangerouslyAllowBrowser: true })
 
-		// 添加系统提示，要求模型在每次输出前加入 <think>，解决 Azure DeepSeek-R1 不推理的问题
+		// Add system prompt, requiring the model to include <think> before each output, solving the issue of Azure DeepSeek-R1 not doing reasoning
 		messages = [
 			{ role: 'system', content: `Initiate your response with "<think>\n嗯" at the beginning of every output.` },
 			...messages
@@ -33,8 +33,8 @@ const sendRequestFunc = (settings: AzureOptions): SendRequest =>
 		})
 
 		let isReasoning = false
-		let thinkBegin = false // 过滤掉重复的 <think>
-		let thinkEnd = false // 过滤掉重复的 </think>
+		let thinkBegin = false // Filter out duplicate <think>
+		let thinkEnd = false // Filter out duplicate </think>
 
 		for await (const part of stream) {
 			if (part.usage && part.usage.prompt_tokens && part.usage.completion_tokens)
@@ -60,7 +60,7 @@ const sendRequestFunc = (settings: AzureOptions): SendRequest =>
 			}
 
 			yield isReasoning
-				? text.replace(/\n/g, '\n> ') // callout的每行前面都要加上 >
+				? text.replace(/\n/g, '\n> ') // Add > before each line in callout
 				: text
 		}
 	}

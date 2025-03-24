@@ -25,12 +25,12 @@ export const loadTemplateFileCommand = (
 
 			if (isCreated) {
 				await workspaceOpenFile(app, filePath)
-				await new Promise((resolve) => setTimeout(resolve, 2000)) // 等待文件metadata加载, 2s
+				await new Promise((resolve) => setTimeout(resolve, 2000)) // Wait for file metadata to load, 2s
 			}
 
 			const { promptTemplates, reporter } = await getPromptTemplatesFromFile(app, filePath)
 
-			// 找到这两个数组中，title 相同但是 template 不同的元素
+			// Find elements with the same title but different templates in the two arrays
 			const changed = findChangedTemplates(settings.promptTemplates, promptTemplates)
 			if (changed.length > 0) {
 				console.debug('changed', changed)
@@ -42,7 +42,7 @@ export const loadTemplateFileCommand = (
 			buildPromptCommands()
 
 			if (reporter && reporter.length > 0) {
-				await workspaceOpenFile(app, filePath) // 有语法错误，界面打开文件
+				await workspaceOpenFile(app, filePath) // Open file in UI for syntax errors
 				new ReporterModal(app, reporter).open()
 			}
 		} catch (error) {
@@ -89,7 +89,7 @@ export const promptTemplateCmd = (id: string, name: string, app: App, settings: 
 			const range = refineRange(app, editor)
 			const { from, to } = range
 			editor.setSelection(from, to)
-			await new Promise((resolve) => setTimeout(resolve, 500)) // 让用户看到选中的文本，可能体验会好些。但这不是必要的。
+			await new Promise((resolve) => setTimeout(resolve, 500)) // Let the user see the selected text for better experience. This is not essential.
 			applyTemplate(editor, template.template)
 		} catch (error) {
 			console.error(error)
@@ -116,7 +116,7 @@ const applyTemplate = (editor: Editor, template: string) => {
 	const selectedText = editor.getSelection()
 	const templateFn = Handlebars.compile(template, { strict: false, noEscape: true })
 	const substitution = templateFn({ s: selectedText })
-	const newPrompt = substitution.includes(selectedText) ? substitution : selectedText + substitution // 选中文本在newPrompt中，替换，否则追加
+	const newPrompt = substitution.includes(selectedText) ? substitution : selectedText + substitution // If selected text is in newPrompt, replace it, otherwise append
 	// console.debug('newPrompt', newPrompt)
 	const { anchor, head } = getEditorSelection(editor)
 	editor.replaceRange(newPrompt, anchor, head)

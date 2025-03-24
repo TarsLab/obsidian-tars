@@ -109,17 +109,17 @@ export const findChangedTemplates = (
 ): PromptTemplate[] => {
 	const result: PromptTemplate[] = []
 
-	// 创建一个旧模板的查找映射，便于快速访问
+	// Create a lookup map for old templates for quick access
 	const oldTemplateMap = new Map<string, string>()
 	oldTemplates.forEach((template) => {
 		oldTemplateMap.set(template.title, template.template)
 	})
 
-	// 遍历新模板，检查标题相同但内容不同的元素
+	// Iterate through new templates, checking for elements with the same title but different content
 	newTemplates.forEach((newTemplate) => {
 		const oldTemplate = oldTemplateMap.get(newTemplate.title)
 
-		// 如果标题存在于旧模板中，但内容不同
+		// If the title exists in old templates but the content is different
 		if (oldTemplate !== undefined && oldTemplate !== newTemplate.template) {
 			result.push(newTemplate)
 		}

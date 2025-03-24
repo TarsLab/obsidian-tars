@@ -38,7 +38,7 @@ interface Tag extends Omit<Message, 'content'> {
 	readonly tagLine: number
 }
 
-// 按照obsidian的link，embed的定义，link和embed必须包含在一个section里面，不会跨越多个，
+// According to Obsidian's link/embed definition, links and embeds must be contained within a single section, they don't span across multiple sections
 interface SectionCacheWithRefer extends SectionCache {
 	readonly refers: ReferenceCache[]
 }
@@ -149,7 +149,7 @@ const fetchTagsWithSections = (env: RunEnv, startOffset: number, endOffset: numb
 
 	const tagsWithSections: TagWithSections[] = ranges.map((range, i) => ({
 		...tags[i],
-		contentRange: [tags[i].tagRange[1] + 2, tags[i + 1] ? tags[i + 1].tagRange[0] - 1 : endOffset], // +2 是因为tag后面有一个空格和冒号
+		contentRange: [tags[i].tagRange[1] + 2, tags[i + 1] ? tags[i + 1].tagRange[0] - 1 : endOffset], // +2 is because there is a space and colon after the tag
 		sections: sectionsWithRefer.filter(
 			(section) =>
 				section.position.end.offset <= range[1] &&

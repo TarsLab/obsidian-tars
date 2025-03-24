@@ -50,7 +50,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 
 export const availableVendors: Vendor[] = [
 	openAIVendor,
-	// 以下是按照字母顺序排列的
+	// The following are arranged in alphabetical order
 	azureVendor,
 	claudeVendor,
 	deepSeekVendor,
