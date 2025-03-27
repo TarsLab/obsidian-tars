@@ -10,6 +10,7 @@ export default {
 	'Conversion failed. Selected sections is a': 'Conversion failed. Selected sections is a',
 	message: 'message',
 	'Check the developer console for error details. ': 'Check the developer console for error details. ',
+	'Cancel Generation': 'Cancel Generation',
 
 	// commands/asstTag.ts
 	'Regenerate?': 'Regenerate?',
@@ -59,6 +60,9 @@ export default {
 	// main.ts
 	'Removed commands': 'Removed commands',
 	'Added commands': 'Added commands',
+	'No active generation to cancel': 'No active generation to cancel',
+	'Generation already cancelled': 'Generation already cancelled',
+	'Generation cancelled': 'Generation cancelled',
 
 	// settingTab.ts
 	'Restore default': 'Restore default',

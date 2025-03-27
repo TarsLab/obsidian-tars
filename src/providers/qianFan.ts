@@ -77,7 +77,7 @@ const getLines = (buffer: string[], text: string): string[] => {
 }
 
 const sendRequestFunc = (settings: QianFanOptions): SendRequest =>
-	async function* (messages: Message[]) {
+	async function* (messages: Message[], controller: AbortController) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters } // 这样的设计，让parameters 可以覆盖掉前面的设置 optionsExcludingParams
 		const { apiKey, apiSecret, baseURL, model, token: currentToken, ...remains } = options
@@ -100,7 +100,8 @@ const sendRequestFunc = (settings: QianFanOptions): SendRequest =>
 				},
 				adapter: 'fetch',
 				responseType: 'stream',
-				withCredentials: false
+				withCredentials: false,
+				signal: controller.signal
 			})
 
 			const buffer: string[] = []

@@ -37,7 +37,7 @@ interface OthersEvent {
 type PartialEvent = ContentBlockDeltaEvent | MessageDeltaEvent | OthersEvent
 
 const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
-	async function* (messages: Message[]) {
+	async function* (messages: Message[], controller: AbortController) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters } // 这样的设计，让parameters 可以覆盖掉前面的设置 optionsExcludingParams
 		const { apiKey, baseURL, model, max_tokens } = options
@@ -64,10 +64,11 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 			headers,
 			adapter: 'fetch',
 			responseType: 'stream',
-			withCredentials: false
+			withCredentials: false,
+			signal: controller.signal
 		})
 
-		const stream = Stream.fromSSEResponse<PartialEvent>(response, new AbortController())
+		const stream = Stream.fromSSEResponse<PartialEvent>(response, controller)
 
 		for await (const event of stream) {
 			// console.debug('event', event)

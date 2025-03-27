@@ -3,6 +3,7 @@ import {
 	CachedMetadata,
 	Editor,
 	MetadataCache,
+	Notice,
 	ReferenceCache,
 	SectionCache,
 	TagCache,
@@ -343,47 +344,63 @@ export const getMsgPositionByLine = (env: RunEnv, line: number) => {
 
 const formatDuration = (d: number) => `${(d / 1000).toFixed(2)}s`
 
+export interface RequestController {
+	getController: () => AbortController
+	cleanup: () => void
+}
+
 export const generate = async (
 	env: RunEnv,
 	editor: Editor,
 	provider: ProviderSettings,
 	endOffset: number,
 	statusBarItem: HTMLElement,
-	editorStatus: EditorStatus
+	editorStatus: EditorStatus,
+	requestController: RequestController
 ) => {
-	const vendor = availableVendors.find((v) => v.name === provider.vendor)
-	if (!vendor) {
-		throw new Error('No vendor found ' + provider.vendor)
+	try {
+		const vendor = availableVendors.find((v) => v.name === provider.vendor)
+		if (!vendor) {
+			throw new Error('No vendor found ' + provider.vendor)
+		}
+
+		const conversation = await fetchConversation(env, 0, endOffset)
+		const messages = conversation.map((c) => ({ role: c.role, content: c.content }))
+		console.debug('messages', messages)
+
+		const lastMsg = messages.last()
+		if (!lastMsg || lastMsg.role !== 'user' || lastMsg.content.trim().length === 0) {
+			throw new Error(t('Please add a user message first, or wait for the user message to be parsed.'))
+		}
+		const round = messages.filter((m) => m.role === 'assistant').length + 1
+
+		const sendRequest = vendor.sendRequestFunc(provider.options)
+		const startTime = new Date()
+		statusBarItem.setText(`Round ${round}:...`)
+
+		let accumulatedText = ''
+		const controller = requestController.getController()
+		for await (const text of sendRequest(messages, controller)) {
+			insertText(editor, text, editorStatus)
+			accumulatedText += text
+			statusBarItem.setText(`Round ${round}: ${accumulatedText.length}${t('characters')}`)
+		}
+
+		const endTime = new Date()
+		const duration = formatDuration(endTime.getTime() - startTime.getTime())
+		statusBarItem.setText(`Round ${round}: ${accumulatedText.length}${t('characters')} ${duration}`)
+
+		if (accumulatedText.length === 0) {
+			throw new Error(t('No text generated'))
+		}
+
+		if (controller.signal.aborted) {
+			new Notice(t('Generation cancelled'))
+		} else {
+			new Notice(t('Text generated successfully'))
+		}
+		console.debug('✨ ' + t('AI generate') + ' ✨ ', accumulatedText)
+	} finally {
+		requestController.cleanup()
 	}
-
-	const conversation = await fetchConversation(env, 0, endOffset)
-	const messages = conversation.map((c) => ({ role: c.role, content: c.content }))
-	console.debug('messages', messages)
-
-	const lastMsg = messages.last()
-	if (!lastMsg || lastMsg.role !== 'user' || lastMsg.content.trim().length === 0) {
-		throw new Error(t('Please add a user message first, or wait for the user message to be parsed.'))
-	}
-	const round = messages.filter((m) => m.role === 'assistant').length + 1
-
-	const sendRequest = vendor.sendRequestFunc(provider.options)
-	const startTime = new Date()
-	statusBarItem.setText(`Round ${round}:...`)
-
-	let accumulatedText = ''
-	for await (const text of sendRequest(messages)) {
-		insertText(editor, text, editorStatus)
-		accumulatedText += text
-		statusBarItem.setText(`Round ${round}: ${accumulatedText.length}${t('characters')}`)
-	}
-
-	const endTime = new Date()
-	const duration = formatDuration(endTime.getTime() - startTime.getTime())
-	statusBarItem.setText(`Round ${round}: ${accumulatedText.length}${t('characters')} ${duration}`)
-
-	if (accumulatedText.length === 0) {
-		throw new Error(t('No text generated'))
-	}
-
-	console.debug('✨ ' + t('AI generate') + ' ✨ ', accumulatedText)
 }

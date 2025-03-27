@@ -1,5 +1,5 @@
 import { App, Command, Editor, EditorRange, MarkdownView, Modal, Notice, Platform, Setting } from 'obsidian'
-import { buildRunEnv, generate } from 'src/editor'
+import { buildRunEnv, generate, RequestController } from 'src/editor'
 import { t } from 'src/lang/helper'
 import { ProviderSettings } from 'src/providers'
 import { PluginSettings } from 'src/settings'
@@ -18,7 +18,8 @@ export const asstTagCmd = (
 	{ id, name, tag }: TagCmdMeta,
 	app: App,
 	settings: PluginSettings,
-	statusBarItem: HTMLElement
+	statusBarItem: HTMLElement,
+	requestController: RequestController
 ): Command => ({
 	id,
 	name,
@@ -42,7 +43,15 @@ export const asstTagCmd = (
 					ch: 0
 				})
 				const env = await buildRunEnv(app, settings)
-				await generate(env, editor, provider, messagesEndOffset, statusBarItem, settings.editorStatus)
+				await generate(
+					env,
+					editor,
+					provider,
+					messagesEndOffset,
+					statusBarItem,
+					settings.editorStatus,
+					requestController
+				)
 				return
 			}
 
@@ -59,16 +68,24 @@ export const asstTagCmd = (
 					ch: 0
 				})
 				const env = await buildRunEnv(app, settings)
-				await generate(env, editor, provider, messagesEndOffset, statusBarItem, settings.editorStatus)
+				await generate(
+					env,
+					editor,
+					provider,
+					messagesEndOffset,
+					statusBarItem,
+					settings.editorStatus,
+					requestController
+				)
 			} else if (role === 'assistant') {
 				// 如果是asstTag，弹窗问用户是否重新生成
 				if (settings.confirmRegenerate) {
 					const onConfirm = async () => {
-						await regenerate(app, settings, statusBarItem, editor, provider, range, mark)
+						await regenerate(app, settings, statusBarItem, requestController, editor, provider, range, mark)
 					}
 					new ConfirmModal(app, onConfirm).open()
 				} else {
-					await regenerate(app, settings, statusBarItem, editor, provider, range, mark)
+					await regenerate(app, settings, statusBarItem, requestController, editor, provider, range, mark)
 				}
 			} else {
 				// 如果是userTag，systemTag（稍后警告），newChat混合等等，新增一行, 插入助手标签。交给后续做判断。
@@ -80,11 +97,22 @@ export const asstTagCmd = (
 					ch: 0
 				})
 				const env = await buildRunEnv(app, settings)
-				await generate(env, editor, provider, messagesEndOffset, statusBarItem, settings.editorStatus)
+				await generate(
+					env,
+					editor,
+					provider,
+					messagesEndOffset,
+					statusBarItem,
+					settings.editorStatus,
+					requestController
+				)
 			}
 		} catch (error) {
-			settings.editorStatus.isTextInserting = false
 			console.error(error)
+			if (error.name === 'AbortError') {
+				new Notice(t('Generation cancelled'))
+				return
+			}
 			new Notice(
 				`🔴 ${Platform.isDesktopApp ? t('Check the developer console for error details. ') : ''}${error}`,
 				10 * 1000
@@ -97,6 +125,7 @@ const regenerate = async (
 	app: App,
 	settings: PluginSettings,
 	statusBarItem: HTMLElement,
+	requestController: RequestController,
 	editor: Editor,
 	provider: ProviderSettings,
 	range: EditorRange,
@@ -113,7 +142,7 @@ const regenerate = async (
 		ch: 0
 	})
 	const env = await buildRunEnv(app, settings)
-	await generate(env, editor, provider, messagesEndOffset, statusBarItem, settings.editorStatus)
+	await generate(env, editor, provider, messagesEndOffset, statusBarItem, settings.editorStatus, requestController)
 }
 
 class ConfirmModal extends Modal {
