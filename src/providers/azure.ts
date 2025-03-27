@@ -11,7 +11,7 @@ const CALLOUT_BLOCK_START = '\n\n> [!quote]-  \n> ' // TODO, 后续可以考虑�
 const CALLOUT_BLOCK_END = '' // '\n\n'
 
 const sendRequestFunc = (settings: AzureOptions): SendRequest =>
-	async function* (messages: Message[]) {
+	async function* (messages: Message[], controller: AbortController) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters } // 这样的设计，让parameters 可以覆盖掉前面的设置 optionsExcludingParams
 		const { apiKey, model, endpoint, apiVersion, ...remains } = options
@@ -25,12 +25,17 @@ const sendRequestFunc = (settings: AzureOptions): SendRequest =>
 			...messages
 		]
 
-		const stream = await client.chat.completions.create({
-			model,
-			messages,
-			stream: true,
-			...remains
-		})
+		const stream = await client.chat.completions.create(
+			{
+				model,
+				messages,
+				stream: true,
+				...remains
+			},
+			{
+				signal: controller.signal
+			}
+		)
 
 		let isReasoning = false
 		let thinkBegin = false // 过滤掉重复的 <think>

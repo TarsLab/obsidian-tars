@@ -9,7 +9,7 @@ import {
 	Platform,
 	TFile
 } from 'obsidian'
-import { buildRunEnv, generate } from './editor'
+import { RequestController, buildRunEnv, generate } from './editor'
 import { t } from './lang/helper'
 import { PluginSettings } from './settings'
 
@@ -73,18 +73,21 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 	settings: PluginSettings
 	tagLowerCaseMap: Map<string, Omit<TagEntry, 'replacement'>>
 	statusBarItem: HTMLElement
+	requestController: RequestController
 
 	constructor(
 		app: App,
 		settings: PluginSettings,
 		tagLowerCaseMap: Map<string, Omit<TagEntry, 'replacement'>>,
-		statusBarItem: HTMLElement
+		statusBarItem: HTMLElement,
+		requestController: RequestController
 	) {
 		super(app)
 		this.app = app
 		this.settings = settings
 		this.tagLowerCaseMap = tagLowerCaseMap
 		this.statusBarItem = statusBarItem
+		this.requestController = requestController
 	}
 
 	/** Based on the editor line and cursor position, determine if this EditorSuggest should be triggered at this moment. Typically, you would run a regular expression on the current line text before the cursor. Return null to indicate that this editor suggest is not supposed to be triggered.
@@ -189,11 +192,21 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 			const env = await buildRunEnv(this.app, this.settings)
 			const messagesEndOffset = editor.posToOffset(this.context.start)
 			console.debug('endOffset', messagesEndOffset)
-			await generate(env, editor, provider, messagesEndOffset, this.statusBarItem, this.settings.editorStatus)
-			new Notice(t('Text generated successfully'))
+			await generate(
+				env,
+				editor,
+				provider,
+				messagesEndOffset,
+				this.statusBarItem,
+				this.settings.editorStatus,
+				this.requestController
+			)
 		} catch (error) {
-			this.settings.editorStatus.isTextInserting = false
 			console.error('error', error)
+			if (error.name === 'AbortError') {
+				new Notice(t('Generation cancelled'))
+				return
+			}
 			new Notice(
 				`🔴 ${Platform.isDesktopApp ? t('Check the developer console for error details. ') : ''}${error}`,
 				10 * 1000

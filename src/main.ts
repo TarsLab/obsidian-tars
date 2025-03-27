@@ -10,6 +10,7 @@ import {
 	systemTagCmd,
 	userTagCmd
 } from './commands'
+import { RequestController } from './editor'
 import { t } from './lang/helper'
 import { getTitleFromCmdId, loadTemplateFileCommand, promptTemplateCmd, templateToCmdId } from './prompt'
 import { TarsSettingTab } from './settingTab'
@@ -22,6 +23,7 @@ export default class TarsPlugin extends Plugin {
 	tagCmdIds: string[] = []
 	promptCmdIds: string[] = []
 	tagLowerCaseMap: Map<string, Omit<TagEntry, 'replacement'>> = new Map()
+	aborterInstance: AbortController | null = null
 
 	async onload() {
 		await this.loadSettings()
@@ -45,10 +47,36 @@ export default class TarsPlugin extends Plugin {
 		)
 
 		this.settings.editorStatus = { isTextInserting: false }
+
 		if (this.settings.enableTagSuggest)
 			this.registerEditorSuggest(
-				new TagEditorSuggest(this.app, this.settings, this.tagLowerCaseMap, this.statusBarItem)
+				new TagEditorSuggest(
+					this.app,
+					this.settings,
+					this.tagLowerCaseMap,
+					this.statusBarItem,
+					this.getRequestController()
+				)
 			)
+
+		this.addCommand({
+			id: 'cancelGeneration',
+			name: t('Cancel Generation'),
+			callback: async () => {
+				this.settings.editorStatus.isTextInserting = false
+
+				if (this.aborterInstance === null) {
+					new Notice(t('No active generation to cancel'))
+					return
+				}
+				if (this.aborterInstance.signal.aborted) {
+					new Notice(t('Generation already cancelled'))
+					return
+				}
+
+				this.aborterInstance.abort()
+			}
+		})
 
 		if (this.settings.enableReplaceTag) this.addCommand(replaceCmd(this.app))
 		if (this.settings.enableExportToJSONL) this.addCommand(exportCmd(this.app, this.settings))
@@ -71,7 +99,9 @@ export default class TarsPlugin extends Plugin {
 				this.addCommand(userTagCmd(tagCmdMeta, this.app, this.settings))
 				break
 			case 'assistant':
-				this.addCommand(asstTagCmd(tagCmdMeta, this.app, this.settings, this.statusBarItem))
+				this.addCommand(
+					asstTagCmd(tagCmdMeta, this.app, this.settings, this.statusBarItem, this.getRequestController())
+				)
 				break
 			default:
 				throw new Error('Unknown tag role')
@@ -135,6 +165,23 @@ export default class TarsPlugin extends Plugin {
 		if (addedTitles.length > 0) {
 			console.debug('Added commands', addedTitles)
 			new Notice(`${t('Added commands')}: ${addedTitles.join(', ')}`)
+		}
+	}
+
+	getRequestController(): RequestController {
+		return {
+			getController: () => {
+				if (!this.aborterInstance) {
+					this.aborterInstance = new AbortController()
+				}
+				return this.aborterInstance
+			},
+			cleanup: () => {
+				{
+					this.settings.editorStatus.isTextInserting = false
+					this.aborterInstance = null
+				}
+			}
 		}
 	}
 

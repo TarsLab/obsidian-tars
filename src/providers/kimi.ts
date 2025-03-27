@@ -3,7 +3,7 @@ import { t } from 'src/lang/helper'
 import { BaseOptions, Message, SendRequest, Vendor } from '.'
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
-	async function* (messages: Message[]) {
+	async function* (messages: Message[], controller: AbortController) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters } // 这样的设计，让parameters 可以覆盖掉前面的设置 optionsExcludingParams
 		const { apiKey, baseURL, model, ...remains } = options
@@ -23,7 +23,8 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 			},
 			adapter: 'fetch',
 			responseType: 'stream',
-			withCredentials: false
+			withCredentials: false,
+			signal: controller.signal
 		})
 
 		const reader = response.data.pipeThrough(new TextDecoderStream()).getReader()

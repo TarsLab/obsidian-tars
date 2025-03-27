@@ -16,7 +16,7 @@ export interface ZhipuOptions extends BaseOptions {
 }
 
 const sendRequestFunc = (settings: ZhipuOptions): SendRequest =>
-	async function* (messages: Message[]) {
+	async function* (messages: Message[], controller: AbortController) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, baseURL, model, token: currentToken, tokenExpireInMinutes, enableWebSearch, ...remains } = options
@@ -43,13 +43,18 @@ const sendRequestFunc = (settings: ZhipuOptions): SendRequest =>
 				]
 			: []) as object[] as OpenAI.Chat.Completions.ChatCompletionTool[] // hack，因为 zhipu-ai 的函数调用类型和 openai 的类型定义不一样
 
-		const stream = await client.chat.completions.create({
-			model,
-			messages,
-			stream: true,
-			tools: tools,
-			...remains
-		})
+		const stream = await client.chat.completions.create(
+			{
+				model,
+				messages,
+				stream: true,
+				tools: tools,
+				...remains
+			},
+			{
+				signal: controller.signal
+			}
+		)
 
 		for await (const part of stream) {
 			const text = part.choices[0]?.delta?.content

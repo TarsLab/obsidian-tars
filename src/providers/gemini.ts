@@ -3,7 +3,7 @@ import { t } from 'src/lang/helper'
 import { BaseOptions, Message, SendRequest, Vendor } from '.'
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
-	async function* (messages: Message[]) {
+	async function* (messages: Message[], controller: AbortController) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters } // 这样的设计，让parameters 可以覆盖掉前面的设置 optionsExcludingParams
 		const { apiKey, baseURL: baseUrl, model } = options
@@ -23,7 +23,7 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 		const genModel = genAI.getGenerativeModel({ model, systemInstruction }, { baseUrl })
 		const chat = genModel.startChat({ history })
 
-		const result = await chat.sendMessageStream(lastMsg.content)
+		const result = await chat.sendMessageStream(lastMsg.content, { signal: controller.signal })
 		for await (const chunk of result.stream) {
 			const chunkText = chunk.text()
 			// console.debug('chunkText', chunkText)

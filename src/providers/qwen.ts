@@ -3,7 +3,7 @@ import { t } from 'src/lang/helper'
 import { BaseOptions, Message, SendRequest, Vendor } from '.'
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
-	async function* (messages: Message[]) {
+	async function* (messages: Message[], controller: AbortController) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters } // 这样的设计，让parameters 可以覆盖掉前面的设置 optionsExcludingParams
 		const { apiKey, baseURL, model, ...remains } = options
@@ -15,12 +15,17 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 			dangerouslyAllowBrowser: true
 		})
 
-		const stream = await client.chat.completions.create({
-			model,
-			messages,
-			stream: true,
-			...remains
-		})
+		const stream = await client.chat.completions.create(
+			{
+				model,
+				messages,
+				stream: true,
+				...remains
+			},
+			{
+				signal: controller.signal
+			}
+		)
 
 		for await (const part of stream) {
 			const text = part.choices[0]?.delta?.content

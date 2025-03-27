@@ -10,6 +10,7 @@ export default {
 	'Conversion failed. Selected sections is a': '转换失败。选中的段落是',
 	message: '消息',
 	'Check the developer console for error details. ': '查看开发者控制台了解错误. ',
+	'Cancel Generation': '取消生成',
 
 	// commands/asstTag.ts
 	'Regenerate?': '重新生成?',
@@ -59,6 +60,9 @@ export default {
 	// main.ts
 	'Removed commands': '已移除命令',
 	'Added commands': '已添加命令',
+	'No active generation to cancel': '没有正在进行的生成可取消',
+	'Generation already cancelled': '生成已经取消',
+	'Generation cancelled': '已取消生成',
 
 	// settingTab.ts
 	'Restore default': '恢复默认',
@@ -113,6 +117,7 @@ export default {
 	'Tag suggest': '标签建议',
 	'If you only use commands without needing tag suggestions, you can disable this feature. Changes will take effect after restarting the plugin.':
 		'如果你只使用命令而不需要标签建议，可以禁用此功能。更改将在重新启动插件后生效。',
+
 	// suggest.ts
 	'AI generate': 'AI 生成',
 	'Text generated successfully': '文本生成成功',
