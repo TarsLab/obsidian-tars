@@ -1,161 +1,161 @@
 <h2 align="center">
-	<p>
-		<a href="https://github.com/TarsLab/obsidian-tars/blob/main/README_en.md">English</a> |
-			<b>中文</b>
-	<p>
+    <p>
+        <b>English</b> |
+        <a href="https://github.com/TarsLab/obsidian-tars/blob/main/README_zh.md">中文</a>
+    </p>
 </h2>
 
-# 简介
+# Introduction
 
-Tars 是一个 Obsidian 插件，基于标签建议进行文本生成，支持 Claude、OpenAI、Gemini、🔥DeepSeek、🔥SiliconFlow、🔥OpenRouter、Ollama、Kimi、豆包、阿里千问、智谱、百度千帆等。Tars 这个名字来源于电影《星际穿越》中的机器人 Tars（塔斯）。插件支持桌面端和移动端。
+Tars is an Obsidian plugin that supports text generation based on tag suggestions, using services like Claude, OpenAI, Gemini, 🔥DeepSeek, 🔥SiliconFlow, 🔥OpenRouter, Ollama, Kimi, Doubao, Qwen, Zhipu, QianFan & more. The name Tars comes from the robot Tars in the movie "Interstellar". The plugin supports both desktop and mobile devices.
 
-## 2.x 版本重大更新
+## Major Updates in Version 2.x
 
-- 🔥加入标签命令，所有标签都在命令列表里。标签命令基于选中/光标处的段落，插入相应的标签。  
-  快速回答：把光标移到该行（或者选择多个段落），从命令列表中选择助手标签（比如`#DeepSeek :`），进行回答。
+- 🔥 Added tag commands, all tags are available in the command list. Tag commands insert the appropriate tags based on selected sections or the section at cursor position.  
+  Quick response: Move the cursor to the line (or select multiple paragraphs), choose an assistant tag (like `#DeepSeek :`) from the command list to generate a response.
 
-![deepseek](docs/images/zh/deepSeek.gif)
+![deepseek](docs/images/deepSeek.gif)
 
-- 🔥自定义提示词模板, 首次使用请执行”加载模板文件”命令
-- 🔥状态栏，实时显示生成的字符数量, 轮次，耗时。
-- 🔥标签建议，重新设计的触发逻辑更符合软件设计，性能优化显著。  
-  输入`#`，借用obsidian自身的标签补全后，再输入空格触发。  
-  移动端如果不方便输入`#`，输入完整的标签（不带#），来触发。  
-  助手标签在触发后，会进行AI助手回答。
+- 🔥 Custom prompt templates, run the "Load template file" command when using for the first time.
+- 🔥 Status bar that displays real-time information about character count, rounds, and time spent.
+- 🔥 Tag suggestions with redesigned trigger logic that better aligns with software design principles and significantly improved performance.  
+  Type `#`, use Obsidian's native tag completion, then input space to trigger.  
+  On mobile devices where typing `#` might be inconvenient, you can type the complete tag (without #) to trigger.  
+  Assistant tags will generate AI responses when triggered.
 
 ![tagSuggest](docs/images/tagSuggest.gif)
 
-## 特性
+## Features
 
-- 支持内部链接
+- Support for internal links
 
-![内部链接支持](docs/images/zh/作家提示词.png)
+![Internal link support](docs/images/writer%20prompt.png)
 
-- 将对话导出为 JSONL 数据集，支持 [ms-swift（Scalable lightWeight Infrastructure for Fine-Tuning）](https://github.com/modelscope/swift)
+- Export conversations to JSONL dataset, supports [ms-swift (Scalable lightWeight Infrastructure for Fine-Tuning)](https://github.com/modelscope/swift)
 
-## AI 服务提供商
+## AI providers
 
 - [Azure OpenAI](https://azure.microsoft.com)
 - [Claude](https://claude.ai)
-- [DeepSeek 深度求索](https://www.deepseek.com)
-- [Doubao 豆包](https://www.volcengine.com/product/doubao)
+- [DeepSeek](https://www.deepseek.com)
+- [Doubao](https://www.volcengine.com/product/doubao)
 - [Gemini](https://gemini.google.com)
 - [Kimi](https://www.moonshot.cn)
 - [Ollama](https://www.ollama.com)
 - [OpenAI](https://platform.openai.com/api-keys)
 - [OpenRouter](https://openrouter.ai)
-- [Qianfan 百度千帆](https://qianfan.cloud.baidu.com)
-- [Qwen 阿里千问](https://dashscope.console.aliyun.com)
-- [SiliconFlow 硅基流动](https://siliconflow.cn)
-- [Zhipu 智谱](https://open.bigmodel.cn/)
+- [Qianfan](https://qianfan.cloud.baidu.com)
+- [Qwen](https://dashscope.console.aliyun.com)
+- [SiliconFlow](https://siliconflow.cn)
+- [Zhipu](https://open.bigmodel.cn/)
 
-如果上面列表没有你想要的 AI 服务提供商，可以在 issue 中提出具体方案。
+If the AI provider you want is not in the list above, you can propose a specific plan in the issue.
 
-### 助手特色
+### Assistant features
 
-- Azure: 支持 o1，deepseek-r1，gpt-4o 等等
-- 🔥DeepSeek：推理模型 deepseek-reasoner 的思维链以 callout 格式输出
-- Doubao: 支持应用（bot）API，[支持 deepseek 联网插件和知识库插件](https://github.com/TarsLab/obsidian-tars/issues/68)
-- 🔥SiliconFlow：支持 DeepSeek V3/R1 等等众多模型
-- Zhipu：网络搜索选项
+- Azure: Supports o1, deepseek-r1, gpt-4o, etc.
+- 🔥DeepSeek: The reasoning model deepseek-reasoner's CoT is output in callout format
+- Doubao: Supports bot API, [Supports DeepSeek web search plugin and knowledge base plugin](https://github.com/TarsLab/obsidian-tars/issues/68)
+- 🔥SiliconFlow: Supports many models such as DeepSeek V3/R1
+- Zhipu: Web search option
 
-## 如何使用
+## How to use
 
-- 在设置页面添加 AI 助手，设置 API 密钥，设置模型。
-- 输入问题，比如“1+1=？”，然后在命令列表选择“#我 :”， 转为“#我 : 1+1=?”
-- 在命令列表选择助手，比如“#DeepSeek :”，触发 AI 助手回答问题。
-- 还可以直接输入`#`，输入标签后再输入空格，来触发 AI 助手。
-- 请遵循大模型的对话顺序规则，系统消息总是最先出现（也可以忽略），然后用户消息和助手消息像打乒乓球一样轮流发言。
+- Add an AI assistant in the settings page, set the API key, and configure the model.
+- Enter a question, like "1+1=?", then select "#User :" from the command list to transform it into - "#User : 1+1=?"
+- Select an assistant from the command list, like "#Claude :", to trigger the AI assistant to answer the question.
+- You can also directly type `#`, enter the tag, and then type a space to trigger the AI assistant.
+- Follow the conversation order rules of large language models: system messages always appear first (can be omitted), then user and assistant messages alternate like a ping-pong match.
 
-一个简单的对话例子如下：
+A simple conversation example:
 
 ```text
-#我 : 1+1=?（用户消息）
-(隔开一个空行)
-#DeepSeek : （触发）
+#User : 1+1=?（user message）
+(blank line)
+#Claude :（trigger）
 ```
 
-对话顺序规则如下：
+Conversation order rules:
 
 ```mermaid
 graph LR
-    A[系统消息] --> B[用户消息] --> C[助手消息] --> B
+    A[System message] --> B[User message] --> C[Assistant message] --> B
 ```
 
-如果觉得 AI 助手回答不满意，想要重试。使用插件命令“选择光标处的消息”，选中 AI 助手的回答内容进行删除，修改下你的提问，再次触发 AI 助手。或者选中回答内容，使用命令比如“#DeepSeek :”，重新触发 AI 助手，会删除之前的回答内容，重新生成。
+If you are not satisfied with the AI assistant's answer and want to retry. Use the plugin command "Select the message at the cursor", select and delete the AI assistant's response content, modify your question, and trigger the AI assistant again. Or select the response content and use a command like "#Claude :" to retrigger the AI assistant, which will delete the previous response and generate a new one.
 
-## 对话语法
+## Conversations syntax
 
-一个段落不能包含多条消息。多条消息应该通过空行分隔开来。
+A paragraph cannot contain multiple messages. Messages should be separated by blank lines.
 
-![Conversations syntax](docs/images/zh/语法.png)
+![Conversations syntax](docs/images/syntax.png)
 
-- 对话消息将发送到配置的 AI 服务提供商。
-- 标注部分 (callout) 将被忽略。你可以在标注里写内容，不将其发送到 AI 助手。callout 不是 markdown 语法，是 obsidian 的扩展语法。
-- 开始新对话，使用 `新对话` 标签。
+- The conversation messages will send to the configured AI assistant.
+- Callout sections will be ignored. You can write content in the callout without sending it to the AI assistant. Callout is not markdown syntax, it is an obsidian extension syntax.
+- Start a new conversation with `NewChat` tag.
 
-标签命令都是基于选中/光标处的段落，一个 Markdown 段落可以是：
+Tag commands are based on the paragraph at the cursor or in the selection. A Markdown paragraph can be:
 
-- 没有空行隔开的多行普通文本
-- 代码块
+- Multiple lines of plain text not separated by empty lines
+- A code block
 
-在正确的语法情况下，在输入过程中，`#标签`后输入空格，会触发标签补全。例如：
+With correct syntax, when you input a space after #tag, it will trigger tag completion. For example:
 
 ```markdown
-#新对话
+#NewChat
 
-#系统 :
+#System :
 
-#我 :
+#User :
 
-#新对话 #系统 :
+#NewChat #System :
 
-#新对话 #我 :
+#NewChat #User :
 
-#助手 : (AI生成)
+#Claude : (AI generate)
 ```
 
-## 外观美化
+## Appearance customization
 
-建议使用 [colored tags 插件](https://github.com/pfrankov/obsidian-colored-tags).
+We recommend using the [colored tags plugin](https://github.com/pfrankov/obsidian-colored-tags).
 
 ![Colored tags plugin](docs/images/coloredTags.png)
 
-## 常见问题
+## FAQ
 
-### 设置页面没有想要的模型？
+### Can't find the model you want in the settings?
 
-可以在设置中的“覆盖输入参数”进行配置，输入 JSON 格式，例如 `{"model":"你想要的model"}`。
+You can configure it in the "Override input parameters" section in the settings by entering JSON format, such as `{"model":"your-desired-model"}`.
 
-### 如何查看开发者控制台？
+### How to view the developer console?
 
-- **Windows**：`CTRL + SHIFT + i`
-- **MacOS**：`CMD + OPTION + i`
-- **Linux**：`CTRL + SHIFT + i`
+- **Windows**: `CTRL + SHIFT + i`
+- **MacOS**: `CMD + OPTION + i`
+- **Linux**: `CTRL + SHIFT + i`
 
-[获取控制台日志](https://publish.obsidian.md/help-zh/%E5%B8%AE%E5%8A%A9%E4%B8%8E%E6%94%AF%E6%8C%81#%E8%8E%B7%E5%8F%96%E6%8E%A7%E5%88%B6%E5%8F%B0%E6%97%A5%E5%BF%97)
+[Capture console logs](https://help.obsidian.md/Help+and+support#Capture+console+logs)
 
-### 在使用第三方服务商时如何输入地址？
+### How to enter the baseUrl when using third-party services?
 
-修改设置中的 baseURL，从服务商的文档复制对应的地址粘贴过去，最后检查下网址是否完整。
+Modify the baseURL in the settings, copy and paste the corresponding address from the service provider's documentation, and finally check if the URL is complete.
 
-### 第三方服务商选择哪个助手类型？
+### Which assistant type to choose for third-party service providers?
 
-LLM的协议是有区别的，openAI，claude，gemini 差别很大，注意要选对。deepseek-r1 的思维链也和 openAI 不同。
+LLM protocols differ significantly between openAI, claude, and gemini. Make sure to select the correct one. The chain of thought in deepseek-r1 is also different from openAI.
 
-### 错误提示中的 404，400，4xx数字是什么意思？
+### What do the 404, 400, 4xx numbers in error messages mean?
 
-这些是 HTTP 状态码：
+These are HTTP status codes:
 
-- 401表示“未授权”（Unauthorized），可能是 API 密钥错误。
-- 402表示“需要付款”（Payment Required）。
-- 404表示“未找到”（Not Found），通常是 baseURL 配置错误，或者模型名称错误。
-- 400表示“错误请求”（Bad Request），可能是 API 密钥错误，缺失用户消息，标签解析失败导致消息缺失，模型错误等等。
-- 429表示“太多请求”（Too Many Requests），可能是请求频率过高，或者是服务商限制了请求频率。
+- 401 means "Unauthorized", possibly due to an incorrect API key.
+- 402 means "Payment Required".
+- 404 means "Not Found", usually due to incorrect baseURL configuration or model name.
+- 400 means "Bad Request", possibly due to incorrect API key, missing user messages, tag parsing failure - leading to missing messages, model errors, etc.
+- 429 means "Too Many Requests", possibly due to high request frequency or service provider rate limits.
 
-### 生成文本很长，格式复杂，导致渲染性能问题或者程序假死
+### Text generation is very long and complex, causing rendering performance issues or app freezing
 
-- 尝试使用默认主题，有些第三方主题对渲染性能有负面影响，改用高效率的主题。
-- 尝试使用“源码模式”进行对话交互。当你觉得要输出长文本的时候，把编辑模式从“实时阅览”改为“源码模式”，这样obsidian不用去渲染，等输出完成后，再把编辑模式改回“实时阅览”。
+- Try using the default theme. Some third-party themes can negatively impact rendering performance; switch to a more efficient theme.
+- Try using "Source mode" for conversation interaction. When you expect long text output, change the editing mode from "Live preview" to "Source mode" so Obsidian doesn't need to render the content. After the output is complete, switch back to "Live preview" mode.
 
-[相关的issue](https://github.com/TarsLab/obsidian-tars/issues/78)
+[Related issue](https://github.com/TarsLab/obsidian-tars/issues/78)
