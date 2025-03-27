@@ -10,7 +10,7 @@ export default {
 	'Conversion failed. Selected sections is a': '转换失败。选中的段落是',
 	message: '消息',
 	'Check the developer console for error details. ': '查看开发者控制台了解错误. ',
-	'Cancel Generation': '取消生成',
+	'Cancel generation': '取消生成',
 
 	// commands/asstTag.ts
 	'Regenerate?': '重新生成?',

@@ -61,7 +61,7 @@ export default class TarsPlugin extends Plugin {
 
 		this.addCommand({
 			id: 'cancelGeneration',
-			name: t('Cancel Generation'),
+			name: t('Cancel generation'),
 			callback: async () => {
 				this.settings.editorStatus.isTextInserting = false
 

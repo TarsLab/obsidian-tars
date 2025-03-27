@@ -10,7 +10,7 @@ export default {
 	'Conversion failed. Selected sections is a': 'Conversion failed. Selected sections is a',
 	message: 'message',
 	'Check the developer console for error details. ': 'Check the developer console for error details. ',
-	'Cancel Generation': 'Cancel Generation',
+	'Cancel generation': 'Cancel generation',
 
 	// commands/asstTag.ts
 	'Regenerate?': 'Regenerate?',
