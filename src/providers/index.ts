@@ -7,7 +7,7 @@ export interface Message {
 
 export type SendRequest = (
 	messages: readonly Message[],
-	controller?: AbortController
+	controller: AbortController
 ) => AsyncGenerator<string, void, unknown>
 
 export interface Vendor {
