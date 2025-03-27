@@ -1,9 +1,9 @@
-<h4 align="center">
+<h2 align="center">
     <p>
         <b>English</b> |
         <a href="https://github.com/TarsLab/obsidian-tars/blob/main/README.md">中文</a>
     </p>
-</h4>
+</h2>
 
 # Introduction
 

@@ -1,9 +1,9 @@
-<h4 align="center">
+<h2 align="center">
 	<p>
 		<a href="https://github.com/TarsLab/obsidian-tars/blob/main/README_en.md">English</a> |
 			<b>中文</b>
 	<p>
-</h4>
+</h2>
 
 # 简介
 
