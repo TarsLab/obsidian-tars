@@ -14,23 +14,23 @@ export const systemTagCmd = ({ id, name, tag }: TagCmdMeta, app: App, settings: 
 			const { range, role, tagContent, tagRange } = fetchTagMeta(app, editor, settings)
 			console.debug('systemTagCmd', { range, role, tagContent, tagRange })
 
-			// 如果是空行，直接插入标签
+			// If it's an empty line, directly insert the tag
 			if (isEmptyLines(editor, range)) {
 				return insertMarkToEmptyLines(editor, range.from, mark)
 			}
 
-			// 如果是普通文本，前面插入标签
+			// If it's plain text, insert the tag at the beginning
 			if (role === null) {
 				return insertMarkToBegin(editor, range, mark)
 			}
 
-			// 如果是 system，tag不同，则替换
+			// If it's a system tag, but different tag, replace it
 			if (role === 'system') {
 				if (tag !== tagContent && tagRange) {
 					return replaceTag(editor, range, tagRange, tag)
 				}
 			} else {
-				// 剩下的 asstTag， user。newChat混合，不兼容类型，notice 提示选中的是xx消息，同时选中文本。
+				// For the remaining types, which are incompatible types, show a notice indicating what message type was selected and keep the text selected.
 				editor.setSelection(range.from, range.to)
 				new Notice(`${t('Conversion failed. Selected sections is a')} ${t(role)} ${t('message')}`)
 			}

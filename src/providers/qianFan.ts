@@ -79,14 +79,14 @@ const getLines = (buffer: string[], text: string): string[] => {
 const sendRequestFunc = (settings: QianFanOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController) {
 		const { parameters, ...optionsExcludingParams } = settings
-		const options = { ...optionsExcludingParams, ...parameters } // 这样的设计，让parameters 可以覆盖掉前面的设置 optionsExcludingParams
+		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, apiSecret, baseURL, model, token: currentToken, ...remains } = options
 		if (!apiKey) throw new Error(t('API key is required'))
 		if (!apiSecret) throw new Error(t('API secret is required'))
 		if (!model) throw new Error(t('Model is required'))
 
 		const { token } = await validOrCreate(currentToken, apiKey, apiSecret)
-		settings.token = token // 这里的token没有保存到磁盘，只是在内存中保存
+		settings.token = token
 
 		if (Platform.isDesktopApp) {
 			const data = {

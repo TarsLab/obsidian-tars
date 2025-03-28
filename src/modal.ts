@@ -23,7 +23,7 @@ export class SelectModelModal extends FuzzySuggestModal<string> {
 		let lastIndex = 0
 
 		const div = el.createEl('div')
-		// 遍历所有的匹配项
+
 		for (const match of template.match.matches) {
 			const before = title.slice(lastIndex, match[0])
 			const matched = title.slice(match[0], match[0] + match[1])
@@ -32,7 +32,7 @@ export class SelectModelModal extends FuzzySuggestModal<string> {
 			lastIndex = match[0] + match[1]
 		}
 
-		// 添加最后一个匹配项后面的文本
+		// Add the remaining text after the last match
 		div.createEl('span', { text: title.slice(lastIndex) })
 	}
 

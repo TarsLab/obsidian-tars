@@ -67,7 +67,7 @@ export class TarsSettingTab extends PluginSettingTab {
 						vendor: vendorToCreate,
 						options: deepCopiedOptions
 					})
-					// 初始时，vendor和tag可能是一样的, 但是vendor只读，标记vendor类型，而tag是用户可以修改的
+					// Initially, vendor and tag might be the same, but vendor is read-only to mark vendor type, while tag can be modified by users
 					await this.plugin.saveSettings()
 					this.display(true)
 				})
@@ -505,7 +505,7 @@ export class TarsSettingTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						const url = value.trim()
 						if (url.length === 0) {
-							// 空字符串是合法的，清空endpoint
+							// Empty string is valid, clearing endpoint
 							options.endpoint = ''
 							await this.plugin.saveSettings()
 						} else if (!isValidUrl(url)) {
@@ -549,7 +549,7 @@ export class TarsSettingTab extends PluginSettingTab {
 							options.parameters = JSON.parse(value)
 							await this.plugin.saveSettings()
 						} catch (_error) {
-							// 这里不好处理，onChange触发很快，用户输入的时候可能还没输入完，频繁报错让用户很烦
+							// This is difficult to handle properly - onChange triggers quickly, and users might receive frequent error messages before they finish typing, which is annoying
 							return
 						}
 					})

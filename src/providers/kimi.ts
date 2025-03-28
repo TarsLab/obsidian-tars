@@ -5,7 +5,7 @@ import { BaseOptions, Message, SendRequest, Vendor } from '.'
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController) {
 		const { parameters, ...optionsExcludingParams } = settings
-		const options = { ...optionsExcludingParams, ...parameters } // 这样的设计，让parameters 可以覆盖掉前面的设置 optionsExcludingParams
+		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, baseURL, model, ...remains } = options
 		if (!apiKey) throw new Error(t('API key is required'))
 		if (!model) throw new Error(t('Model is required'))

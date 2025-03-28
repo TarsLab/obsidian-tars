@@ -39,7 +39,7 @@ type PartialEvent = ContentBlockDeltaEvent | MessageDeltaEvent | OthersEvent
 const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController) {
 		const { parameters, ...optionsExcludingParams } = settings
-		const options = { ...optionsExcludingParams, ...parameters } // 这样的设计，让parameters 可以覆盖掉前面的设置 optionsExcludingParams
+		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, baseURL, model, max_tokens } = options
 		if (!apiKey) throw new Error(t('API key is required'))
 
@@ -103,7 +103,7 @@ export const claudeVendor: Vendor = {
 	websiteToObtainKey: 'https://console.anthropic.com'
 }
 
-// 以下代码，参考github:anthropics/anthropic-sdk-typescript 的 src/streaming.ts
+// The following code is based on the src/streaming.ts file from github:anthropics/anthropic-sdk-typescript
 type Bytes = string | ArrayBuffer | Uint8Array | Buffer | null | undefined
 
 export type ServerSentEvent = {

@@ -34,7 +34,7 @@ const convertToTag = (speaker: string) => {
 		return speaker
 	}
 	// Tags can't contain blank spaces. To separate two or more words, use a hyphen (-) , #kebab-case
-	return '#' + speaker.trim().replace(/\s(?!:)/g, '-') // 把中间空格替换为-
+	return '#' + speaker.trim().replace(/\s(?!:)/g, '-') // Replace spaces in the middle with a hyphen (-)
 }
 
 class ReplaceTagModal extends Modal {
@@ -91,7 +91,7 @@ const countOccurrences = (array: string[]) =>
 	) // Add index signature to the accumulator object
 
 const findTwoMostFrequentSpeakers = (fileText: string) => {
-	// [\u4e00-\u9fa5a-zA-Z0-9]：这个字符集匹配任何单个中文字符（范围从 \u4e00 到 \u9fa5，覆盖了绝大多数常用汉字）、英文字符（大小写）或数字（0-9）
+	// range from \u4e00 to \u9fa5, covering most common Chinese characters
 	const lines = fileText.split('\n')
 	const matchResults = lines
 		.map((line) => line.match(/^([\u4e00-\u9fa5a-zA-Z0-9# ]+)([:|：]) /g))
@@ -102,7 +102,7 @@ const findTwoMostFrequentSpeakers = (fileText: string) => {
 	// sort occurrences
 	const sortedMatchFrequencies = Object.entries(matchCounts).sort((arr1, arr2) => arr2[1] - arr1[1])
 	console.debug('sortedMatchFrequencies', sortedMatchFrequencies)
-	// 选出次数最多的两个
+	// Select the two most frequent speakers
 	const [mostFrequent, secondMostFrequent] = sortedMatchFrequencies.slice(0, 2)
 	if (!mostFrequent || !secondMostFrequent) {
 		return []

@@ -24,7 +24,7 @@ const sendRequestFunc = (settings: ZhipuOptions): SendRequest =>
 		console.debug('zhipu options', { baseURL, apiKey, model, currentToken, tokenExpireInMinutes, enableWebSearch })
 
 		const { token } = await validOrCreate(currentToken, apiKey, tokenExpireInMinutes)
-		settings.token = token // 这里的token没有保存到磁盘，只是在内存中保存
+		settings.token = token
 
 		const client = new OpenAI({
 			apiKey: token.id,
@@ -41,7 +41,7 @@ const sendRequestFunc = (settings: ZhipuOptions): SendRequest =>
 						}
 					}
 				]
-			: []) as object[] as OpenAI.Chat.Completions.ChatCompletionTool[] // hack，因为 zhipu-ai 的函数调用类型和 openai 的类型定义不一样
+			: []) as object[] as OpenAI.Chat.Completions.ChatCompletionTool[] // hack, because the zhipu-ai function call type definition is different from openai's type definition
 
 		const stream = await client.chat.completions.create(
 			{

@@ -3,7 +3,7 @@ import { t } from 'src/lang/helper'
 import { PluginSettings } from 'src/settings'
 import { TagRole } from 'src/suggest'
 
-export const HARD_LINE_BREAK = '  \n' // 两个空格加换行符, hard line break in markdown
+export const HARD_LINE_BREAK = '  \n' // Two spaces plus newline, hard line break in markdown
 
 export const getEditorSelection = (editor: Editor): EditorSelection => {
 	const selections = editor.listSelections()
@@ -84,12 +84,12 @@ export const isEmptyLines = (editor: Editor, range: EditorRange): boolean => {
 	return content.trim().length === 0
 }
 
-// 判断前面是否要带空行
+// Check if line break is needed before
 export const insertMarkToEmptyLines = (editor: Editor, from: EditorPosition, mark: string) => {
 	let toLine = from.line
 	let insertText = ''
 	if (from.line > 0 && editor.getLine(from.line - 1).trim().length > 0) {
-		// 前面一行非空, 加空行
+		// Previous line is not empty, add a blank line
 		insertText = '\n' + mark
 		toLine += 1
 	} else {
@@ -105,14 +105,14 @@ export const insertMarkToEmptyLines = (editor: Editor, from: EditorPosition, mar
 	return toLine
 }
 
-// 判断前面是否要带空行，如果range起始位置不是开头，就不管了
+// Determine whether to include an empty line before. If the range's starting position is not at the beginning, ignore this consideration.
 export const insertMarkToBegin = (editor: Editor, range: EditorRange, mark: string) => {
 	const { from, to } = range
 
 	let insertText = ''
 	let toLine = to.line
 	if (from.line > 0 && editor.getLine(from.line - 1).trim().length > 0 && from.ch === 0) {
-		// 前面一行非空，并且是from是一行的开头， 那么加空行
+		// If the previous line is not empty and 'from' is at the beginning of a line, add an empty line
 		insertText = '\n' + mark
 		toLine += 1
 	} else {
@@ -145,7 +145,7 @@ export interface TagMeta {
 	tagRange: EditorRange | null
 }
 
-// 这里的标签可能在段落中间，也可能在段落开头。段落中间也算正常情况，但是消息可能会不一样。
+// Tags might be in the middle of a paragraph or at the beginning. Middle is also normal, but messages might be different.
 const getTagMeta = (app: App, editor: Editor, range: EditorRange, settings: PluginSettings): TagMeta => {
 	const { tags } = getEnv(app)
 	if (!tags) {
@@ -176,7 +176,7 @@ const getTagMeta = (app: App, editor: Editor, range: EditorRange, settings: Plug
 					firstTag.position.end.offset <= t.position.start.offset && t.position.end.offset <= editor.posToOffset(to)
 			)
 			if (secondTag) {
-				// newChat情形，返回第二个标签的role
+				// In the case of newChat, return the role of the second tag
 				return {
 					tagContent: secondTag.tag.slice(1),
 					role: getTagRole(secondTag, { userTags, assistantTags, systemTags, newChatTags }),
@@ -187,7 +187,7 @@ const getTagMeta = (app: App, editor: Editor, range: EditorRange, settings: Plug
 					}
 				}
 			} else {
-				// 只有一个newChat标签
+				// Only one newChat tag
 				return {
 					tagContent: firstTag.tag.slice(1),
 					role: null,
@@ -200,7 +200,7 @@ const getTagMeta = (app: App, editor: Editor, range: EditorRange, settings: Plug
 			}
 		}
 
-		// 第一个标签
+		// First tag
 		return {
 			tagContent: firstTag.tag.slice(1),
 			role: getTagRole(firstTag, { userTags, assistantTags, systemTags, newChatTags }),
@@ -211,7 +211,7 @@ const getTagMeta = (app: App, editor: Editor, range: EditorRange, settings: Plug
 			}
 		}
 	} else {
-		// 没有标签，普通文本
+		// No tags, plain text
 		return {
 			tagContent: null,
 			role: null,
