@@ -2,6 +2,7 @@ import {
 	App,
 	CachedMetadata,
 	Editor,
+	EditorPosition,
 	MetadataCache,
 	Notice,
 	ReferenceCache,
@@ -238,21 +239,31 @@ const debouncedResetInsertState = debounce(
 	true
 )
 
-const insertText = (editor: Editor, text: string, editorStatus: EditorStatus) => {
+const insertText = (editor: Editor, text: string, editorStatus: EditorStatus, lastEditPos: EditorPosition | null) => {
 	editorStatus.isTextInserting = true
 	let cursor = editor.getCursor('to')
+
+	if (lastEditPos !== null && (lastEditPos.line !== cursor.line || lastEditPos.ch !== cursor.ch)) {
+		// If there is a previous edit position, and it is different from the current cursor position, update the cursor to the last edit position
+		cursor = lastEditPos
+	}
+
 	const lineAtCursor = editor.getLine(cursor.line)
 	if (lineAtCursor.length > cursor.ch) {
 		cursor = { line: cursor.line, ch: lineAtCursor.length }
-		console.debug('Update cursor to end of line', cursor)
+		// console.debug('Update cursor to end of line', cursor)
+	}
+
+	const lines = text.split('\n')
+	lastEditPos = {
+		line: cursor.line + lines.length - 1,
+		ch: lines.length === 1 ? cursor.ch + text.length : lines[lines.length - 1].length
 	}
 
 	editor.replaceRange(text, cursor)
-	editor.setCursor({
-		line: cursor.line,
-		ch: cursor.ch + text.length
-	})
+	editor.setCursor(lastEditPos)
 	debouncedResetInsertState(editorStatus)
+	return lastEditPos
 }
 
 const getSectionsWithRefer = (fileMeta: CachedMetadata) => {
@@ -379,8 +390,9 @@ export const generate = async (
 
 		let accumulatedText = ''
 		const controller = requestController.getController()
+		let lastEditPos: EditorPosition | null = null
 		for await (const text of sendRequest(messages, controller)) {
-			insertText(editor, text, editorStatus)
+			lastEditPos = insertText(editor, text, editorStatus, lastEditPos)
 			accumulatedText += text
 			statusBarItem.setText(`Round ${round}: ${accumulatedText.length}${t('characters')}`)
 		}
