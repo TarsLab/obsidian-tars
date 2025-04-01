@@ -255,15 +255,15 @@ const insertText = (editor: Editor, text: string, editorStatus: EditorStatus, la
 	}
 
 	const lines = text.split('\n')
-	lastEditPos = {
+	const newEditPos = {
 		line: cursor.line + lines.length - 1,
 		ch: lines.length === 1 ? cursor.ch + text.length : lines[lines.length - 1].length
 	}
 
 	editor.replaceRange(text, cursor)
-	editor.setCursor(lastEditPos)
+	editor.setCursor(newEditPos)
 	debouncedResetInsertState(editorStatus)
-	return lastEditPos
+	return newEditPos
 }
 
 const getSectionsWithRefer = (fileMeta: CachedMetadata) => {
