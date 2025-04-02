@@ -89,7 +89,7 @@ export class TarsSettingTab extends PluginSettingTab {
 			.setHeading()
 
 		new Setting(containerEl)
-			.setName(t('New chat tags'))
+			.setName(this.plugin.settings.roleEmojis.newChat + ' ' + t('New chat tags'))
 			.addExtraButton((btn) => {
 				btn
 					.setIcon('reset')
@@ -113,7 +113,7 @@ export class TarsSettingTab extends PluginSettingTab {
 			)
 
 		new Setting(containerEl)
-			.setName(t('User message tags'))
+			.setName(this.plugin.settings.roleEmojis.user + ' ' + t('User message tags'))
 			.addExtraButton((btn) => {
 				btn
 					.setIcon('reset')
@@ -137,7 +137,7 @@ export class TarsSettingTab extends PluginSettingTab {
 			)
 
 		new Setting(containerEl)
-			.setName(t('System message tags'))
+			.setName(this.plugin.settings.roleEmojis.system + ' ' + t('System message tags'))
 			.addExtraButton((btn) => {
 				btn
 					.setIcon('reset')
@@ -359,8 +359,8 @@ export class TarsSettingTab extends PluginSettingTab {
 
 	addTagSection = (details: HTMLDetailsElement, settings: ProviderSettings, index: number, defaultTag: string) =>
 		new Setting(details)
-			.setName(t('tag'))
-			.setDesc(t('Trigger AI generation'))
+			.setName('✨ ' + t('Assistant message tag'))
+			.setDesc(t('Tag used to trigger AI text generation'))
 			.addText((text) =>
 				text
 					.setPlaceholder(defaultTag)

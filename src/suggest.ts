@@ -147,22 +147,24 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 			el.createSpan({ text: element.replacement })
 			return
 		}
-
+		const asstEmoji = this.settings.roleEmojis.assistant
 		switch (element.role) {
 			case 'assistant': {
-				el.createSpan({ text: element.replacement + '  ✨ ' + t('AI generate') + ' ✨  ' })
+				el.createSpan({
+					text: `${element.replacement}  ${asstEmoji} ${t('AI generate')} ${asstEmoji}  `
+				})
 				break
 			}
 			case 'user': {
-				el.createSpan({ text: element.replacement + '  💬  ' })
+				el.createSpan({ text: `${element.replacement}  ${this.settings.roleEmojis.user}  ` })
 				break
 			}
 			case 'system': {
-				el.createSpan({ text: element.replacement + '  💬  ' })
+				el.createSpan({ text: `${element.replacement}  ${this.settings.roleEmojis.system}  ` })
 				break
 			}
 			case 'newChat': {
-				el.createSpan({ text: element.replacement + '  🚀  ' })
+				el.createSpan({ text: `${element.replacement}  ${this.settings.roleEmojis.newChat}  ` })
 				break
 			}
 			default: {

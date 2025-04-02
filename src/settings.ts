@@ -24,6 +24,12 @@ export interface PluginSettings {
 	systemTags: string[]
 	newChatTags: string[]
 	userTags: string[]
+	roleEmojis: {
+		assistant: string
+		system: string
+		newChat: string
+		user: string
+	}
 	promptTemplates: PromptTemplate[]
 	confirmRegenerate: boolean
 	enableTagSuggest: boolean
@@ -39,6 +45,12 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	systemTags: ['System', '系统'],
 	newChatTags: ['NewChat', '新对话'],
 	userTags: ['User', '我'],
+	roleEmojis: {
+		assistant: '✨',
+		system: '🔧',
+		newChat: ' 🚀',
+		user: '💬'
+	},
 	promptTemplates: [],
 	answerDelayInMilliseconds: 2000,
 	confirmRegenerate: true,
