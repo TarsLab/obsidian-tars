@@ -160,12 +160,28 @@ export class TarsSettingTab extends PluginSettingTab {
 					})
 			)
 
+		containerEl.createEl('br')
+
 		new Setting(containerEl)
 			.setName(t('Confirm before regeneration'))
 			.setDesc(t('Confirm before replacing existing assistant responses when using assistant commands'))
 			.addToggle((toggle) =>
 				toggle.setValue(this.plugin.settings.confirmRegenerate).onChange(async (value) => {
 					this.plugin.settings.confirmRegenerate = value
+					await this.plugin.saveSettings()
+				})
+			)
+
+		new Setting(containerEl)
+			.setName(t('Internal links'))
+			.setDesc(
+				t(
+					'Internal links in messages will be replaced with their referenced content. When disabled, only the original text of the links will be used.'
+				)
+			)
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.enableInternalLink).onChange(async (value) => {
+					this.plugin.settings.enableInternalLink = value
 					await this.plugin.saveSettings()
 				})
 			)

@@ -110,6 +110,9 @@ export default {
 	'Confirm before regeneration': 'Confirm before regeneration',
 	'Confirm before replacing existing assistant responses when using assistant commands':
 		'Confirm before replacing existing assistant responses when using assistant commands',
+	'Internal links': 'Internal links',
+	'Internal links in messages will be replaced with their referenced content. When disabled, only the original text of the links will be used.':
+		'Internal links in messages will be replaced with their referenced content. When disabled, only the original text of the links will be used.',
 	Advanced: 'Advanced',
 	'Delay before answer (Seconds)': 'Delay before answer (Seconds)',
 	'If you encounter errors with missing user messages when executing assistant commands on selected text, it may be due to the need for more time to parse the messages. Please slightly increase the delay time.':

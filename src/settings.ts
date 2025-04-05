@@ -31,6 +31,7 @@ export interface PluginSettings {
 		user: string
 	}
 	promptTemplates: PromptTemplate[]
+	enableInternalLink: boolean
 	confirmRegenerate: boolean
 	enableTagSuggest: boolean
 	tagSuggestMaxLineLength: number
@@ -52,6 +53,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 		user: '💬'
 	},
 	promptTemplates: [],
+	enableInternalLink: true,
 	answerDelayInMilliseconds: 2000,
 	confirmRegenerate: true,
 	enableTagSuggest: true,

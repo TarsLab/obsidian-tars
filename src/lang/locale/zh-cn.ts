@@ -108,6 +108,9 @@ export default {
 	'Confirm before regeneration': '重新生成前是否需要确认',
 	'Confirm before replacing existing assistant responses when using assistant commands':
 		'在使用助手标签命令时，替换旧的助手消息，是否需要弹窗确认',
+	'Internal links': '内部链接',
+	'Internal links in messages will be replaced with their referenced content. When disabled, only the original text of the links will be used.':
+		'在请求对话中，内部链接将被替换为其引用的内容。禁用则仅使用链接的原始文本',
 	Advanced: '高级',
 	'Delay before answer (Seconds)': '回答前的延迟（秒）',
 	'If you encounter errors with missing user messages when executing assistant commands on selected text, it may be due to the need for more time to parse the messages. Please slightly increase the delay time.':
