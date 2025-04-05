@@ -76,7 +76,8 @@ export const buildRunEnv = async (app: App, settings: PluginSettings): Promise<R
 	)
 	console.debug('tagsInMeta', tagsInMeta)
 
-	const sectionsWithRefer = getSectionsWithRefer(fileMeta)
+	const sectionsWithRefer = getSectionsWithRefer(fileMeta, settings.enableInternalLink)
+	console.debug('sectionsWithRefer', sectionsWithRefer)
 
 	const options = {
 		newChatTags: settings.newChatTags,
@@ -266,23 +267,27 @@ const insertText = (editor: Editor, text: string, editorStatus: EditorStatus, la
 	return newEditPos
 }
 
-const getSectionsWithRefer = (fileMeta: CachedMetadata) => {
+const getSectionsWithRefer = (fileMeta: CachedMetadata, withReference: boolean): SectionCacheWithRefer[] => {
 	if (!fileMeta.sections) return []
+	const filteredSections = fileMeta.sections.filter((s) => !ignoreSectionTypes.includes(s.type))
+	if (!withReference) {
+		return filteredSections.map((section) => ({
+			...section,
+			refers: []
+		}))
+	}
+
 	const refersCache: ReferenceCache[] = [...(fileMeta.links || []), ...(fileMeta.embeds || [])].sort(
 		(a, b) => a.position.start.offset - b.position.start.offset // keep the order
 	)
-	const sectionsWithRefer: SectionCacheWithRefer[] = fileMeta.sections
-		.filter((s) => !ignoreSectionTypes.includes(s.type))
-		.map((section) => {
-			const refers = refersCache.filter(
-				(ref) =>
-					section.position.start.offset <= ref.position.start.offset &&
-					ref.position.end.offset <= section.position.end.offset
-			)
-			return { ...section, refers }
-		})
-	console.debug('sectionsWithRefer', sectionsWithRefer)
-	return sectionsWithRefer
+	return filteredSections.map((section) => {
+		const refers = refersCache.filter(
+			(ref) =>
+				section.position.start.offset <= ref.position.start.offset &&
+				ref.position.end.offset <= section.position.end.offset
+		)
+		return { ...section, refers }
+	})
 }
 
 export const fetchAllConversations = async (env: RunEnv) => {
