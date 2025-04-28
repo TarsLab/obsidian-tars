@@ -393,21 +393,34 @@ export const generate = async (
 		const startTime = new Date()
 		statusBarItem.setText(`Round ${round}:...`)
 
-		let accumulatedText = ''
+		let llmResponse = ''
 		const controller = requestController.getController()
+
 		let lastEditPos: EditorPosition | null = null
+		let startPos: EditorPosition | null = null
 		for await (const text of sendRequest(messages, controller)) {
+			if (startPos == null) startPos = editor.getCursor('to')
 			lastEditPos = insertText(editor, text, editorStatus, lastEditPos)
-			accumulatedText += text
-			statusBarItem.setText(`Round ${round}: ${accumulatedText.length}${t('characters')}`)
+			llmResponse += text
+			statusBarItem.setText(`Round ${round}: ${llmResponse.length}${t('characters')}`)
 		}
 
 		const endTime = new Date()
 		const duration = formatDuration(endTime.getTime() - startTime.getTime())
-		statusBarItem.setText(`Round ${round}: ${accumulatedText.length}${t('characters')} ${duration}`)
+		statusBarItem.setText(`Round ${round}: ${llmResponse.length}${t('characters')} ${duration}`)
 
-		if (accumulatedText.length === 0) {
+		if (llmResponse.length === 0) {
 			throw new Error(t('No text generated'))
+		}
+
+		if (startPos) {
+			const endPos = editor.getCursor('to')
+			const insertedText = editor.getRange(startPos, endPos)
+			const formattedText = formatTextWithLeadingBreaks(llmResponse)
+			if (insertedText !== formattedText) {
+				console.debug('format text with leading breaks')
+				editor.replaceRange(formattedText, startPos, endPos)
+			}
 		}
 
 		if (controller.signal.aborted) {
@@ -415,8 +428,21 @@ export const generate = async (
 		} else {
 			new Notice(t('Text generated successfully'))
 		}
-		console.debug('✨ ' + t('AI generate') + ' ✨ ', accumulatedText)
+		console.debug('✨ ' + t('AI generate') + ' ✨ ', llmResponse)
 	} finally {
 		requestController.cleanup()
 	}
+}
+
+const formatTextWithLeadingBreaks = (text: string) => {
+	const firstLine = text.split('\n')[0]
+	if (firstLine.startsWith('#') || firstLine.startsWith('```')) {
+		// Markdown header or code block
+		return '\n' + text
+	}
+	if (firstLine.startsWith('| ')) {
+		// Markdown table
+		return '\n\n' + text
+	}
+	return text
 }
