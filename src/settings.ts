@@ -49,7 +49,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	roleEmojis: {
 		assistant: '✨',
 		system: '🔧',
-		newChat: ' 🚀',
+		newChat: '🚀',
 		user: '💬'
 	},
 	promptTemplates: [],
