@@ -14,7 +14,7 @@ import {
 	resolveSubpath
 } from 'obsidian'
 import { t } from 'src/lang/helper'
-import { Message, ProviderSettings } from './providers'
+import { Message, ProviderSettings, SaveAttachmentFunc } from './providers'
 import { EditorStatus, PluginSettings, availableVendors } from './settings'
 import { TagRole } from './suggest'
 
@@ -31,6 +31,7 @@ export interface RunEnv {
 		assistantTags: string[]
 		systemTags: string[]
 	}
+	saveAttachment: SaveAttachmentFunc
 }
 
 interface Tag extends Omit<Message, 'content'> {
@@ -86,7 +87,11 @@ export const buildRunEnv = async (app: App, settings: PluginSettings): Promise<R
 		systemTags: settings.systemTags
 	}
 
-	return { appMeta, vault, fileText, filePath, tagsInMeta, sectionsWithRefer, options }
+	const saveAttachment = async (filename: string, data: ArrayBuffer) => {
+		const attachmentPath = await app.fileManager.getAvailablePathForAttachment(filename)
+		await vault.createBinary(attachmentPath, data)
+	}
+	return { appMeta, vault, fileText, filePath, tagsInMeta, sectionsWithRefer, options, saveAttachment }
 }
 
 const fetchLinkTextContent = async (env: RunEnv, linkText: string) => {
@@ -398,7 +403,7 @@ export const generate = async (
 
 		let lastEditPos: EditorPosition | null = null
 		let startPos: EditorPosition | null = null
-		for await (const text of sendRequest(messages, controller)) {
+		for await (const text of sendRequest(messages, controller, env.saveAttachment)) {
 			if (startPos == null) startPos = editor.getCursor('to')
 			lastEditPos = insertText(editor, text, editorStatus, lastEditPos)
 			llmResponse += text
@@ -442,6 +447,10 @@ const formatTextWithLeadingBreaks = (text: string) => {
 	}
 	if (firstLine.startsWith('| ')) {
 		// Markdown table
+		return '\n\n' + text
+	}
+	if (firstLine.startsWith('![[')) {
+		// Attachment
 		return '\n\n' + text
 	}
 	return text
