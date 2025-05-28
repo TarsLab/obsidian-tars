@@ -162,6 +162,30 @@ export class TarsSettingTab extends PluginSettingTab {
 
 		containerEl.createEl('br')
 
+		new Setting(containerEl).setName(t('System message')).setHeading()
+		new Setting(containerEl)
+			.setName(t('Enable default system message'))
+			.setDesc(t('Automatically add a system message when none exists in the conversation'))
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.enableDefaultSystemMsg).onChange(async (value) => {
+					this.plugin.settings.enableDefaultSystemMsg = value
+					await this.plugin.saveSettings()
+					this.display()
+				})
+			)
+
+		new Setting(containerEl).setName(t('Default system message')).addTextArea((textArea) =>
+			textArea
+				.setDisabled(!this.plugin.settings.enableDefaultSystemMsg)
+				.setValue(this.plugin.settings.defaultSystemMsg)
+				.onChange(async (value) => {
+					this.plugin.settings.defaultSystemMsg = value.trim()
+					await this.plugin.saveSettings()
+				})
+		)
+
+		containerEl.createEl('br')
+
 		new Setting(containerEl)
 			.setName(t('Confirm before regeneration'))
 			.setDesc(t('Confirm before replacing existing assistant responses when using assistant commands'))
@@ -185,6 +209,7 @@ export class TarsSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings()
 				})
 			)
+
 		containerEl.createEl('br')
 
 		const advancedSection = containerEl.createEl('details')
