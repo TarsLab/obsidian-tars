@@ -5,16 +5,17 @@ import { BaseOptions, Message, SaveAttachmentFunc, SendRequest, Vendor } from '.
 
 const models = ['gpt-image-1']
 
-export const options = {
+export const DEFAULT_GPT_IMAGE_OPTIONS = {
 	n: 1,
-	displayWidth: 400,
-	background: ['auto', 'transparent', 'opaque'],
-	output_format: ['png', 'jpeg', 'webp'],
-	quality: ['auto', 'high', 'medium', 'low'],
-	size: ['auto', '1024x1024', '1536x1024', '1024x1536']
+	displayWidth: 600,
+	background: 'auto',
+	output_format: 'png',
+	output_compression: 100,
+	quality: 'auto',
+	size: 'auto'
 }
 
-interface GptImageOptions extends BaseOptions {
+export interface GptImageOptions extends BaseOptions {
 	displayWidth: number
 	background: 'auto' | 'transparent' | 'opaque'
 	n: number
@@ -92,13 +93,13 @@ export const gptImageVendor: Vendor = {
 		apiKey: '',
 		baseURL: 'https://api.openai.com/v1',
 		model: models[0],
-		displayWidth: options.displayWidth,
-		background: options.background[0],
-		output_compression: 100,
-		output_format: options.output_format[0],
-		quality: options.quality[0],
-		size: options.size[0],
-		n: options.n,
+		n: DEFAULT_GPT_IMAGE_OPTIONS.n,
+		displayWidth: DEFAULT_GPT_IMAGE_OPTIONS.displayWidth,
+		background: DEFAULT_GPT_IMAGE_OPTIONS.background,
+		output_compression: DEFAULT_GPT_IMAGE_OPTIONS.output_compression,
+		output_format: DEFAULT_GPT_IMAGE_OPTIONS.output_format,
+		quality: DEFAULT_GPT_IMAGE_OPTIONS.quality,
+		size: DEFAULT_GPT_IMAGE_OPTIONS.size,
 		parameters: {}
 	} as GptImageOptions,
 	sendRequestFunc,
