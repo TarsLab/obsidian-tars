@@ -39,6 +39,8 @@ export interface PluginSettings {
 	answerDelayInMilliseconds: number
 	enableExportToJSONL: boolean
 	enableReplaceTag: boolean
+	enableDefaultSystemMsg: boolean
+	defaultSystemMsg: string
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -60,7 +62,9 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	enableTagSuggest: true,
 	tagSuggestMaxLineLength: 20,
 	enableExportToJSONL: false,
-	enableReplaceTag: false
+	enableReplaceTag: false,
+	enableDefaultSystemMsg: false,
+	defaultSystemMsg: ''
 }
 
 export const availableVendors: Vendor[] = [

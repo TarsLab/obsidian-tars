@@ -113,6 +113,11 @@ export default {
 	'Internal links': 'Internal links',
 	'Internal links in messages will be replaced with their referenced content. When disabled, only the original text of the links will be used.':
 		'Internal links in messages will be replaced with their referenced content. When disabled, only the original text of the links will be used.',
+	'System message': 'System message',
+	'Enable default system message': 'Enable default system message',
+	'Automatically add a system message when none exists in the conversation':
+		'Automatically add a system message when none exists in the conversation',
+	'Default system message': 'Default system message',
 	Advanced: 'Advanced',
 	'Delay before answer (Seconds)': 'Delay before answer (Seconds)',
 	'If you encounter errors with missing user messages when executing assistant commands on selected text, it may be due to the need for more time to parse the messages. Please slightly increase the delay time.':

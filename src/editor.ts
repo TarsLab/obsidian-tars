@@ -30,6 +30,8 @@ export interface RunEnv {
 		userTags: string[]
 		assistantTags: string[]
 		systemTags: string[]
+		enableDefaultSystemMsg: boolean
+		defaultSystemMsg: string
 	}
 	saveAttachment: SaveAttachmentFunc
 }
@@ -84,7 +86,9 @@ export const buildRunEnv = async (app: App, settings: PluginSettings): Promise<R
 		newChatTags: settings.newChatTags,
 		userTags: settings.userTags,
 		assistantTags: settings.providers.map((p) => p.tag),
-		systemTags: settings.systemTags
+		systemTags: settings.systemTags,
+		enableDefaultSystemMsg: settings.enableDefaultSystemMsg,
+		defaultSystemMsg: settings.defaultSystemMsg
 	}
 
 	const saveAttachment = async (filename: string, data: ArrayBuffer) => {
@@ -392,6 +396,16 @@ export const generate = async (
 		if (!lastMsg || lastMsg.role !== 'user' || lastMsg.content.trim().length === 0) {
 			throw new Error(t('Please add a user message first, or wait for the user message to be parsed.'))
 		}
+
+		if (env.options.enableDefaultSystemMsg && messages[0]?.role !== 'system' && env.options.defaultSystemMsg) {
+			// If the first message is not a system message, add the default system message
+			messages.unshift({
+				role: 'system',
+				content: env.options.defaultSystemMsg
+			})
+			console.debug('Default system message added:', env.options.defaultSystemMsg)
+		}
+
 		const round = messages.filter((m) => m.role === 'assistant').length + 1
 
 		const sendRequest = vendor.sendRequestFunc(provider.options)
