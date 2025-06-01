@@ -1,8 +1,9 @@
 import {
 	App,
-	CachedMetadata,
 	Editor,
 	EditorPosition,
+	EmbedCache,
+	LinkCache,
 	MetadataCache,
 	Notice,
 	ReferenceCache,
@@ -14,7 +15,7 @@ import {
 	resolveSubpath
 } from 'obsidian'
 import { t } from 'src/lang/helper'
-import { Message, ProviderSettings, SaveAttachmentFunc } from './providers'
+import { Message, ProviderSettings, ResolveEmbedAsBinary, SaveAttachment } from './providers'
 import { EditorStatus, PluginSettings, availableVendors } from './settings'
 import { TagRole } from './suggest'
 
@@ -23,17 +24,21 @@ export interface RunEnv {
 	readonly vault: Vault
 	readonly fileText: string
 	readonly filePath: string
-	readonly tagsInMeta: TagCache[]
-	readonly sectionsWithRefer: SectionCacheWithRefer[]
+	readonly tags: TagCache[]
+	readonly sections: SectionCache[]
+	readonly links?: LinkCache[]
+	readonly embeds?: ReferenceCache[]
 	readonly options: {
 		newChatTags: string[]
 		userTags: string[]
 		assistantTags: string[]
 		systemTags: string[]
+		enableInternalLink: boolean
 		enableDefaultSystemMsg: boolean
 		defaultSystemMsg: string
 	}
-	saveAttachment: SaveAttachmentFunc
+	saveAttachment: SaveAttachment
+	resolveEmbed: ResolveEmbedAsBinary
 }
 
 interface Tag extends Omit<Message, 'content'> {
@@ -43,14 +48,10 @@ interface Tag extends Omit<Message, 'content'> {
 	readonly tagLine: number
 }
 
-interface SectionCacheWithRefer extends SectionCache {
-	readonly refers: ReferenceCache[]
-}
-
-interface TagWithSections extends Tag {
+interface TaggedBlock extends Tag {
 	readonly contentRange: [number, number]
 	readonly line: [number, number]
-	readonly sections: SectionCacheWithRefer[]
+	readonly sections: SectionCache[]
 }
 
 const ignoreSectionTypes: readonly string[] = ['callout']
@@ -71,22 +72,19 @@ export const buildRunEnv = async (app: App, settings: PluginSettings): Promise<R
 	}
 
 	const ignoreSections = fileMeta.sections?.filter((s) => ignoreSectionTypes.includes(s.type)) || []
-	const tagsInMeta = (fileMeta.tags || []).filter(
+	const filteredTags = (fileMeta.tags || []).filter(
 		(t) =>
 			!ignoreSections.some(
 				(s) => s.position.start.offset <= t.position.start.offset && t.position.end.offset <= s.position.end.offset
 			)
 	)
-	console.debug('tagsInMeta', tagsInMeta)
-
-	const sectionsWithRefer = getSectionsWithRefer(fileMeta, settings.enableInternalLink)
-	console.debug('sectionsWithRefer', sectionsWithRefer)
 
 	const options = {
 		newChatTags: settings.newChatTags,
 		userTags: settings.userTags,
 		assistantTags: settings.providers.map((p) => p.tag),
 		systemTags: settings.systemTags,
+		enableInternalLink: settings.enableInternalLink,
 		enableDefaultSystemMsg: settings.enableDefaultSystemMsg,
 		defaultSystemMsg: settings.defaultSystemMsg
 	}
@@ -95,10 +93,31 @@ export const buildRunEnv = async (app: App, settings: PluginSettings): Promise<R
 		const attachmentPath = await app.fileManager.getAvailablePathForAttachment(filename)
 		await vault.createBinary(attachmentPath, data)
 	}
-	return { appMeta, vault, fileText, filePath, tagsInMeta, sectionsWithRefer, options, saveAttachment }
+	const resolveEmbed = async (embed: EmbedCache) => {
+		const { path, subpath } = parseLinktext(embed.link)
+		console.debug('resolveEmbed path', path, 'subpath', subpath)
+		const targetFile = appMeta.getFirstLinkpathDest(path, filePath)
+		if (targetFile === null) {
+			throw new Error('LinkText broken: ' + embed.link.substring(0, 20))
+		}
+		return await vault.readBinary(targetFile)
+	}
+	return {
+		appMeta,
+		vault,
+		fileText,
+		filePath,
+		tags: filteredTags,
+		sections: fileMeta.sections?.filter((s) => !ignoreSectionTypes.includes(s.type)) || [],
+		links: fileMeta.links,
+		embeds: fileMeta.embeds,
+		options,
+		saveAttachment,
+		resolveEmbed
+	}
 }
 
-const fetchLinkTextContent = async (env: RunEnv, linkText: string) => {
+const resolveLinkedContent = async (env: RunEnv, linkText: string) => {
 	const { appMeta, vault, filePath } = env
 	const { path, subpath } = parseLinktext(linkText)
 	console.debug('path', path, 'subpath', subpath)
@@ -122,14 +141,14 @@ const fetchLinkTextContent = async (env: RunEnv, linkText: string) => {
 	}
 }
 
-const fetchTagsWithSections = (env: RunEnv, startOffset: number, endOffset: number) => {
+const extractTaggedBlocks = (env: RunEnv, startOffset: number, endOffset: number) => {
 	const {
-		tagsInMeta,
-		sectionsWithRefer,
+		tags,
+		sections,
 		options: { userTags, assistantTags, systemTags }
 	} = env
 
-	const tags: Tag[] = tagsInMeta
+	const roleMappedTags: Tag[] = tags
 		.filter((t) => startOffset <= t.position.start.offset && t.position.end.offset <= endOffset)
 		.map((t) => {
 			const lowerCaseTag = t.tag.slice(1).split('/')[0].toLowerCase()
@@ -151,65 +170,99 @@ const fetchTagsWithSections = (env: RunEnv, startOffset: number, endOffset: numb
 				: null
 		})
 		.filter((t) => t !== null) as Tag[]
-	console.debug('tags', tags)
+	console.debug('roleMappedTags', roleMappedTags)
 
-	const ranges: [number, number][] = tags.map((tag, i) => [
+	const ranges: [number, number][] = roleMappedTags.map((tag, i) => [
 		tag.tagRange[0],
-		tags[i + 1] ? tags[i + 1].tagRange[0] - 1 : endOffset
+		roleMappedTags[i + 1] ? roleMappedTags[i + 1].tagRange[0] - 1 : endOffset
 	])
 
-	const tagsWithSections: TagWithSections[] = ranges.map((range, i) => ({
-		...tags[i],
-		contentRange: [tags[i].tagRange[1] + 2, tags[i + 1] ? tags[i + 1].tagRange[0] - 1 : endOffset], // +2 because there is a space and a colon after the tag
-		sections: sectionsWithRefer.filter(
+	const taggedBlocks: TaggedBlock[] = ranges.map((range, i) => ({
+		...roleMappedTags[i],
+		contentRange: [
+			roleMappedTags[i].tagRange[1] + 2,
+			roleMappedTags[i + 1] ? roleMappedTags[i + 1].tagRange[0] - 1 : endOffset
+		], // +2 because there is a space and a colon after the tag
+		sections: sections.filter(
 			(section) =>
 				section.position.end.offset <= range[1] &&
 				(section.position.start.offset < range[0] ? section.position.end.offset > range[0] : true)
 		),
-		line: [tags[i].tagLine, tags[i + 1] ? tags[i + 1].tagLine - 1 : Infinity]
+		line: [roleMappedTags[i].tagLine, roleMappedTags[i + 1] ? roleMappedTags[i + 1].tagLine - 1 : Infinity]
 	}))
-	console.debug('tagsWithSections', tagsWithSections)
-	return tagsWithSections
+	console.debug('taggedBlocks', taggedBlocks)
+	return taggedBlocks
 }
 
-const fetchTextRange = async (
+const resolveTextRangeWithLinks = async (
 	env: RunEnv,
-	sectionWithRefer: SectionCacheWithRefer,
+	section: SectionCache,
 	contentRange: readonly [number, number]
 ) => {
-	const { fileText } = env
+	const {
+		fileText,
+		links: links = [],
+		embeds: embeds = [],
+		options: { enableInternalLink }
+	} = env
 
-	const startOffset =
-		sectionWithRefer.position.start.offset <= contentRange[0] ? contentRange[0] : sectionWithRefer.position.start.offset
+	const startOffset = section.position.start.offset <= contentRange[0] ? contentRange[0] : section.position.start.offset
 
-	const endOffset = sectionWithRefer.position.end.offset
-	const refersWithText = await Promise.all(
-		sectionWithRefer.refers.map(async (ref) => {
+	const endOffset = section.position.end.offset
+
+	const linksWithType = links.map((link) => ({
+		ref: link,
+		type: 'link' as const
+	}))
+
+	const embedsWithType = embeds.map((embed) => ({
+		ref: embed,
+		type: 'embed' as const
+	}))
+
+	const ordered = [...linksWithType, ...embedsWithType].sort(
+		(a, b) => a.ref.position.start.offset - b.ref.position.start.offset
+	)
+
+	const filteredRefers = ordered.filter(
+		(item) => startOffset <= item.ref.position.start.offset && item.ref.position.end.offset <= endOffset
+	)
+
+	const resolvedLinkTexts = await Promise.all(
+		filteredRefers.map(async (item) => {
+			const referCache = item.ref
+			if (item.type === 'link') {
+				return {
+					referCache,
+					text: enableInternalLink ? await resolveLinkedContent(env, referCache.link) : referCache.original
+				}
+			}
 			return {
-				ref,
-				text: await fetchLinkTextContent(env, ref.link)
+				referCache,
+				text: ''
 			}
 		})
 	)
 
-	const accumulatedText = refersWithText.reduce(
-		(acc, { ref, text }) => ({
-			endOffset: ref.position.end.offset,
-			text: acc.text + fileText.slice(acc.endOffset, ref.position.start.offset) + text
+	const accumulatedText = resolvedLinkTexts.reduce(
+		(acc, { referCache, text }) => ({
+			endOffset: referCache.position.end.offset,
+			text: acc.text + fileText.slice(acc.endOffset, referCache.position.start.offset) + text
 		}),
 		{ endOffset: startOffset, text: '' }
 	)
+	console.debug('accumulatedText', accumulatedText)
 	return {
 		text: accumulatedText.text + fileText.slice(accumulatedText.endOffset, endOffset),
 		range: [startOffset, endOffset] as [number, number]
 	}
 }
 
-const fetchTextForTag = async (env: RunEnv, tagWithSections: TagWithSections) => {
+const extractTaggedBlockContent = async (env: RunEnv, taggedBlock: TaggedBlock) => {
 	const textRanges = await Promise.all(
-		tagWithSections.sections.map((section) => fetchTextRange(env, section, tagWithSections.contentRange))
+		taggedBlock.sections.map((section) => resolveTextRangeWithLinks(env, section, taggedBlock.contentRange))
 	)
-
+	console.debug('textRanges', textRanges)
 	const accumulated = textRanges
 		.map((range) => range.text)
 		.join('\n\n')
@@ -217,9 +270,14 @@ const fetchTextForTag = async (env: RunEnv, tagWithSections: TagWithSections) =>
 	return accumulated
 }
 
-const fetchConversation = async (env: RunEnv, startOffset: number, endOffset: number) => {
+const filterEmbeds = (env: RunEnv, contentRange: [number, number]) =>
+	env.embeds?.filter(
+		(embed) => contentRange[0] <= embed.position.start.offset && embed.position.end.offset <= contentRange[1]
+	)
+
+const extractConversation = async (env: RunEnv, startOffset: number, endOffset: number) => {
 	const {
-		tagsInMeta,
+		tags: tagsInMeta,
 		options: { newChatTags }
 	} = env
 
@@ -231,11 +289,12 @@ const fetchConversation = async (env: RunEnv, startOffset: number, endOffset: nu
 	)
 	const conversationStart = lastNewChatTag ? lastNewChatTag.position.end.offset : startOffset
 
-	const tagsWithSections = fetchTagsWithSections(env, conversationStart, endOffset)
+	const taggedBlocks = extractTaggedBlocks(env, conversationStart, endOffset)
 	const conversation = await Promise.all(
-		tagsWithSections.map(async (tag) => ({
+		taggedBlocks.map(async (tag) => ({
 			...tag,
-			content: await fetchTextForTag(env, tag)
+			content: await extractTaggedBlockContent(env, tag),
+			embeds: filterEmbeds(env, tag.contentRange)
 		}))
 	)
 	return conversation
@@ -276,36 +335,13 @@ const insertText = (editor: Editor, text: string, editorStatus: EditorStatus, la
 	return newEditPos
 }
 
-const getSectionsWithRefer = (fileMeta: CachedMetadata, withReference: boolean): SectionCacheWithRefer[] => {
-	if (!fileMeta.sections) return []
-	const filteredSections = fileMeta.sections.filter((s) => !ignoreSectionTypes.includes(s.type))
-	if (!withReference) {
-		return filteredSections.map((section) => ({
-			...section,
-			refers: []
-		}))
-	}
-
-	const refersCache: ReferenceCache[] = [...(fileMeta.links || []), ...(fileMeta.embeds || [])].sort(
-		(a, b) => a.position.start.offset - b.position.start.offset // keep the order
-	)
-	return filteredSections.map((section) => {
-		const refers = refersCache.filter(
-			(ref) =>
-				section.position.start.offset <= ref.position.start.offset &&
-				ref.position.end.offset <= section.position.end.offset
-		)
-		return { ...section, refers }
-	})
-}
-
-export const fetchAllConversations = async (env: RunEnv) => {
+export const extractAllConversations = async (env: RunEnv) => {
 	const {
-		tagsInMeta,
+		tags,
 		options: { newChatTags }
 	} = env
 
-	const conversationTags = tagsInMeta.filter((t) =>
+	const conversationTags = tags.filter((t) =>
 		newChatTags.some((n) => t.tag.slice(1).split('/')[0].toLowerCase() === n.toLowerCase())
 	) // support Nested tags
 
@@ -322,11 +358,12 @@ export const fetchAllConversations = async (env: RunEnv) => {
 
 	const conversations = await Promise.all(
 		ranges.map(async (r) => {
-			const tagsWithSections = fetchTagsWithSections(env, r.startOffset, r.endOffset)
+			const tagsWithSections = extractTaggedBlocks(env, r.startOffset, r.endOffset)
 			const conversation = Promise.all(
 				tagsWithSections.map(async (tag) => ({
 					...tag,
-					content: await fetchTextForTag(env, tag)
+					content: await extractTaggedBlockContent(env, tag),
+					embeds: filterEmbeds(env, tag.contentRange)
 				}))
 			)
 			return conversation
@@ -338,8 +375,8 @@ export const fetchAllConversations = async (env: RunEnv) => {
 
 export const getMsgPositionByLine = (env: RunEnv, line: number) => {
 	const {
-		tagsInMeta,
-		sectionsWithRefer,
+		tags: tagsInMeta,
+		sections,
 		options: { systemTags, userTags, assistantTags }
 	} = env
 	const msgTags = [...systemTags, ...userTags, ...assistantTags]
@@ -356,7 +393,7 @@ export const getMsgPositionByLine = (env: RunEnv, line: number) => {
 	const nextMsgStartOffset =
 		nextMsgIndex < msgTagsInMeta.length ? msgTagsInMeta[nextMsgIndex].position.start.offset : Infinity
 	console.debug('nextTag', msgTagsInMeta[nextMsgIndex])
-	const lastSection = sectionsWithRefer.findLast(
+	const lastSection = sections.findLast(
 		(section) => section.position.end.offset <= nextMsgStartOffset && section.position.start.line >= line
 	)
 	if (!lastSection) return [-1, -1]
@@ -388,8 +425,8 @@ export const generate = async (
 			throw new Error('No vendor found ' + provider.vendor)
 		}
 
-		const conversation = await fetchConversation(env, 0, endOffset)
-		const messages = conversation.map((c) => ({ role: c.role, content: c.content }))
+		const conversation = await extractConversation(env, 0, endOffset)
+		const messages = conversation.map((c) => ({ role: c.role, content: c.content, embeds: c.embeds }))
 		console.debug('messages', messages)
 
 		const lastMsg = messages.last()
@@ -401,7 +438,8 @@ export const generate = async (
 			// If the first message is not a system message, add the default system message
 			messages.unshift({
 				role: 'system',
-				content: env.options.defaultSystemMsg
+				content: env.options.defaultSystemMsg,
+				embeds: []
 			})
 			console.debug('Default system message added:', env.options.defaultSystemMsg)
 		}
@@ -417,7 +455,7 @@ export const generate = async (
 
 		let lastEditPos: EditorPosition | null = null
 		let startPos: EditorPosition | null = null
-		for await (const text of sendRequest(messages, controller, env.saveAttachment)) {
+		for await (const text of sendRequest(messages, controller, env.saveAttachment, env.resolveEmbed)) {
 			if (startPos == null) startPos = editor.getCursor('to')
 			lastEditPos = insertText(editor, text, editorStatus, lastEditPos)
 			llmResponse += text

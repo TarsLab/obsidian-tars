@@ -1,5 +1,5 @@
 import { App, Notice, normalizePath } from 'obsidian'
-import { buildRunEnv, fetchAllConversations } from 'src/editor'
+import { buildRunEnv, extractAllConversations } from 'src/editor'
 import { t } from 'src/lang/helper'
 import { Message } from 'src/providers'
 import { PluginSettings } from 'src/settings'
@@ -16,7 +16,7 @@ export const exportCmd = (app: App, settings: PluginSettings) => ({
 
 const exportConversation = async (app: App, settings: PluginSettings) => {
 	const env = await buildRunEnv(app, settings)
-	const conversations = await fetchAllConversations(env)
+	const conversations = await extractAllConversations(env)
 	console.debug('conversations', conversations)
 
 	let query_responses = []

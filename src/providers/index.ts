@@ -2,8 +2,12 @@ import { EmbedCache } from 'obsidian'
 
 export type MsgRole = 'user' | 'assistant' | 'system'
 
-export interface SaveAttachmentFunc {
+export interface SaveAttachment {
 	(fileName: string, data: ArrayBuffer): Promise<void>
+}
+
+export interface ResolveEmbedAsBinary {
+	(embed: EmbedCache): Promise<ArrayBuffer>
 }
 
 export interface Message {
@@ -15,7 +19,8 @@ export interface Message {
 export type SendRequest = (
 	messages: readonly Message[],
 	controller: AbortController,
-	saveAttachment?: SaveAttachmentFunc
+	saveAttachment?: SaveAttachment,
+	resolveEmbedAsBinary?: ResolveEmbedAsBinary
 ) => AsyncGenerator<string, void, unknown>
 
 export interface Vendor {
