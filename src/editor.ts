@@ -495,15 +495,11 @@ const formatTextWithLeadingBreaks = (text: string) => {
 	const firstLine = text.split('\n')[0]
 	if (firstLine.startsWith('#') || firstLine.startsWith('```')) {
 		// Markdown header or code block
-		return '\n' + text
+		return ' \n' + text
 	}
 	if (firstLine.startsWith('| ')) {
 		// Markdown table
-		return '\n\n' + text
-	}
-	if (firstLine.startsWith('![[')) {
-		// Attachment
-		return '\n\n' + text
+		return ' \n\n' + text
 	}
 	return text
 }
