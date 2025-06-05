@@ -7,11 +7,11 @@ import { getMimeTypeFromFilename } from './utils'
 const models = ['gpt-image-1']
 
 export const DEFAULT_GPT_IMAGE_OPTIONS = {
-	n: 1,
+	n: 2,
 	displayWidth: 400,
 	background: 'auto',
-	output_format: 'png',
-	output_compression: 100,
+	output_format: 'jpeg',
+	output_compression: 90,
 	quality: 'auto',
 	size: 'auto'
 }
@@ -111,7 +111,7 @@ const sendRequestFunc = (settings: GptImageOptions): SendRequest =>
 		if (!response.data || response.data.length === 0) {
 			throw new Error('No image data returned from API')
 		}
-
+		yield ' \n'
 		const now = new Date()
 		const formatTime =
 			`${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}` +
@@ -130,7 +130,7 @@ const sendRequestFunc = (settings: GptImageOptions): SendRequest =>
 			console.debug(`Saving image as ${filename}`)
 			await saveAttachment(filename, imageBuffer)
 
-			yield `![[${filename}|${displayWidth}]]`
+			yield `![[${filename}|${displayWidth}]]\n\n`
 		}
 	}
 
