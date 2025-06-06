@@ -100,7 +100,7 @@ const sendRequestFunc = (settings: GptImageOptions): SendRequest =>
 					model,
 					size,
 					n,
-					output_compression,
+					output_compression: output_format === 'jpeg' || output_format === 'webp' ? output_compression : undefined,
 					output_format,
 					quality
 				},
