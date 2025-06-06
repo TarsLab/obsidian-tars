@@ -291,11 +291,18 @@ const extractConversation = async (env: RunEnv, startOffset: number, endOffset: 
 
 	const taggedBlocks = extractTaggedBlocks(env, conversationStart, endOffset)
 	const conversation = await Promise.all(
-		taggedBlocks.map(async (tag) => ({
-			...tag,
-			content: await extractTaggedBlockContent(env, tag),
-			embeds: filterEmbeds(env, tag.contentRange)
-		}))
+		taggedBlocks.map(async (tag) => {
+			const message = {
+				...tag,
+				content: await extractTaggedBlockContent(env, tag)
+			}
+			// Only add the embeds property when there are embedded contents
+			const filteredEmbeds = filterEmbeds(env, tag.contentRange)
+			if (filteredEmbeds && filteredEmbeds.length > 0) {
+				message.embeds = filteredEmbeds
+			}
+			return message
+		})
 	)
 	return conversation
 }
@@ -335,7 +342,7 @@ const insertText = (editor: Editor, text: string, editorStatus: EditorStatus, la
 	return newEditPos
 }
 
-export const extractAllConversations = async (env: RunEnv) => {
+export const extractConversationsTextOnly = async (env: RunEnv) => {
 	const {
 		tags,
 		options: { newChatTags }
@@ -358,12 +365,11 @@ export const extractAllConversations = async (env: RunEnv) => {
 
 	const conversations = await Promise.all(
 		ranges.map(async (r) => {
-			const tagsWithSections = extractTaggedBlocks(env, r.startOffset, r.endOffset)
+			const taggedBlocks = extractTaggedBlocks(env, r.startOffset, r.endOffset)
 			const conversation = Promise.all(
-				tagsWithSections.map(async (tag) => ({
+				taggedBlocks.map(async (tag) => ({
 					...tag,
-					content: await extractTaggedBlockContent(env, tag),
-					embeds: filterEmbeds(env, tag.contentRange)
+					content: await extractTaggedBlockContent(env, tag)
 				}))
 			)
 			return conversation
@@ -426,7 +432,9 @@ export const generate = async (
 		}
 
 		const conversation = await extractConversation(env, 0, endOffset)
-		const messages = conversation.map((c) => ({ role: c.role, content: c.content, embeds: c.embeds }))
+		const messages = conversation.map((c) =>
+			c.embeds ? { role: c.role, content: c.content, embeds: c.embeds } : { role: c.role, content: c.content }
+		)
 		console.debug('messages', messages)
 
 		const lastMsg = messages.last()
@@ -438,8 +446,7 @@ export const generate = async (
 			// If the first message is not a system message, add the default system message
 			messages.unshift({
 				role: 'system',
-				content: env.options.defaultSystemMsg,
-				embeds: []
+				content: env.options.defaultSystemMsg
 			})
 			console.debug('Default system message added:', env.options.defaultSystemMsg)
 		}
