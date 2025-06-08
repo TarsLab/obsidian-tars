@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import axios, { AxiosResponse } from 'axios'
+import { EmbedCache } from 'obsidian'
 import { t } from 'src/lang/helper'
-import { BaseOptions, Message, Optional, SendRequest, Vendor } from '.'
+import { BaseOptions, Message, Optional, ResolveEmbedAsBinary, SaveAttachment, SendRequest, Vendor } from '.'
+import { arrayBufferToBase64, getMimeTypeFromFilename } from './utils'
 
 type ClaudeOptions = BaseOptions & Pick<Optional, 'max_tokens'>
 
@@ -36,12 +38,71 @@ interface OthersEvent {
 
 type PartialEvent = ContentBlockDeltaEvent | MessageDeltaEvent | OthersEvent
 
+const formatMsgForClaudeAPI = async (msg: Message, resolveEmbedAsBinary: ResolveEmbedAsBinary) => {
+	const content: (
+		| {
+				type: string
+				source: {
+					type: string
+					media_type: string
+					data: string
+				}
+		  }
+		| { type: 'text'; text: string }
+	)[] = msg.embeds ? await Promise.all(msg.embeds.map((embed) => formatEmbed(embed, resolveEmbedAsBinary))) : []
+
+	if (msg.content.trim()) {
+		content.push({
+			type: 'text',
+			text: msg.content
+		})
+	}
+
+	return {
+		role: msg.role,
+		content
+	}
+}
+
+const formatEmbed = async (embed: EmbedCache, resolveEmbedAsBinary: ResolveEmbedAsBinary) => {
+	const mimeType = getMimeTypeFromFilename(embed.link)
+	const mimeTypeMap: Record<string, string> = {
+		'image/png': 'image',
+		'image/jpeg': 'image',
+		'image/gif': 'image',
+		'image/webp': 'image',
+		'application/pdf': 'document'
+	}
+
+	const type = mimeTypeMap[mimeType]
+	if (!type) {
+		throw new Error(`Unsupported embed type: ${mimeType}. Only images and PDFs are supported.`)
+	}
+
+	const embedBuffer = await resolveEmbedAsBinary(embed)
+	const base64Data = arrayBufferToBase64(embedBuffer)
+	return {
+		type: type,
+		source: {
+			type: 'base64',
+			media_type: mimeType,
+			data: base64Data
+		}
+	}
+}
+
 const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
-	async function* (messages: Message[], controller: AbortController) {
+	async function* (
+		messages: Message[],
+		controller: AbortController,
+		saveAttachment?: SaveAttachment,
+		resolveEmbedAsBinary?: ResolveEmbedAsBinary
+	) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, baseURL, model, max_tokens } = options
 		if (!apiKey) throw new Error(t('API key is required'))
+		if (!resolveEmbedAsBinary) throw new Error('resolveEmbedAsBinary is required')
 
 		const [system_msg, messagesWithoutSys] =
 			messages[0].role === 'system' ? [messages[0], messages.slice(1)] : [null, messages]
@@ -51,11 +112,15 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 			'X-Api-Key': apiKey,
 			'anthropic-dangerous-direct-browser-access': 'true'
 		}
+
+		const formattedMsgs = await Promise.all(
+			messagesWithoutSys.map((msg) => formatMsgForClaudeAPI(msg, resolveEmbedAsBinary))
+		)
 		const body = {
 			model,
 			system: system_msg?.content,
 			max_tokens,
-			messages: messagesWithoutSys,
+			messages: formattedMsgs,
 			stream: true
 		}
 		// console.debug('claude api body', JSON.stringify(body))
@@ -83,6 +148,8 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 	}
 
 const models = [
+	'claude-sonnet-4-0',
+	'claude-opus-4-0',
 	'claude-3-7-sonnet-latest',
 	'claude-3-5-sonnet-latest',
 	'claude-3-opus-latest',

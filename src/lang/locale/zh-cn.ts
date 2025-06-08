@@ -126,6 +126,29 @@ export default {
 	'If you only use commands without needing tag suggestions, you can disable this feature. Changes will take effect after restarting the plugin.':
 		'如果你只使用命令而不需要标签建议，可以禁用此功能。更改将在重新启动插件后生效。',
 
+	// gpt image settings
+	'Image Display Width': '图片显示宽度',
+	'Example: 400px width would output as ![[image.jpg|400]]': '例如: 400px 宽度会输出为 ![[image.jpg|400]]',
+	'Number of images': '图片数量',
+	'Number of images to generate (1-5)': '生成的图片数量 (1-5)',
+	'Image size': '图片尺寸',
+	landscape: '横向',
+	portrait: '纵向',
+	'Output format': '输出格式',
+	Quality: '质量',
+	'Quality level for generated images. default: Auto': '生成图片的质量等级。默认: 自动',
+	Auto: '自动',
+	High: '高',
+	Medium: '中',
+	Low: '低',
+	Background: '背景',
+	'Background of the generated image. default: Auto': '生成图片的背景。默认: 自动',
+	Transparent: '透明',
+	Opaque: '不透明',
+	'Output compression': '输出压缩',
+	'Compression level of the output image, 10% - 100%. Only for webp or jpeg output format':
+		'输出图片的压缩级别，10% - 100%。仅适用于 webp 或 jpeg 输出格式',
+
 	// suggest.ts
 	'AI generate': 'AI 生成',
 	'Text generated successfully': '文本生成成功',

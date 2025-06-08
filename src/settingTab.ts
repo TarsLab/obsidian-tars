@@ -5,6 +5,7 @@ import { t } from './lang/helper'
 import TarsPlugin from './main'
 import { SelectModelModal } from './modal'
 import { BaseOptions, Optional, ProviderSettings } from './providers'
+import { GptImageOptions, gptImageVendor } from './providers/gptImage'
 import { ollamaVendor } from './providers/ollama'
 import { fetchOpenRouterModels, openRouterVendor } from './providers/openRouter'
 import { fetchModels, siliconFlowVendor } from './providers/siliconflow'
@@ -373,6 +374,10 @@ export class TarsSettingTab extends PluginSettingTab {
 				)
 		}
 
+		if (vendor.name === gptImageVendor.name) {
+			this.addGptImageSections(details, settings.options as GptImageOptions)
+		}
+
 		this.addBaseURLSection(details, settings.options as BaseOptions, vendor.defaultOptions.baseURL)
 
 		if ('max_tokens' in settings.options)
@@ -595,6 +600,108 @@ export class TarsSettingTab extends PluginSettingTab {
 						}
 					})
 			)
+
+	addGptImageSections = (details: HTMLDetailsElement, options: GptImageOptions) => {
+		new Setting(details)
+			.setName(t('Image Display Width'))
+			.setDesc(t('Example: 400px width would output as ![[image.jpg|400]]'))
+			.addSlider((slider) =>
+				slider
+					.setLimits(200, 800, 100)
+					.setValue(options.displayWidth)
+					.setDynamicTooltip()
+					.onChange(async (value) => {
+						options.displayWidth = value
+						await this.plugin.saveSettings()
+					})
+			)
+		new Setting(details)
+			.setName(t('Number of images'))
+			.setDesc(t('Number of images to generate (1-5)'))
+			.addSlider((slider) =>
+				slider
+					.setLimits(1, 5, 1)
+					.setValue(options.n)
+					.setDynamicTooltip()
+					.onChange(async (value) => {
+						options.n = value
+						await this.plugin.saveSettings()
+					})
+			)
+		new Setting(details).setName(t('Image size')).addDropdown((dropdown) =>
+			dropdown
+				.addOptions({
+					auto: 'Auto',
+					'1024x1024': '1024x1024',
+					'1536x1024': '1536x1024 ' + t('landscape'),
+					'1024x1536': '1024x1536 ' + t('portrait')
+				})
+				.setValue(options.size)
+				.onChange(async (value) => {
+					options.size = value as GptImageOptions['size']
+					await this.plugin.saveSettings()
+				})
+		)
+		new Setting(details).setName(t('Output format')).addDropdown((dropdown) =>
+			dropdown
+				.addOptions({
+					png: 'PNG',
+					jpeg: 'JPEG',
+					webp: 'WEBP'
+				})
+				.setValue(options.output_format)
+				.onChange(async (value) => {
+					options.output_format = value as GptImageOptions['output_format']
+					await this.plugin.saveSettings()
+				})
+		)
+		new Setting(details)
+			.setName(t('Quality'))
+			.setDesc(t('Quality level for generated images. default: Auto'))
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOptions({
+						auto: t('Auto'),
+						high: t('High'),
+						medium: t('Medium'),
+						low: t('Low')
+					})
+					.setValue(options.quality)
+					.onChange(async (value) => {
+						options.quality = value as GptImageOptions['quality']
+						await this.plugin.saveSettings()
+					})
+			)
+		new Setting(details)
+			.setName(t('Background'))
+			.setDesc(t('Background of the generated image. default: Auto'))
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOptions({
+						auto: t('Auto'),
+						transparent: t('Transparent'),
+						opaque: t('Opaque')
+					})
+					.setValue(options.background)
+					.onChange(async (value) => {
+						options.background = value as GptImageOptions['background']
+						await this.plugin.saveSettings()
+					})
+			)
+		new Setting(details)
+			.setName(t('Output compression'))
+			.setDesc(t('Compression level of the output image, 10% - 100%. Only for webp or jpeg output format'))
+			.addSlider((slider) =>
+				slider
+					.setLimits(10, 100, 10)
+					.setValue(options.output_compression)
+					.setDynamicTooltip()
+					.onChange(async (value) => {
+						options.output_compression = value
+						await this.plugin.saveSettings()
+					})
+			)
+	}
 }
 
 const getSummary = (tag: string, defaultTag: string) =>
