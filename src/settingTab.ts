@@ -603,11 +603,11 @@ export class TarsSettingTab extends PluginSettingTab {
 
 	addGptImageSections = (details: HTMLDetailsElement, options: GptImageOptions) => {
 		new Setting(details)
-			.setName('Display width')
-			.setDesc('Width of the generated image in pixels')
+			.setName(t('Image Display Width'))
+			.setDesc(t('Example: 400px width would output as ![[image.jpg|400]]'))
 			.addSlider((slider) =>
 				slider
-					.setLimits(100, 1600, 100)
+					.setLimits(200, 800, 100)
 					.setValue(options.displayWidth)
 					.setDynamicTooltip()
 					.onChange(async (value) => {
@@ -616,8 +616,8 @@ export class TarsSettingTab extends PluginSettingTab {
 					})
 			)
 		new Setting(details)
-			.setName('Number of images')
-			.setDesc('Number of images to generate')
+			.setName(t('Number of images'))
+			.setDesc(t('Number of images to generate (1-5)'))
 			.addSlider((slider) =>
 				slider
 					.setLimits(1, 5, 1)
@@ -628,49 +628,43 @@ export class TarsSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings()
 					})
 			)
+		new Setting(details).setName(t('Image size')).addDropdown((dropdown) =>
+			dropdown
+				.addOptions({
+					auto: 'Auto',
+					'1024x1024': '1024x1024',
+					'1536x1024': '1536x1024 ' + t('landscape'),
+					'1024x1536': '1024x1536 ' + t('portrait')
+				})
+				.setValue(options.size)
+				.onChange(async (value) => {
+					options.size = value as GptImageOptions['size']
+					await this.plugin.saveSettings()
+				})
+		)
+		new Setting(details).setName(t('Output format')).addDropdown((dropdown) =>
+			dropdown
+				.addOptions({
+					png: 'PNG',
+					jpeg: 'JPEG',
+					webp: 'WEBP'
+				})
+				.setValue(options.output_format)
+				.onChange(async (value) => {
+					options.output_format = value as GptImageOptions['output_format']
+					await this.plugin.saveSettings()
+				})
+		)
 		new Setting(details)
-			.setName('Size')
-			.setDesc('Size of the generated image')
+			.setName(t('Quality'))
+			.setDesc(t('Quality level for generated images. default: Auto'))
 			.addDropdown((dropdown) =>
 				dropdown
 					.addOptions({
-						auto: 'Auto',
-						'1024x1024': '1024x1024',
-						'1536x1024': '1536x1024 (landscape)',
-						'1024x1536': '1024x1536 (portrait)'
-					})
-					.setValue(options.size)
-					.onChange(async (value) => {
-						options.size = value as GptImageOptions['size']
-						await this.plugin.saveSettings()
-					})
-			)
-		new Setting(details)
-			.setName('Output format')
-			.setDesc('Format of the generated image')
-			.addDropdown((dropdown) =>
-				dropdown
-					.addOptions({
-						png: 'PNG',
-						jpeg: 'JPEG',
-						webp: 'WEBP'
-					})
-					.setValue(options.output_format)
-					.onChange(async (value) => {
-						options.output_format = value as GptImageOptions['output_format']
-						await this.plugin.saveSettings()
-					})
-			)
-		new Setting(details)
-			.setName('Quality')
-			.setDesc('Quality of the generated image')
-			.addDropdown((dropdown) =>
-				dropdown
-					.addOptions({
-						auto: 'Auto',
-						high: 'High',
-						medium: 'Medium',
-						low: 'Low'
+						auto: t('Auto'),
+						high: t('High'),
+						medium: t('Medium'),
+						low: t('Low')
 					})
 					.setValue(options.quality)
 					.onChange(async (value) => {
@@ -679,14 +673,14 @@ export class TarsSettingTab extends PluginSettingTab {
 					})
 			)
 		new Setting(details)
-			.setName('Background')
-			.setDesc('Background of the generated image')
+			.setName(t('Background'))
+			.setDesc(t('Background of the generated image. default: Auto'))
 			.addDropdown((dropdown) =>
 				dropdown
 					.addOptions({
-						auto: 'Auto',
-						transparent: 'Transparent',
-						opaque: 'Opaque'
+						auto: t('Auto'),
+						transparent: t('Transparent'),
+						opaque: t('Opaque')
 					})
 					.setValue(options.background)
 					.onChange(async (value) => {
@@ -695,8 +689,8 @@ export class TarsSettingTab extends PluginSettingTab {
 					})
 			)
 		new Setting(details)
-			.setName('Output compression')
-			.setDesc('Compression level of the output image, 10-100')
+			.setName(t('Output compression'))
+			.setDesc(t('Compression level of the output image, 10% - 100%. Only for webp or jpeg output format'))
 			.addSlider((slider) =>
 				slider
 					.setLimits(10, 100, 10)

@@ -128,6 +128,29 @@ export default {
 	'If you only use commands without needing tag suggestions, you can disable this feature. Changes will take effect after restarting the plugin.':
 		'If you only use commands without needing tag suggestions, you can disable this feature. Changes will take effect after restarting the plugin.',
 
+	// gpt image settings
+	'Image Display Width': 'Image Display Width',
+	'Example: 400px width would output as ![[image.jpg|400]]': 'Example: 400px width would output as ![[image.jpg|400]]',
+	'Number of images': 'Number of images',
+	'Number of images to generate (1-5)': 'Number of images to generate (1-5)',
+	'Image size': 'Image size',
+	landscape: 'landscape',
+	portrait: 'portrait',
+	'Output format': 'Output format',
+	Quality: 'Quality',
+	'Quality level for generated images. default: Auto': 'Quality level for generated images. default: Auto',
+	Auto: 'Auto',
+	High: 'High',
+	Medium: 'Medium',
+	Low: 'Low',
+	Background: 'Background',
+	'Background of the generated image. default: Auto': 'Background of the generated image. default: Auto',
+	Transparent: 'Transparent',
+	Opaque: 'Opaque',
+	'Output compression': 'Output compression',
+	'Compression level of the output image, 10% - 100%. Only for webp or jpeg output format':
+		'Compression level of the output image, 10% - 100%. Only for webp or jpeg output format',
+
 	// suggest.ts
 	'AI generate': 'AI generate',
 	'Text generated successfully': 'Text generated successfully',
