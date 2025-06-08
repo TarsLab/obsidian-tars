@@ -41,6 +41,15 @@ export default {
 	'Model is required': 'Model is required',
 	'API URL is required': 'API URL is required',
 
+	// providers/gptImage.ts
+	'Only the last user message is used for image generation. Other messages are ignored.':
+		'Only the last user message is used for image generation. Other messages are ignored.',
+	'Multiple embeds found, only the first one will be used': 'Multiple embeds found, only the first one will be used',
+	'Only PNG, JPEG, and WebP images are supported for editing.':
+		'Only PNG, JPEG, and WebP images are supported for editing.',
+	'Embed data is empty or invalid': 'Embed data is empty or invalid',
+	'Failed to generate image. no data received from API': 'Failed to generate image. no data received from API',
+
 	// prompt
 	'Load template file: ': 'Load template file: ',
 	'Templates have been updated: ': 'Templates have been updated: ',

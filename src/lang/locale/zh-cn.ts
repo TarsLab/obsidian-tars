@@ -41,6 +41,14 @@ export default {
 	'Model is required': '请配置对应的模型',
 	'API URL is required': '请配置对应的 API URL',
 
+	// providers/gptImage.ts
+	'Only the last user message is used for image generation. Other messages are ignored.':
+		'仅使用最后一条用户消息进行图片生成，其他消息将被忽略。',
+	'Multiple embeds found, only the first one will be used': '发现多个嵌入内容，仅使用第一个',
+	'Only PNG, JPEG, and WebP images are supported for editing.': '仅支持 PNG、JPEG 和 WebP 格式的图片进行编辑',
+	'Embed data is empty or invalid': '嵌入数据为空或无效',
+	'Failed to generate image. no data received from API': '生成图片失败。没有从 API 接收到数据',
+
 	// prompt
 	'Load template file: ': '加载模板文件: ',
 	'Templates have been updated: ': '模板已更新: ',

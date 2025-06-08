@@ -44,7 +44,7 @@ const sendRequestFunc = (settings: GptImageOptions): SendRequest =>
 		console.debug('messages:', messages)
 		console.debug('options:', options)
 		if (messages.length > 1) {
-			new Notice('Only the last user message will be used for image generation or edit. Other messages are ignored.')
+			new Notice(t('Only the last user message is used for image generation. Other messages are ignored.'))
 		}
 		const lastMsg = messages.last()
 		if (!lastMsg) {
@@ -62,23 +62,20 @@ const sendRequestFunc = (settings: GptImageOptions): SendRequest =>
 		let response = null
 		if (lastMsg.embeds && lastMsg.embeds.length > 0) {
 			if (lastMsg.embeds.length > 1) {
-				new Notice('Multiple embeds found, only the first one will be used')
+				new Notice(t('Multiple embeds found, only the first one will be used'))
 			}
 			const embed = lastMsg.embeds[0]
 			const mimeType = getMimeTypeFromFilename(embed.link)
 			const supportedMimeTypes = ['image/png', 'image/jpeg', 'image/webp']
 			if (!supportedMimeTypes.includes(mimeType)) {
-				throw new Error(
-					`Unsupported embed type: ${mimeType}. Only PNG, JPEG, and WebP images are supported for editing.`
-				)
+				throw new Error(t('Only PNG, JPEG, and WebP images are supported for editing.'))
 			}
 			const embedBuffer = await resolveEmbedAsBinary(embed)
 
 			if (!embedBuffer || embedBuffer.byteLength === 0) {
-				throw new Error('Embed data is empty or invalid')
+				throw new Error(t('Embed data is empty or invalid'))
 			}
 
-			// TODO, embed link 可能包含路径，不是文件名
 			const file = new File([embedBuffer], embed.link, { type: mimeType })
 			response = await client.images.edit(
 				{
@@ -109,7 +106,7 @@ const sendRequestFunc = (settings: GptImageOptions): SendRequest =>
 		}
 
 		if (!response.data || response.data.length === 0) {
-			throw new Error('No image data returned from API')
+			throw new Error(t('Failed to generate image. no data received from API'))
 		}
 		yield ' \n'
 		const now = new Date()
