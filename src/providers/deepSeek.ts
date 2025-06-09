@@ -50,7 +50,7 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 		}
 	}
 
-const models = ['deepseek-chat', 'deepseek-coder', 'deepseek-reasoner']
+const models = ['deepseek-chat', 'deepseek-reasoner']
 
 export const deepSeekVendor: Vendor = {
 	name: 'DeepSeek',
