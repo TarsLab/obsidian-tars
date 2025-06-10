@@ -1,18 +1,20 @@
-import { requestUrl } from 'obsidian'
+import { EmbedCache, requestUrl } from 'obsidian'
 import { t } from 'src/lang/helper'
-import { BaseOptions, Message, SendRequest, Vendor } from '.'
+import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
+import { arrayBufferToBase64, getMimeTypeFromFilename } from './utils'
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
-	async function* (messages: Message[], controller: AbortController) {
+	async function* (messages: Message[], controller: AbortController, resolveEmbedAsBinary: ResolveEmbedAsBinary) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, baseURL, model, ...remains } = options
 		if (!apiKey) throw new Error(t('API key is required'))
 		if (!model) throw new Error(t('Model is required'))
 
+		const formattedMessages = await Promise.all(messages.map((msg) => formatMsg(msg, resolveEmbedAsBinary)))
 		const data = {
 			model,
-			messages,
+			messages: formattedMessages,
 			stream: true,
 			...remains
 		}
@@ -65,6 +67,59 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 		}
 	}
 
+type ContentItem =
+	| {
+			type: 'image_url'
+			image_url: {
+				url: string
+			}
+	  }
+	| { type: 'text'; text: string }
+	| { type: 'file'; file: { filename: string; file_data: string } }
+
+const formatEmbed = async (embed: EmbedCache, resolveEmbedAsBinary: ResolveEmbedAsBinary) => {
+	const mimeType = getMimeTypeFromFilename(embed.link)
+	if (['image/png', 'image/jpeg', 'image/gif', 'image/webp'].includes(mimeType)) {
+		const embedBuffer = await resolveEmbedAsBinary(embed)
+		const base64Data = arrayBufferToBase64(embedBuffer)
+		return {
+			type: 'image_url' as const,
+			image_url: {
+				url: `data:${mimeType};base64,${base64Data}`
+			}
+		}
+	} else if ('application/pdf' === mimeType) {
+		const embedBuffer = await resolveEmbedAsBinary(embed)
+		const base64Data = arrayBufferToBase64(embedBuffer)
+		return {
+			type: 'file' as const,
+			file: {
+				filename: embed.link,
+				file_data: `data:${mimeType};base64,${base64Data}`
+			}
+		}
+	} else {
+		throw new Error(t('Only PNG, JPEG, GIF, WebP, and PDF files are supported.'))
+	}
+}
+
+const formatMsg = async (msg: Message, resolveEmbedAsBinary: ResolveEmbedAsBinary) => {
+	const content: ContentItem[] = msg.embeds
+		? await Promise.all(msg.embeds.map((embed) => formatEmbed(embed, resolveEmbedAsBinary)))
+		: []
+
+	if (msg.content.trim()) {
+		content.push({
+			type: 'text' as const,
+			text: msg.content
+		})
+	}
+	return {
+		role: msg.role,
+		content
+	}
+}
+
 export const openRouterVendor: Vendor = {
 	name: 'OpenRouter',
 	defaultOptions: {
@@ -75,7 +130,8 @@ export const openRouterVendor: Vendor = {
 	},
 	sendRequestFunc,
 	models: [],
-	websiteToObtainKey: 'https://openrouter.ai'
+	websiteToObtainKey: 'https://openrouter.ai',
+	capabilities: ['Text Generation', 'Image Vision', 'PDF Vision']
 }
 
 export const fetchOpenRouterModels = async (): Promise<string[]> => {

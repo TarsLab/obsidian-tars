@@ -2,7 +2,7 @@
 import axios, { AxiosResponse } from 'axios'
 import { EmbedCache } from 'obsidian'
 import { t } from 'src/lang/helper'
-import { BaseOptions, Message, Optional, ResolveEmbedAsBinary, SaveAttachment, SendRequest, Vendor } from '.'
+import { BaseOptions, Message, Optional, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 import { arrayBufferToBase64, getMimeTypeFromFilename } from './utils'
 
 type ClaudeOptions = BaseOptions & Pick<Optional, 'max_tokens'>
@@ -76,7 +76,7 @@ const formatEmbed = async (embed: EmbedCache, resolveEmbedAsBinary: ResolveEmbed
 
 	const type = mimeTypeMap[mimeType]
 	if (!type) {
-		throw new Error(`Unsupported embed type: ${mimeType}. Only images and PDFs are supported.`)
+		throw new Error(t('Only PNG, JPEG, GIF, WebP, and PDF files are supported.'))
 	}
 
 	const embedBuffer = await resolveEmbedAsBinary(embed)
@@ -92,17 +92,11 @@ const formatEmbed = async (embed: EmbedCache, resolveEmbedAsBinary: ResolveEmbed
 }
 
 const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
-	async function* (
-		messages: Message[],
-		controller: AbortController,
-		saveAttachment?: SaveAttachment,
-		resolveEmbedAsBinary?: ResolveEmbedAsBinary
-	) {
+	async function* (messages: Message[], controller: AbortController, resolveEmbedAsBinary: ResolveEmbedAsBinary) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, baseURL, model, max_tokens } = options
 		if (!apiKey) throw new Error(t('API key is required'))
-		if (!resolveEmbedAsBinary) throw new Error('resolveEmbedAsBinary is required')
 
 		const [system_msg, messagesWithoutSys] =
 			messages[0].role === 'system' ? [messages[0], messages.slice(1)] : [null, messages]
@@ -167,7 +161,8 @@ export const claudeVendor: Vendor = {
 	} as ClaudeOptions,
 	sendRequestFunc,
 	models,
-	websiteToObtainKey: 'https://console.anthropic.com'
+	websiteToObtainKey: 'https://console.anthropic.com',
+	capabilities: ['Text Generation', 'Image Vision', 'PDF Vision']
 }
 
 // The following code is based on the src/streaming.ts file from github:anthropics/anthropic-sdk-typescript

@@ -3,12 +3,13 @@ import { exportCmd, replaceCmd, replaceCmdId } from './commands'
 import { exportCmdId } from './commands/export'
 import { t } from './lang/helper'
 import TarsPlugin from './main'
-import { SelectModelModal } from './modal'
-import { BaseOptions, Optional, ProviderSettings } from './providers'
+import { SelectModelModal, SelectVendorModal } from './modal'
+import { BaseOptions, Optional, ProviderSettings, Vendor } from './providers'
 import { GptImageOptions, gptImageVendor } from './providers/gptImage'
 import { ollamaVendor } from './providers/ollama'
 import { fetchOpenRouterModels, openRouterVendor } from './providers/openRouter'
 import { fetchModels, siliconFlowVendor } from './providers/siliconflow'
+import { getCapabilityEmoji } from './providers/utils'
 import { ZhipuOptions, zhipuVendor } from './providers/zhipu'
 import { DEFAULT_SETTINGS, availableVendors } from './settings'
 
@@ -28,49 +29,29 @@ export class TarsSettingTab extends PluginSettingTab {
 		const { containerEl } = this
 		containerEl.empty()
 
-		const vendorNames = availableVendors.map((v) => v.name)
-		let vendorToCreate = vendorNames[0]
-
 		new Setting(containerEl).setName(t('AI assistants')).setHeading()
 
 		new Setting(containerEl)
 			.setName(t('New AI assistant'))
-			.setDesc(
-				t(
-					"Select assistant from dropdown and click 'Add'. For those compatible with the OpenAI protocol, you can select OpenAI."
-				)
-			)
-			.addDropdown((dropdown) =>
-				dropdown
-					.addOptions(
-						vendorNames.reduce((acc: Record<string, string>, cur: string) => {
-							acc[cur] = cur
-							return acc
-						}, {})
-					)
-					.setValue(vendorNames[0])
-					.onChange(async (value) => {
-						vendorToCreate = value
-					})
-			)
-			.addButton((button) => {
-				button.setButtonText(t('Add')).onClick(async () => {
-					const options = availableVendors.find((v) => v.name === vendorToCreate)?.defaultOptions
-					if (!options) {
-						throw new Error('No default options found for ' + vendorToCreate)
-					}
+			.setDesc(t('For those compatible with the OpenAI protocol, you can select OpenAI.'))
+			.addButton((btn) => {
+				btn.setButtonText(t('Add AI Provider')).onClick(async () => {
+					const onChoose = async (vendor: Vendor) => {
+						const defaultTag = vendor.name
+						const isTagDuplicate = this.plugin.settings.providers.map((e) => e.tag).includes(defaultTag)
+						const newTag = isTagDuplicate ? '' : defaultTag
 
-					const isTagDuplicate = this.plugin.settings.providers.map((e) => e.tag).includes(vendorToCreate)
-					const newTag = isTagDuplicate ? '' : vendorToCreate
-					const deepCopiedOptions = JSON.parse(JSON.stringify(options))
-					this.plugin.settings.providers.push({
-						tag: newTag,
-						vendor: vendorToCreate,
-						options: deepCopiedOptions
-					})
-					// Initially, vendor and tag might be the same, but vendor is read-only to mark vendor type, while tag can be modified by users
-					await this.plugin.saveSettings()
-					this.display(true)
+						const deepCopiedOptions = JSON.parse(JSON.stringify(vendor.defaultOptions))
+						this.plugin.settings.providers.push({
+							tag: newTag,
+							vendor: vendor.name,
+							options: deepCopiedOptions
+						})
+						// Initially, vendor and tag might be the same, but vendor is read-only to mark vendor type, while tag can be modified by users
+						await this.plugin.saveSettings()
+						this.display(true)
+					}
+					new SelectVendorModal(this.app, availableVendors, onChoose).open()
 				})
 			})
 
@@ -297,23 +278,18 @@ export class TarsSettingTab extends PluginSettingTab {
 		details.createEl('summary', { text: getSummary(settings.tag, vendor.name), cls: 'tars-setting-h4' })
 		details.open = isOpen
 
-		this.addTagSection(details, settings, index, vendor.name)
-		if (vendor.name !== ollamaVendor.name) {
-			this.addAPIkeySection(
-				details,
-				settings.options,
-				vendor.websiteToObtainKey ? t('Obtain key from ') + vendor.websiteToObtainKey : ''
-			)
-		}
+		const capabilities =
+			t('Supported features') +
+			' : ' +
+			vendor.capabilities.map((cap) => `${getCapabilityEmoji(cap)} ${t(cap)}`).join('    ')
 
-		if ('apiSecret' in settings.options)
-			this.addAPISecretOptional(details, settings.options as BaseOptions & Pick<Optional, 'apiSecret'>)
+		this.addTagSection(details, settings, index, vendor.name)
 
 		// model setting
 		if (vendor.name === siliconFlowVendor.name) {
 			new Setting(details)
 				.setName(t('Model'))
-				.setDesc(t('Select the model to use'))
+				.setDesc(capabilities)
 				.addButton((btn) => {
 					btn
 						.setButtonText(settings.options.model ? settings.options.model : t('Select the model to use'))
@@ -338,7 +314,7 @@ export class TarsSettingTab extends PluginSettingTab {
 		} else if (vendor.name === openRouterVendor.name) {
 			new Setting(details)
 				.setName(t('Model'))
-				.setDesc(t('Select the model to use'))
+				.setDesc(capabilities)
 				.addButton((btn) => {
 					btn
 						.setButtonText(settings.options.model ? settings.options.model : t('Select the model to use'))
@@ -357,10 +333,21 @@ export class TarsSettingTab extends PluginSettingTab {
 						})
 				})
 		} else if (vendor.models.length > 0) {
-			this.addModelDropDownSection(details, settings.options, vendor.models)
+			this.addModelDropDownSection(details, settings.options, vendor.models, capabilities)
 		} else {
-			this.addModelTextSection(details, settings.options)
+			this.addModelTextSection(details, settings.options, capabilities)
 		}
+
+		if (vendor.name !== ollamaVendor.name) {
+			this.addAPIkeySection(
+				details,
+				settings.options,
+				vendor.websiteToObtainKey ? t('Obtain key from ') + vendor.websiteToObtainKey : ''
+			)
+		}
+
+		if ('apiSecret' in settings.options)
+			this.addAPISecretOptional(details, settings.options as BaseOptions & Pick<Optional, 'apiSecret'>)
 
 		if (vendor.name === zhipuVendor.name) {
 			new Setting(details)
@@ -484,10 +471,10 @@ export class TarsSettingTab extends PluginSettingTab {
 					})
 			)
 
-	addModelDropDownSection = (details: HTMLDetailsElement, options: BaseOptions, models: string[]) =>
+	addModelDropDownSection = (details: HTMLDetailsElement, options: BaseOptions, models: string[], desc: string) =>
 		new Setting(details)
 			.setName(t('Model'))
-			.setDesc(t('Select the model to use'))
+			.setDesc(desc)
 			.addDropdown((dropdown) =>
 				dropdown
 					.addOptions(
@@ -503,10 +490,10 @@ export class TarsSettingTab extends PluginSettingTab {
 					})
 			)
 
-	addModelTextSection = (details: HTMLDetailsElement, options: BaseOptions) =>
+	addModelTextSection = (details: HTMLDetailsElement, options: BaseOptions, desc: string) =>
 		new Setting(details)
 			.setName(t('Model'))
-			.setDesc(t('Input the model to use'))
+			.setDesc(desc)
 			.addText((text) =>
 				text
 					.setPlaceholder('')

@@ -40,6 +40,15 @@ export default {
 	'API secret is required': 'API secret is required',
 	'Model is required': 'Model is required',
 	'API URL is required': 'API URL is required',
+	'Text Generation': 'Text Generation',
+	'Image Vision': 'Image Vision',
+	'PDF Vision': 'PDF Vision',
+	'Image Generation': 'Image Generation',
+	'Image Editing': 'Image Editing',
+	'Web Search': 'Web Search',
+	Reasoning: 'Reasoning',
+	'Only PNG, JPEG, GIF, and WebP images are supported.': 'Only PNG, JPEG, GIF, and WebP images are supported.',
+	'Only PNG, JPEG, GIF, WebP, and PDF files are supported.': 'Only PNG, JPEG, GIF, WebP, and PDF files are supported.',
 
 	// providers/gptImage.ts
 	'Only the last user message is used for image generation. Other messages are ignored.':
@@ -77,9 +86,9 @@ export default {
 	'Restore default': 'Restore default',
 	'AI assistants': 'AI assistants',
 	'New AI assistant': 'New AI assistant',
-	"Select assistant from dropdown and click 'Add'. For those compatible with the OpenAI protocol, you can select OpenAI.":
-		"Select assistant from dropdown and click 'Add'. For those compatible with the OpenAI protocol, you can select OpenAI.",
-	Add: 'Add',
+	'For those compatible with the OpenAI protocol, you can select OpenAI.':
+		'For those compatible with the OpenAI protocol, you can select OpenAI.',
+	'Add AI Provider': 'Add AI Provider',
 	'Please add at least one AI assistant to start using the plugin.':
 		'Please add at least one AI assistant to start using the plugin.',
 	'Message tags': 'Message tags',
@@ -101,9 +110,9 @@ export default {
 	'Keyword for tag must not contain space': 'Keyword for tag must not contain space',
 	'Keyword for tag must be unique': 'Keyword for tag must be unique',
 	Model: 'Model',
+	'Supported features': 'Supported features',
 	'Select the model to use': 'Select the model to use',
 	'Please input API key first': 'Please input API key first',
-	'Input the model to use': 'Input the model to use',
 	'Please enter a number': 'Please enter a number',
 	'Minimum value is 256': 'Minimum value is 256',
 	'Invalid URL': 'Invalid URL',

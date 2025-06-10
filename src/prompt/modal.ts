@@ -19,8 +19,8 @@ export class ReporterModal extends Modal {
 		const text = this.reporter.join('\n')
 		contentEl.createEl('textarea', {
 			text,
+			cls: 'syntax-error-textarea',
 			attr: {
-				style: 'width: 100%;',
 				readonly: true,
 				rows: 5
 			}

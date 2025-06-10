@@ -1,8 +1,8 @@
 import { Ollama } from 'ollama/browser'
-import { BaseOptions, Message, SendRequest, Vendor } from '.'
+import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
-	async function* (messages: Message[], controller: AbortController) {
+	async function* (messages: Message[], controller: AbortController, _resolveEmbedAsBinary: ResolveEmbedAsBinary) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { baseURL, model, ...remains } = options
@@ -28,5 +28,6 @@ export const ollamaVendor: Vendor = {
 	},
 	sendRequestFunc,
 	models: [],
-	websiteToObtainKey: 'https://ollama.com'
+	websiteToObtainKey: 'https://ollama.com',
+	capabilities: ['Text Generation']
 }

@@ -1,6 +1,6 @@
 import { AzureOpenAI } from 'openai'
 import { t } from 'src/lang/helper'
-import { BaseOptions, Message, SendRequest, Vendor } from '.'
+import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 
 interface AzureOptions extends BaseOptions {
 	endpoint: string
@@ -11,7 +11,7 @@ const CALLOUT_BLOCK_START = '\n\n> [!quote]-  \n> ' // TODO, 后续可以考虑�
 const CALLOUT_BLOCK_END = '' // '\n\n'
 
 const sendRequestFunc = (settings: AzureOptions): SendRequest =>
-	async function* (messages: Message[], controller: AbortController) {
+	async function* (messages: Message[], controller: AbortController, _resolveEmbedAsBinary: ResolveEmbedAsBinary) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters } // 这样的设计，让parameters 可以覆盖掉前面的设置 optionsExcludingParams
 		const { apiKey, model, endpoint, apiVersion, ...remains } = options
@@ -84,5 +84,6 @@ export const azureVendor: Vendor = {
 	} as AzureOptions,
 	sendRequestFunc,
 	models,
-	websiteToObtainKey: 'https://portal.azure.com'
+	websiteToObtainKey: 'https://portal.azure.com',
+	capabilities: ['Text Generation', 'Reasoning']
 }

@@ -1,9 +1,9 @@
 import { Content, GoogleGenerativeAI } from '@google/generative-ai'
 import { t } from 'src/lang/helper'
-import { BaseOptions, Message, SendRequest, Vendor } from '.'
+import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
-	async function* (messages: Message[], controller: AbortController) {
+	async function* (messages: Message[], controller: AbortController, resolveEmbedAsBinary: ResolveEmbedAsBinary) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, baseURL: baseUrl, model } = options
@@ -41,5 +41,6 @@ export const geminiVendor: Vendor = {
 	},
 	sendRequestFunc,
 	models: [],
-	websiteToObtainKey: 'https://makersuite.google.com/app/apikey'
+	websiteToObtainKey: 'https://makersuite.google.com/app/apikey',
+	capabilities: ['Text Generation']
 }

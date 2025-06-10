@@ -1,3 +1,7 @@
+import { EmbedCache } from 'obsidian'
+import { t } from 'src/lang/helper'
+import { Capability, ResolveEmbedAsBinary } from '.'
+
 export const getMimeTypeFromFilename = (filename: string) => {
 	const extension = filename.split('.').pop()?.toLowerCase() || ''
 
@@ -51,4 +55,40 @@ export const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
 		binary += String.fromCharCode(bytes[i])
 	}
 	return window.btoa(binary)
+}
+
+export const convertEmbedToImageUrl = async (embed: EmbedCache, resolveEmbedAsBinary: ResolveEmbedAsBinary) => {
+	const mimeType = getMimeTypeFromFilename(embed.link)
+
+	if (['image/png', 'image/jpeg', 'image/gif', 'image/webp'].includes(mimeType) === false) {
+		throw new Error(t('Only PNG, JPEG, GIF, and WebP images are supported.'))
+	}
+
+	const embedBuffer = await resolveEmbedAsBinary(embed)
+	const base64Data = arrayBufferToBase64(embedBuffer)
+	return {
+		type: 'image_url' as const,
+		image_url: {
+			url: `data:${mimeType};base64,${base64Data}`
+		}
+	}
+}
+
+export const getCapabilityEmoji = (capability: Capability): string => {
+	switch (capability) {
+		case 'Text Generation':
+			return '✍️'
+		case 'Image Vision':
+			return '👁️'
+		case 'PDF Vision':
+			return '📄'
+		case 'Image Generation':
+			return '🎨'
+		case 'Image Editing':
+			return '✏️'
+		case 'Web Search':
+			return '🔍'
+		case 'Reasoning':
+			return '🧠'
+	}
 }

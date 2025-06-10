@@ -1,7 +1,7 @@
 import * as jose from 'jose'
 import OpenAI from 'openai'
 import { t } from 'src/lang/helper'
-import { BaseOptions, Message, SendRequest, Vendor } from '.'
+import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 
 interface Token {
 	id: string
@@ -16,7 +16,7 @@ export interface ZhipuOptions extends BaseOptions {
 }
 
 const sendRequestFunc = (settings: ZhipuOptions): SendRequest =>
-	async function* (messages: Message[], controller: AbortController) {
+	async function* (messages: Message[], controller: AbortController, _resolveEmbedAsBinary: ResolveEmbedAsBinary) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, baseURL, model, token: currentToken, tokenExpireInMinutes, enableWebSearch, ...remains } = options
@@ -119,5 +119,6 @@ export const zhipuVendor: Vendor = {
 	} as ZhipuOptions,
 	sendRequestFunc,
 	models,
-	websiteToObtainKey: 'https://open.bigmodel.cn/'
+	websiteToObtainKey: 'https://open.bigmodel.cn/',
+	capabilities: ['Text Generation', 'Web Search']
 }

@@ -30,8 +30,8 @@ const sendRequestFunc = (settings: GptImageOptions): SendRequest =>
 	async function* (
 		messages: Message[],
 		controller: AbortController,
-		saveAttachment?: SaveAttachment,
-		resolveEmbedAsBinary?: ResolveEmbedAsBinary
+		resolveEmbedAsBinary: ResolveEmbedAsBinary,
+		saveAttachment?: SaveAttachment
 	) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
@@ -39,7 +39,6 @@ const sendRequestFunc = (settings: GptImageOptions): SendRequest =>
 			options
 		if (!apiKey) throw new Error(t('API key is required'))
 		if (!saveAttachment) throw new Error('saveAttachment is required')
-		if (!resolveEmbedAsBinary) throw new Error('resolveEmbedAsBinary is required')
 
 		console.debug('messages:', messages)
 		console.debug('options:', options)
@@ -148,5 +147,6 @@ export const gptImageVendor: Vendor = {
 	} as GptImageOptions,
 	sendRequestFunc,
 	models,
-	websiteToObtainKey: 'https://platform.openai.com/api-keys'
+	websiteToObtainKey: 'https://platform.openai.com/api-keys',
+	capabilities: ['Image Generation', 'Image Editing']
 }
