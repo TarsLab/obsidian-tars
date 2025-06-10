@@ -56,7 +56,7 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 							if (content) {
 								yield content
 							}
-						} catch (e) {
+						} catch {
 							// Ignore invalid JSON
 						}
 					}

@@ -80,7 +80,7 @@ const workspaceOpenFile = async (app: App, filePath: string) => {
 export const promptTemplateCmd = (id: string, name: string, app: App, settings: PluginSettings): Command => ({
 	id,
 	name,
-	editorCallback: async (editor: Editor, view: MarkdownView) => {
+	editorCallback: async (editor: Editor, _view: MarkdownView) => {
 		try {
 			const template = settings.promptTemplates.find((t) => t.title === name)
 			if (!template) {

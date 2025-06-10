@@ -39,7 +39,7 @@ export class SelectModelModal extends FuzzySuggestModal<string> {
 		div.createEl('span', { text: title.slice(lastIndex) })
 	}
 
-	onChooseItem(model: string, evt: MouseEvent | KeyboardEvent) {
+	onChooseItem(model: string, _evt: MouseEvent | KeyboardEvent) {
 		this.onChoose(model)
 	}
 }
@@ -89,7 +89,7 @@ export class SelectVendorModal extends FuzzySuggestModal<Vendor> {
 		})
 	}
 
-	onChooseItem(vendor: Vendor, evt: MouseEvent | KeyboardEvent) {
+	onChooseItem(vendor: Vendor, _evt: MouseEvent | KeyboardEvent) {
 		this.onChoose(vendor)
 	}
 }

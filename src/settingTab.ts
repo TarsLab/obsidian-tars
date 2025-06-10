@@ -581,7 +581,7 @@ export class TarsSettingTab extends PluginSettingTab {
 						try {
 							options.parameters = JSON.parse(value)
 							await this.plugin.saveSettings()
-						} catch (_error) {
+						} catch {
 							// This is difficult to handle properly - onChange triggers quickly, and users might receive frequent error messages before they finish typing, which is annoying
 							return
 						}
@@ -721,7 +721,7 @@ const isValidUrl = (url: string) => {
 	try {
 		new URL(url)
 		return true
-	} catch (_error) {
+	} catch {
 		return false
 	}
 }

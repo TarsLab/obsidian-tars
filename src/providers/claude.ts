@@ -496,7 +496,7 @@ class SSEDecoder {
 			return null
 		}
 
-		const [fieldName, _, leftoverValue] = partition(line, ':')
+		const [fieldName, , leftoverValue] = partition(line, ':')
 		const value = leftoverValue.startsWith(' ') ? leftoverValue.substring(1) : leftoverValue
 
 		if (fieldName === 'event') {

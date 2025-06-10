@@ -92,7 +92,7 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 
 	/** Based on the editor line and cursor position, determine if this EditorSuggest should be triggered at this moment. Typically, you would run a regular expression on the current line text before the cursor. Return null to indicate that this editor suggest is not supposed to be triggered.
 	Please be mindful of performance when implementing this function, as it will be triggered very often (on each keypress). Keep it simple, and return null as early as possible if you determine that it is not the right time. **/
-	onTrigger(cursor: EditorPosition, editor: Editor, file: TFile): EditorSuggestTriggerInfo | null {
+	onTrigger(cursor: EditorPosition, editor: Editor, _file: TFile): EditorSuggestTriggerInfo | null {
 		if (this.settings.editorStatus.isTextInserting) return null
 		if (cursor.ch < 1 || cursor.ch > this.settings.tagSuggestMaxLineLength) return null
 		// console.debug('---- onTrigger ---------')
@@ -173,7 +173,7 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 		}
 	}
 
-	async selectSuggestion(element: TagEntry, evt: MouseEvent | KeyboardEvent) {
+	async selectSuggestion(element: TagEntry, _evt: MouseEvent | KeyboardEvent) {
 		if (!this.context) return
 		const editor = this.context.editor
 		editor.replaceRange(element.replacement, this.context.start, this.context.end)

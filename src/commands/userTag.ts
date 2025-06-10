@@ -8,7 +8,7 @@ import { fetchTagMeta, insertMarkToBegin, insertMarkToEmptyLines, isEmptyLines, 
 export const userTagCmd = ({ id, name, tag }: TagCmdMeta, app: App, settings: PluginSettings): Command => ({
 	id,
 	name,
-	editorCallback: async (editor: Editor, view: MarkdownView) => {
+	editorCallback: async (editor: Editor, _view: MarkdownView) => {
 		try {
 			const mark = toSpeakMark(tag)
 			const { range, role, tagContent, tagRange } = fetchTagMeta(app, editor, settings)
