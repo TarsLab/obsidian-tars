@@ -62,7 +62,7 @@ const formatMsg = async (msg: Message, resolveEmbedAsBinary: ResolveEmbedAsBinar
 	}
 }
 
-const models = ['qwen-turbo', 'qwen-plus', 'qwen-max', 'qwen-vl-plus', 'qwen-vl-max']
+const models = ['qwen-turbo', 'qwen-plus', 'qwen-max', 'qwen-vl-max']
 
 export const qwenVendor: Vendor = {
 	name: 'Qwen',
