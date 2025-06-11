@@ -462,7 +462,7 @@ export const generate = async (
 
 		let lastEditPos: EditorPosition | null = null
 		let startPos: EditorPosition | null = null
-		for await (const text of sendRequest(messages, controller, env.saveAttachment, env.resolveEmbed)) {
+		for await (const text of sendRequest(messages, controller, env.resolveEmbed, env.saveAttachment)) {
 			if (startPos == null) startPos = editor.getCursor('to')
 			lastEditPos = insertText(editor, text, editorStatus, lastEditPos)
 			llmResponse += text

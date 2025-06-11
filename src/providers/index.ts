@@ -19,9 +19,18 @@ export interface Message {
 export type SendRequest = (
 	messages: readonly Message[],
 	controller: AbortController,
-	saveAttachment?: SaveAttachment,
-	resolveEmbedAsBinary?: ResolveEmbedAsBinary
+	resolveEmbedAsBinary: ResolveEmbedAsBinary,
+	saveAttachment?: SaveAttachment
 ) => AsyncGenerator<string, void, unknown>
+
+export type Capability =
+	| 'Text Generation'
+	| 'Image Vision'
+	| 'PDF Vision'
+	| 'Image Generation'
+	| 'Image Editing'
+	| 'Web Search'
+	| 'Reasoning'
 
 export interface Vendor {
 	readonly name: string
@@ -29,6 +38,7 @@ export interface Vendor {
 	readonly sendRequestFunc: (options: BaseOptions) => SendRequest
 	readonly models: string[]
 	readonly websiteToObtainKey: string
+	readonly capabilities: Capability[]
 }
 
 export interface BaseOptions {

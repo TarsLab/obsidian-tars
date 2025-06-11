@@ -1,6 +1,5 @@
 summary.tars-setting-h4 {
 	font-variant: var(--h4-variant);
-	letter-spacing: -0.015em;
 	line-height: var(--h4-line-height);
 	font-size: var(--h4-size);
 	color: var(--h4-color);
@@ -9,4 +8,32 @@ summary.tars-setting-h4 {
 	font-family: var(--h4-font);
 	margin-block-start: var(--p-spacing);
 	margin-block-end: var(--p-spacing);
+}
+
+.fuzzy-match-highlight {
+	font-weight: var(--font-extrabold);
+}
+
+.capability-tags-container {
+	margin-top: var(--size-2-3);
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-2-2);
+}
+
+.capability-tag {
+	display: inline-flex;
+	align-items: center;
+	display: inline-block;
+	padding: var(--size-2-1) var(--size-2-3);
+	font-size: var(--font-ui-smaller);
+	background-color: var(--background-modifier-border);
+	color: var(--text-muted);
+	border-radius: var(--radius-m);
+	border: var(--border-width) solid var(--background-modifier-border-hover);
+	white-space: nowrap;
+}
+
+.syntax-error-textarea {
+	width: 100%;
 }

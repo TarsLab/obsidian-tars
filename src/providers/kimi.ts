@@ -1,9 +1,9 @@
 import axios from 'axios'
 import { t } from 'src/lang/helper'
-import { BaseOptions, Message, SendRequest, Vendor } from '.'
+import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
-	async function* (messages: Message[], controller: AbortController) {
+	async function* (messages: Message[], controller: AbortController, _resolveEmbedAsBinary: ResolveEmbedAsBinary) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, baseURL, model, ...remains } = options
@@ -69,5 +69,6 @@ export const kimiVendor: Vendor = {
 	},
 	sendRequestFunc,
 	models,
-	websiteToObtainKey: 'https://www.moonshot.cn'
+	websiteToObtainKey: 'https://www.moonshot.cn',
+	capabilities: ['Text Generation']
 }

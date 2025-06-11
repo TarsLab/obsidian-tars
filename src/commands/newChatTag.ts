@@ -6,7 +6,7 @@ import { TagCmdMeta } from './tagCmd'
 export const newChatTagCmd = ({ id, name, tag }: TagCmdMeta): Command => ({
 	id,
 	name,
-	editorCallback: async (editor: Editor, view: MarkdownView) => {
+	editorCallback: async (editor: Editor, _view: MarkdownView) => {
 		try {
 			// Keep it simple for now, just insert directly. No other checks or line break handling.
 			const cursor = editor.getCursor()

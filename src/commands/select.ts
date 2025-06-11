@@ -6,7 +6,7 @@ import { PluginSettings } from 'src/settings'
 export const selectMsgAtCursorCmd = (app: App, settings: PluginSettings): Command => ({
 	id: 'select-message-at-cursor',
 	name: t('Select message at cursor'),
-	editorCallback: async (editor: Editor, view: MarkdownView) => {
+	editorCallback: async (editor: Editor, _view: MarkdownView) => {
 		const env = await buildRunEnv(app, settings)
 		const currentLine = editor.getCursor('to').line
 		const [startOffset, endOffset] = getMsgPositionByLine(env, currentLine)

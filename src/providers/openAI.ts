@@ -1,14 +1,15 @@
 import OpenAI from 'openai'
 import { t } from 'src/lang/helper'
-import { BaseOptions, Message, SendRequest, Vendor } from '.'
+import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
+import { convertEmbedToImageUrl } from './utils'
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
-	async function* (messages: Message[], controller: AbortController) {
+	async function* (messages: Message[], controller: AbortController, resolveEmbedAsBinary: ResolveEmbedAsBinary) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, baseURL, model, ...remains } = options
 		if (!apiKey) throw new Error(t('API key is required'))
-
+		const formattedMessages = await Promise.all(messages.map((msg) => formatMsg(msg, resolveEmbedAsBinary)))
 		const client = new OpenAI({
 			apiKey,
 			baseURL,
@@ -18,7 +19,7 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 		const stream = await client.chat.completions.create(
 			{
 				model,
-				messages,
+				messages: formattedMessages as OpenAI.ChatCompletionMessageParam[],
 				stream: true,
 				...remains
 			},
@@ -32,15 +33,42 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 		}
 	}
 
+type ContentItem =
+	| {
+			type: 'image_url'
+			image_url: {
+				url: string
+			}
+	  }
+	| { type: 'text'; text: string }
+
+const formatMsg = async (msg: Message, resolveEmbedAsBinary: ResolveEmbedAsBinary) => {
+	const content: ContentItem[] = msg.embeds
+		? await Promise.all(msg.embeds.map((embed) => convertEmbedToImageUrl(embed, resolveEmbedAsBinary)))
+		: []
+
+	if (msg.content.trim()) {
+		content.push({
+			type: 'text' as const,
+			text: msg.content
+		})
+	}
+	return {
+		role: msg.role,
+		content
+	}
+}
+
 export const openAIVendor: Vendor = {
 	name: 'OpenAI',
 	defaultOptions: {
 		apiKey: '',
 		baseURL: 'https://api.openai.com/v1',
-		model: 'gpt-4',
+		model: 'gpt-4.1',
 		parameters: {}
 	},
 	sendRequestFunc,
 	models: [],
-	websiteToObtainKey: 'https://platform.openai.com/api-keys'
+	websiteToObtainKey: 'https://platform.openai.com/api-keys',
+	capabilities: ['Text Generation', 'Image Vision']
 }

@@ -39,7 +39,7 @@ const exportConversation = async (app: App, settings: PluginSettings) => {
 	const filePath = normalizePath(`${folder}/${basename}.jsonl`)
 	const tFile = app.vault.getFileByPath(filePath)
 	if (tFile) {
-		await app.vault.process(tFile, (fileText) => jsonlContent)
+		await app.vault.process(tFile, (_fileText) => jsonlContent)
 	} else {
 		await app.vault.create(filePath, jsonlContent)
 	}
@@ -88,5 +88,5 @@ const to_query_response_history = (conversation: readonly Message[]) => {
 		history: history.length > 0 ? history : null
 	}
 
-	return Object.fromEntries(Object.entries(res).filter(([key, value]) => value != null))
+	return Object.fromEntries(Object.entries(res).filter(([_key, value]) => value != null))
 }

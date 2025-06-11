@@ -23,7 +23,7 @@ export const asstTagCmd = (
 ): Command => ({
 	id,
 	name,
-	editorCallback: async (editor: Editor, view: MarkdownView) => {
+	editorCallback: async (editor: Editor, _view: MarkdownView) => {
 		try {
 			const provider = settings.providers.find((p) => p.tag === tag)
 			if (!provider) {
