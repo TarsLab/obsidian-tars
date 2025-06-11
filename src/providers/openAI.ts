@@ -64,7 +64,7 @@ export const openAIVendor: Vendor = {
 	defaultOptions: {
 		apiKey: '',
 		baseURL: 'https://api.openai.com/v1',
-		model: 'gpt-4',
+		model: 'gpt-4.1',
 		parameters: {}
 	},
 	sendRequestFunc,
