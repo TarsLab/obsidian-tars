@@ -9,6 +9,21 @@
 
 Tars is an Obsidian plugin that supports text generation based on tag suggestions, using services like Claude, OpenAI, Gemini, 🔥DeepSeek, 🔥SiliconFlow, 🔥OpenRouter, Ollama, Kimi, Doubao, Qwen, Zhipu, QianFan & more. The name Tars comes from the robot Tars in the movie "Interstellar". The plugin supports both desktop and mobile devices.
 
+## 🌟 3.1 Multimodal
+
+### 🎨 Image Generation
+
+- **GPT-Image-1**: Supports image generation and editing functions
+
+### 👁️ Visual Understanding
+
+- **Image Analysis**: Claude, OpenRouter, SiliconFlow, etc. can interpret images
+- **Document Interpretation**: Claude and OpenRouter, etc. support PDF file analysis
+
+> ⚠️ **Note**: Only embedded files (e.g. ![[example.jpg]]) are supported. External URL links will not work.
+
+![Vision](docs/images/vision.jpg)
+
 ## Major Updates in Version 2.x
 
 - 🔥 Added tag commands, all tags are available in the command list. Tag commands insert the appropriate tags based on selected sections or the section at cursor position.  

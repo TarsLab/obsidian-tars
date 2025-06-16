@@ -9,6 +9,21 @@
 
 Tars 是一个 Obsidian 插件，基于标签建议进行文本生成，支持 Claude、OpenAI、Gemini、🔥DeepSeek、🔥SiliconFlow、🔥OpenRouter、Ollama、Kimi、豆包、阿里千问、智谱、百度千帆等。Tars 这个名字来源于电影《星际穿越》中的机器人 Tars（塔斯）。插件支持桌面端和移动端。
 
+## 🌟 3.1 多模态
+
+### 🎨 图像生成
+
+- **GPT-Image-1**: 支持图像生成和编辑功能
+
+### 👁️ 视觉理解
+
+- **图像分析**: Claude、OpenRouter、SiliconFlow 等看懂图片
+- **文档解读**: Claude 和 OpenRouter 等支持 PDF 文件分析
+
+> ⚠️ **注意**: 仅支持嵌入文件（例如 `![[example.jpg]]`）。不支持外部URL链接。
+
+![Vision](docs/images/zh/vision.jpg)
+
 ## 2.x 版本重大更新
 
 - 🔥加入标签命令，所有标签都在命令列表里。标签命令基于选中/光标处的段落，插入相应的标签。  
