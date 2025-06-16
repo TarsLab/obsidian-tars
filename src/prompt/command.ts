@@ -2,11 +2,10 @@ import Handlebars from 'handlebars'
 import { App, Command, Editor, EditorSelection, MarkdownView, normalizePath, Notice, Platform } from 'obsidian'
 import { refineRange } from 'src/commands/tagUtils'
 import { t } from 'src/lang/helper'
-import { PluginSettings } from 'src/settings'
+import { APP_FOLDER, PluginSettings } from 'src/settings'
 import { ReporterModal } from './modal'
 import { findChangedTemplates, getPromptTemplatesFromFile, PromptTemplate } from './template'
 
-export const APP_FOLDER = 'Tars'
 export const templateToCmdId = (template: PromptTemplate): string => `Prompt#${template.title}`
 export const getTitleFromCmdId = (id: string): string => id.slice(id.indexOf('#') + 1)
 
