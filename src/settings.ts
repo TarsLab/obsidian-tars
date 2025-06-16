@@ -15,6 +15,8 @@ import { qwenVendor } from './providers/qwen'
 import { siliconFlowVendor } from './providers/siliconflow'
 import { zhipuVendor } from './providers/zhipu'
 
+export const APP_FOLDER = 'Tars'
+
 export interface EditorStatus {
 	isTextInserting: boolean
 }
@@ -41,6 +43,7 @@ export interface PluginSettings {
 	enableReplaceTag: boolean
 	enableDefaultSystemMsg: boolean
 	defaultSystemMsg: string
+	enableStreamLog: boolean
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -64,7 +67,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	enableExportToJSONL: false,
 	enableReplaceTag: false,
 	enableDefaultSystemMsg: false,
-	defaultSystemMsg: ''
+	defaultSystemMsg: '',
+	enableStreamLog: false
 }
 
 export const availableVendors: Vendor[] = [

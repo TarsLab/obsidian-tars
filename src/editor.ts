@@ -11,12 +11,14 @@ import {
 	TagCache,
 	Vault,
 	debounce,
+	normalizePath,
 	parseLinktext,
 	resolveSubpath
 } from 'obsidian'
 import { t } from 'src/lang/helper'
-import { Message, ProviderSettings, ResolveEmbedAsBinary, SaveAttachment } from './providers'
-import { EditorStatus, PluginSettings, availableVendors } from './settings'
+import { CreatePlainText, Message, ProviderSettings, ResolveEmbedAsBinary, SaveAttachment, Vendor } from './providers'
+import { withStreamLogging } from './providers/decorator'
+import { APP_FOLDER, EditorStatus, PluginSettings, availableVendors } from './settings'
 import { TagRole } from './suggest'
 
 export interface RunEnv {
@@ -36,9 +38,11 @@ export interface RunEnv {
 		enableInternalLink: boolean
 		enableDefaultSystemMsg: boolean
 		defaultSystemMsg: string
+		enableStreamLog: boolean
 	}
 	saveAttachment: SaveAttachment
 	resolveEmbed: ResolveEmbedAsBinary
+	createPlainText: CreatePlainText
 }
 
 interface Tag extends Omit<Message, 'content'> {
@@ -86,7 +90,8 @@ export const buildRunEnv = async (app: App, settings: PluginSettings): Promise<R
 		systemTags: settings.systemTags,
 		enableInternalLink: settings.enableInternalLink,
 		enableDefaultSystemMsg: settings.enableDefaultSystemMsg,
-		defaultSystemMsg: settings.defaultSystemMsg
+		defaultSystemMsg: settings.defaultSystemMsg,
+		enableStreamLog: settings.enableStreamLog
 	}
 
 	const saveAttachment = async (filename: string, data: ArrayBuffer) => {
@@ -102,6 +107,10 @@ export const buildRunEnv = async (app: App, settings: PluginSettings): Promise<R
 		}
 		return await vault.readBinary(targetFile)
 	}
+	const createPlainText = async (filePath: string, text: string) => {
+		await vault.create(filePath, text)
+	}
+
 	return {
 		appMeta,
 		vault,
@@ -113,7 +122,8 @@ export const buildRunEnv = async (app: App, settings: PluginSettings): Promise<R
 		embeds: fileMeta.embeds,
 		options,
 		saveAttachment,
-		resolveEmbed
+		resolveEmbed,
+		createPlainText
 	}
 }
 
@@ -416,6 +426,18 @@ export interface RequestController {
 	cleanup: () => void
 }
 
+const createDecoratedSendRequest = async (env: RunEnv, vendor: Vendor, provider: ProviderSettings) => {
+	if (env.options.enableStreamLog) {
+		if (!(await env.vault.adapter.exists(normalizePath(APP_FOLDER)))) {
+			await env.vault.createFolder(APP_FOLDER)
+		}
+		console.debug('Using stream logging')
+		return withStreamLogging(vendor.sendRequestFunc(provider.options), env.createPlainText)
+	} else {
+		return vendor.sendRequestFunc(provider.options)
+	}
+}
+
 export const generate = async (
 	env: RunEnv,
 	editor: Editor,
@@ -453,7 +475,8 @@ export const generate = async (
 
 		const round = messages.filter((m) => m.role === 'assistant').length + 1
 
-		const sendRequest = vendor.sendRequestFunc(provider.options)
+		const sendRequest = await createDecoratedSendRequest(env, vendor, provider)
+
 		const startTime = new Date()
 		statusBarItem.setText(`Round ${round}:...`)
 

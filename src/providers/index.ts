@@ -10,6 +10,10 @@ export interface ResolveEmbedAsBinary {
 	(embed: EmbedCache): Promise<ArrayBuffer>
 }
 
+export interface CreatePlainText {
+	(filePath: string, text: string): Promise<void>
+}
+
 export interface Message {
 	readonly role: MsgRole
 	readonly content: string
