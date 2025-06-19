@@ -70,6 +70,7 @@ export class TarsSettingTab extends PluginSettingTab {
 			.setDesc(t('Keywords for tags in the text box are separated by spaces'))
 			.setHeading()
 
+		let newChatTagsInput: HTMLInputElement | null = null
 		new Setting(containerEl)
 			.setName(this.plugin.settings.roleEmojis.newChat + ' ' + t('New chat tags'))
 			.addExtraButton((btn) => {
@@ -79,10 +80,13 @@ export class TarsSettingTab extends PluginSettingTab {
 					.onClick(async () => {
 						this.plugin.settings.newChatTags = DEFAULT_SETTINGS.newChatTags
 						await this.plugin.saveSettings()
-						this.display()
+						if (newChatTagsInput) {
+							newChatTagsInput.value = this.plugin.settings.newChatTags.join(' ')
+						}
 					})
 			})
-			.addText((text) =>
+			.addText((text) => {
+				newChatTagsInput = text.inputEl
 				text
 					.setPlaceholder(DEFAULT_SETTINGS.newChatTags.join(' '))
 					.setValue(this.plugin.settings.newChatTags.join(' '))
@@ -92,8 +96,9 @@ export class TarsSettingTab extends PluginSettingTab {
 						this.plugin.settings.newChatTags = tags
 						await this.plugin.saveSettings()
 					})
-			)
+			})
 
+		let userTagsInput: HTMLInputElement | null = null
 		new Setting(containerEl)
 			.setName(this.plugin.settings.roleEmojis.user + ' ' + t('User message tags'))
 			.addExtraButton((btn) => {
@@ -103,10 +108,13 @@ export class TarsSettingTab extends PluginSettingTab {
 					.onClick(async () => {
 						this.plugin.settings.userTags = DEFAULT_SETTINGS.userTags
 						await this.plugin.saveSettings()
-						this.display()
+						if (userTagsInput) {
+							userTagsInput.value = this.plugin.settings.userTags.join(' ')
+						}
 					})
 			})
-			.addText((text) =>
+			.addText((text) => {
+				userTagsInput = text.inputEl
 				text
 					.setPlaceholder(DEFAULT_SETTINGS.userTags.join(' '))
 					.setValue(this.plugin.settings.userTags.join(' '))
@@ -116,8 +124,9 @@ export class TarsSettingTab extends PluginSettingTab {
 						this.plugin.settings.userTags = tags
 						await this.plugin.saveSettings()
 					})
-			)
+			})
 
+		let systemTagsInput: HTMLInputElement | null = null
 		new Setting(containerEl)
 			.setName(this.plugin.settings.roleEmojis.system + ' ' + t('System message tags'))
 			.addExtraButton((btn) => {
@@ -127,10 +136,13 @@ export class TarsSettingTab extends PluginSettingTab {
 					.onClick(async () => {
 						this.plugin.settings.systemTags = DEFAULT_SETTINGS.systemTags
 						await this.plugin.saveSettings()
-						this.display()
+						if (systemTagsInput) {
+							systemTagsInput.value = this.plugin.settings.systemTags.join(' ')
+						}
 					})
 			})
-			.addText((text) =>
+			.addText((text) => {
+				systemTagsInput = text.inputEl
 				text
 					.setPlaceholder(DEFAULT_SETTINGS.systemTags.join(' '))
 					.setValue(this.plugin.settings.systemTags.join(' '))
@@ -140,11 +152,12 @@ export class TarsSettingTab extends PluginSettingTab {
 						this.plugin.settings.systemTags = tags
 						await this.plugin.saveSettings()
 					})
-			)
+			})
 
 		containerEl.createEl('br')
 
 		new Setting(containerEl).setName(t('System message')).setHeading()
+		let defaultSystemMsgInput: HTMLTextAreaElement | null = null
 		new Setting(containerEl)
 			.setName(t('Enable default system message'))
 			.setDesc(t('Automatically add a system message when none exists in the conversation'))
@@ -152,11 +165,14 @@ export class TarsSettingTab extends PluginSettingTab {
 				toggle.setValue(this.plugin.settings.enableDefaultSystemMsg).onChange(async (value) => {
 					this.plugin.settings.enableDefaultSystemMsg = value
 					await this.plugin.saveSettings()
-					this.display()
+					if (defaultSystemMsgInput) {
+						defaultSystemMsgInput.disabled = !value
+					}
 				})
 			)
 
-		new Setting(containerEl).setName(t('Default system message')).addTextArea((textArea) =>
+		new Setting(containerEl).setName(t('Default system message')).addTextArea((textArea) => {
+			defaultSystemMsgInput = textArea.inputEl
 			textArea
 				.setDisabled(!this.plugin.settings.enableDefaultSystemMsg)
 				.setValue(this.plugin.settings.defaultSystemMsg)
@@ -164,7 +180,7 @@ export class TarsSettingTab extends PluginSettingTab {
 					this.plugin.settings.defaultSystemMsg = value.trim()
 					await this.plugin.saveSettings()
 				})
-		)
+		})
 
 		containerEl.createEl('br')
 
@@ -197,6 +213,7 @@ export class TarsSettingTab extends PluginSettingTab {
 		const advancedSection = containerEl.createEl('details')
 		advancedSection.createEl('summary', { text: t('Advanced'), cls: 'tars-setting-h4' })
 
+		let answerDelayInput: HTMLInputElement | null = null
 		new Setting(advancedSection)
 			.setName(t('Delay before answer (Seconds)'))
 			.setDesc(
@@ -211,10 +228,13 @@ export class TarsSettingTab extends PluginSettingTab {
 					.onClick(async () => {
 						this.plugin.settings.answerDelayInMilliseconds = DEFAULT_SETTINGS.answerDelayInMilliseconds
 						await this.plugin.saveSettings()
-						this.display()
+						if (answerDelayInput) {
+							answerDelayInput.value = (this.plugin.settings.answerDelayInMilliseconds / 1000).toString()
+						}
 					})
 			})
-			.addSlider((slider) =>
+			.addSlider((slider) => {
+				answerDelayInput = slider.sliderEl
 				slider
 					.setLimits(1.5, 4, 0.5)
 					.setValue(this.plugin.settings.answerDelayInMilliseconds / 1000)
@@ -223,7 +243,7 @@ export class TarsSettingTab extends PluginSettingTab {
 						this.plugin.settings.answerDelayInMilliseconds = Math.round(value * 1000)
 						await this.plugin.saveSettings()
 					})
-			)
+			})
 
 		new Setting(advancedSection)
 			.setName(t('Replace tag Command'))
@@ -418,7 +438,8 @@ export class TarsSettingTab extends PluginSettingTab {
 					})
 			)
 
-	addBaseURLSection = (details: HTMLDetailsElement, options: BaseOptions, defaultValue: string) =>
+	addBaseURLSection = (details: HTMLDetailsElement, options: BaseOptions, defaultValue: string) => {
+		let textInput: HTMLInputElement | null = null
 		new Setting(details)
 			.setName('baseURL')
 			.setDesc(t('Default:') + ' ' + defaultValue)
@@ -429,15 +450,19 @@ export class TarsSettingTab extends PluginSettingTab {
 					.onClick(async () => {
 						options.baseURL = defaultValue
 						await this.plugin.saveSettings()
-						this.display()
+						if (textInput) {
+							textInput.value = defaultValue
+						}
 					})
 			})
-			.addText((text) =>
+			.addText((text) => {
+				textInput = text.inputEl
 				text.setValue(options.baseURL).onChange(async (value) => {
 					options.baseURL = value
 					await this.plugin.saveSettings()
 				})
-			)
+			})
+	}
 
 	addAPIkeySection = (details: HTMLDetailsElement, options: BaseOptions, desc: string = '') =>
 		new Setting(details)
