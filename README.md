@@ -20,7 +20,7 @@ Tars is an Obsidian plugin that supports text generation based on tag suggestion
 - **Image Analysis**: Claude, OpenRouter, SiliconFlow, etc. can interpret images
 - **Document Interpretation**: Claude and OpenRouter, etc. support PDF file analysis
 
-> ⚠️ **Note**: Only embedded files (e.g. ![[example.jpg]]) are supported. External URL links will not work.
+> ⚠️ **Note**: Only embedded files (e.g. `![[example.jpg]]`) are supported. External URL links will not work.
 
 ![Vision](docs/images/vision.jpg)
 
