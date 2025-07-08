@@ -2,10 +2,12 @@
 import axios, { AxiosResponse } from 'axios'
 import { EmbedCache } from 'obsidian'
 import { t } from 'src/lang/helper'
-import { BaseOptions, Message, Optional, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
+import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 import { arrayBufferToBase64, getMimeTypeFromFilename } from './utils'
 
-type ClaudeOptions = BaseOptions & Pick<Optional, 'max_tokens'>
+interface ClaudeOptions extends BaseOptions {
+	max_tokens?: number
+}
 
 interface TextDelta {
 	text: string
