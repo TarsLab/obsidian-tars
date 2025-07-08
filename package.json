@@ -25,7 +25,7 @@
 		"handlebars": "^4.7.8",
 		"jose": "^5.2.4",
 		"obsidian": "latest",
-		"ollama": "^0.5.13",
+		"ollama": "^0.5.16",
 		"openai": "^5.0.1",
 		"prettier": "^3.3.3",
 		"tslib": "^2.4.0",
