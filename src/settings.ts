@@ -2,7 +2,6 @@ import { PromptTemplate } from './prompt'
 import { ProviderSettings, Vendor } from './providers'
 import { azureVendor } from './providers/azure'
 import { claudeVendor } from './providers/claude'
-import { claudeNewVendor } from './providers/claudeNew'
 import { deepSeekVendor } from './providers/deepSeek'
 import { doubaoVendor } from './providers/doubao'
 import { geminiVendor } from './providers/gemini'
@@ -77,7 +76,6 @@ export const availableVendors: Vendor[] = [
 	// The following are arranged in alphabetical order
 	azureVendor,
 	claudeVendor,
-	claudeNewVendor,
 	deepSeekVendor,
 	doubaoVendor,
 	geminiVendor,

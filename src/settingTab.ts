@@ -5,7 +5,7 @@ import { t } from './lang/helper'
 import TarsPlugin from './main'
 import { SelectModelModal, SelectVendorModal } from './modal'
 import { BaseOptions, Optional, ProviderSettings, Vendor } from './providers'
-import { claudeNewVendor, ClaudeOptions } from './providers/claudeNew'
+import { ClaudeOptions, claudeVendor } from './providers/claude'
 import { GptImageOptions, gptImageVendor } from './providers/gptImage'
 import { ollamaVendor } from './providers/ollama'
 import { fetchOpenRouterModels, openRouterVendor } from './providers/openRouter'
@@ -381,7 +381,7 @@ export class TarsSettingTab extends PluginSettingTab {
 				)
 		}
 
-		if (vendor.name === claudeNewVendor.name) {
+		if (vendor.name === claudeVendor.name) {
 			this.addClaudeSections(details, settings.options as ClaudeOptions)
 		}
 
