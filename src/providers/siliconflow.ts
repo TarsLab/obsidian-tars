@@ -2,10 +2,7 @@ import { requestUrl } from 'obsidian'
 import OpenAI from 'openai'
 import { t } from 'src/lang/helper'
 import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
-import { convertEmbedToImageUrl } from './utils'
-
-const CALLOUT_BLOCK_START = '\n\n> [!quote]-  \n> '
-const CALLOUT_BLOCK_END = '\n\n'
+import { CALLOUT_BLOCK_END, CALLOUT_BLOCK_START, convertEmbedToImageUrl } from './utils'
 
 type DeepSeekDelta = OpenAI.ChatCompletionChunk.Choice.Delta & {
 	reasoning_content?: string
