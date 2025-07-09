@@ -195,7 +195,7 @@ const models = [
 ]
 
 export const claudeVendor: Vendor = {
-	name: 'ClaudeNew',
+	name: 'Claude',
 	defaultOptions: {
 		apiKey: '',
 		baseURL: 'https://api.anthropic.com',
