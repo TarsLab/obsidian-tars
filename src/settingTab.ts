@@ -531,7 +531,7 @@ export class TarsSettingTab extends PluginSettingTab {
 			)
 
 	addClaudeSections = (details: HTMLDetailsElement, options: ClaudeOptions) => {
-		new Setting(details).setName('Enable thinking').addToggle((toggle) =>
+		new Setting(details).setName(t('Enable thinking')).addToggle((toggle) =>
 			toggle.setValue(options.enableThinking ?? false).onChange(async (value) => {
 				options.enableThinking = value
 				await this.plugin.saveSettings()
@@ -539,8 +539,8 @@ export class TarsSettingTab extends PluginSettingTab {
 		)
 
 		new Setting(details)
-			.setName('Budget tokens for thinking')
-			.setDesc('Must be ≥1024 and less than max_tokens')
+			.setName(t('Budget tokens for thinking'))
+			.setDesc(t('Must be ≥1024 and less than max_tokens'))
 			.addText((text) =>
 				text
 					.setPlaceholder('')
@@ -552,7 +552,7 @@ export class TarsSettingTab extends PluginSettingTab {
 							return
 						}
 						if (number < 1024) {
-							new Notice('Minimum value is 1024')
+							new Notice(t('Minimum value is 1024'))
 							return
 						}
 						options.budget_tokens = number

@@ -80,7 +80,7 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 		let baseURL = originalBaseURL
 		if (!apiKey) throw new Error(t('API key is required'))
 
-		// 如果 baseURL 末尾包含 /v1/messages，则移除它，因为 Anthropic SDK 会自动添加
+		// Remove /v1/messages from baseURL if present, as Anthropic SDK will add it automatically
 		if (baseURL.endsWith('/v1/messages/')) {
 			baseURL = baseURL.slice(0, -'/v1/messages/'.length)
 		} else if (baseURL.endsWith('/v1/messages')) {
@@ -90,7 +90,7 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 		const [system_msg, messagesWithoutSys] =
 			messages[0].role === 'system' ? [messages[0], messages.slice(1)] : [null, messages]
 
-		// 检查 messagesWithoutSys 中的角色是否只包含 user 或 assistant
+		// Check if messagesWithoutSys only contains user or assistant roles
 		messagesWithoutSys.forEach((msg) => {
 			if (msg.role === 'system') {
 				throw new Error('System messages are only allowed as the first message')
@@ -129,7 +129,6 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 				}
 			})
 		}
-		console.debug('ClaudeNew requestParams', requestParams)
 
 		const stream = await client.messages.create(requestParams, {
 			signal: controller.signal
@@ -139,7 +138,7 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 		for await (const messageStreamEvent of stream) {
 			// console.debug('ClaudeNew messageStreamEvent', messageStreamEvent)
 
-			// 处理不同类型的流事件
+			// Handle different types of stream events
 			if (messageStreamEvent.type === 'content_block_delta') {
 				if (messageStreamEvent.delta.type === 'text_delta') {
 					if (startReasoning) {
@@ -154,27 +153,18 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 					yield prefix + messageStreamEvent.delta.thinking.replace(/\n/g, '\n> ') // Each line of the callout needs to have '>' at the beginning
 				}
 			} else if (messageStreamEvent.type === 'content_block_start') {
-				// 处理内容块开始事件，包括工具使用
-				console.debug('Content block started', messageStreamEvent.content_block)
+				// Handle content block start events, including tool usage
+				// console.debug('Content block started', messageStreamEvent.content_block)
 				if (
 					messageStreamEvent.content_block.type === 'server_tool_use' &&
 					messageStreamEvent.content_block.name === 'web_search'
 				) {
 					new Notice(getCapabilityEmoji('Web Search') + 'Web Search')
 				}
-			} else if (messageStreamEvent.type === 'content_block_stop') {
-				// 处理内容块结束事件
-				console.debug('Content block stopped')
-			} else if (messageStreamEvent.type === 'message_start') {
-				// 处理消息开始事件
-				console.debug('Message started')
-			} else if (messageStreamEvent.type === 'message_stop') {
-				// 处理消息结束事件
-				console.debug('Message stopped')
 			} else if (messageStreamEvent.type === 'message_delta') {
-				// 处理消息级别的增量更新
-				console.debug('Message delta received', messageStreamEvent.delta)
-				// 检查停止原因并给用户提示
+				// Handle message-level incremental updates
+				// console.debug('Message delta received', messageStreamEvent.delta)
+				// Check stop reason and notify user
 				if (messageStreamEvent.delta.stop_reason) {
 					const stopReason = messageStreamEvent.delta.stop_reason
 					if (stopReason !== 'end_turn') {
