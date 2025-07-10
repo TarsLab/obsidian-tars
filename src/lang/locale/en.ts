@@ -205,5 +205,11 @@ Translate the following content into English：{{s}}
 
 {{s}} Summarize the above content in one sentence
 
-`
+`,
+
+	// Claude thinking settings
+	'Enable thinking': 'Enable thinking',
+	'Budget tokens for thinking': 'Budget tokens for thinking',
+	'Must be ≥1024 and less than max_tokens': 'Must be ≥1024 and less than max_tokens',
+	'Minimum value is 1024': 'Minimum value is 1024'
 }

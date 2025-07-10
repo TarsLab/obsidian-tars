@@ -14,6 +14,7 @@
 	"author": "C Jack<https://github.com/ae86jack>",
 	"license": "MIT",
 	"devDependencies": {
+		"@anthropic-ai/sdk": "^0.56.0",
 		"@eslint/js": "^9.19.0",
 		"@google/generative-ai": "^0.21.0",
 		"@types/node": "^16.18.101",

@@ -201,5 +201,11 @@ export default {
 
 {{s}} 用一句话总结以上内容
 
-`
+`,
+
+	// Claude thinking settings
+	'Enable thinking': '启用思考',
+	'Budget tokens for thinking': '思考令牌预算',
+	'Must be ≥1024 and less than max_tokens': '必须 ≥1024 且小于 max_tokens',
+	'Minimum value is 1024': '最小值为 1024'
 }

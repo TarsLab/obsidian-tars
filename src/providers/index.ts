@@ -50,6 +50,7 @@ export interface BaseOptions {
 	baseURL: string
 	model: string
 	parameters: Record<string, unknown>
+	enableWebSearch?: boolean
 }
 
 export interface ProviderSettings {
@@ -60,7 +61,6 @@ export interface ProviderSettings {
 
 export interface Optional {
 	apiSecret: string
-	max_tokens: number
 	endpoint: string
 	apiVersion: string
 }

@@ -5,13 +5,13 @@ import { t } from './lang/helper'
 import TarsPlugin from './main'
 import { SelectModelModal, SelectVendorModal } from './modal'
 import { BaseOptions, Optional, ProviderSettings, Vendor } from './providers'
+import { ClaudeOptions, claudeVendor } from './providers/claude'
 import { GptImageOptions, gptImageVendor } from './providers/gptImage'
 import { ollamaVendor } from './providers/ollama'
 import { fetchOpenRouterModels, openRouterVendor } from './providers/openRouter'
 import { fetchModels, siliconFlowVendor } from './providers/siliconflow'
 import { getCapabilityEmoji } from './providers/utils'
-import { ZhipuOptions, zhipuVendor } from './providers/zhipu'
-import { DEFAULT_SETTINGS, availableVendors } from './settings'
+import { availableVendors, DEFAULT_SETTINGS } from './settings'
 
 export class TarsSettingTab extends PluginSettingTab {
 	plugin: TarsPlugin
@@ -369,26 +369,27 @@ export class TarsSettingTab extends PluginSettingTab {
 		if ('apiSecret' in settings.options)
 			this.addAPISecretOptional(details, settings.options as BaseOptions & Pick<Optional, 'apiSecret'>)
 
-		if (vendor.name === zhipuVendor.name) {
+		if (vendor.capabilities.includes('Web Search')) {
 			new Setting(details)
 				.setName(t('Web search'))
 				.setDesc(t('Enable web search for AI'))
 				.addToggle((toggle) =>
-					toggle.setValue((settings.options as ZhipuOptions).enableWebSearch).onChange(async (value) => {
-						;(settings.options as ZhipuOptions).enableWebSearch = value
+					toggle.setValue(settings.options.enableWebSearch ?? false).onChange(async (value) => {
+						settings.options.enableWebSearch = value
 						await this.plugin.saveSettings()
 					})
 				)
+		}
+
+		if (vendor.name === claudeVendor.name) {
+			this.addClaudeSections(details, settings.options as ClaudeOptions)
 		}
 
 		if (vendor.name === gptImageVendor.name) {
 			this.addGptImageSections(details, settings.options as GptImageOptions)
 		}
 
-		this.addBaseURLSection(details, settings.options as BaseOptions, vendor.defaultOptions.baseURL)
-
-		if ('max_tokens' in settings.options)
-			this.addMaxTokensOptional(details, settings.options as BaseOptions & Pick<Optional, 'max_tokens'>)
+		this.addBaseURLSection(details, settings.options, vendor.defaultOptions.baseURL)
 
 		if ('endpoint' in settings.options)
 			this.addEndpointOptional(details, settings.options as BaseOptions & Pick<Optional, 'endpoint'>)
@@ -529,7 +530,36 @@ export class TarsSettingTab extends PluginSettingTab {
 					})
 			)
 
-	addMaxTokensOptional = (details: HTMLDetailsElement, options: BaseOptions & Pick<Optional, 'max_tokens'>) =>
+	addClaudeSections = (details: HTMLDetailsElement, options: ClaudeOptions) => {
+		new Setting(details).setName(t('Enable thinking')).addToggle((toggle) =>
+			toggle.setValue(options.enableThinking ?? false).onChange(async (value) => {
+				options.enableThinking = value
+				await this.plugin.saveSettings()
+			})
+		)
+
+		new Setting(details)
+			.setName(t('Budget tokens for thinking'))
+			.setDesc(t('Must be ≥1024 and less than max_tokens'))
+			.addText((text) =>
+				text
+					.setPlaceholder('')
+					.setValue(options.budget_tokens ? options.budget_tokens.toString() : '1600')
+					.onChange(async (value) => {
+						const number = parseInt(value)
+						if (isNaN(number)) {
+							new Notice(t('Please enter a number'))
+							return
+						}
+						if (number < 1024) {
+							new Notice(t('Minimum value is 1024'))
+							return
+						}
+						options.budget_tokens = number
+						await this.plugin.saveSettings()
+					})
+			)
+
 		new Setting(details)
 			.setName('Max tokens')
 			.setDesc(t('Refer to the technical documentation'))
@@ -551,6 +581,7 @@ export class TarsSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings()
 					})
 			)
+	}
 
 	addEndpointOptional = (details: HTMLDetailsElement, options: BaseOptions & Pick<Optional, 'endpoint'>) =>
 		new Setting(details)

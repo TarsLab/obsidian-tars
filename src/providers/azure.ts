@@ -1,14 +1,12 @@
 import { AzureOpenAI } from 'openai'
 import { t } from 'src/lang/helper'
 import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
+import { CALLOUT_BLOCK_END, CALLOUT_BLOCK_START } from './utils'
 
 interface AzureOptions extends BaseOptions {
 	endpoint: string
 	apiVersion: string
 }
-
-const CALLOUT_BLOCK_START = '\n\n> [!quote]-  \n> ' // TODO, 后续可以考虑增加配置项，配置 callout 类型，比如 quote, note
-const CALLOUT_BLOCK_END = '' // '\n\n'
 
 const sendRequestFunc = (settings: AzureOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, _resolveEmbedAsBinary: ResolveEmbedAsBinary) {
