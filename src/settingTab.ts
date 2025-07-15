@@ -652,6 +652,12 @@ export class TarsSettingTab extends PluginSettingTab {
 					.setValue(JSON.stringify(options.parameters))
 					.onChange(async (value) => {
 						try {
+							if (value.trim() === '') {
+								// Empty string is valid, clearing parameters
+								options.parameters = {}
+								await this.plugin.saveSettings()
+								return
+							}
 							options.parameters = JSON.parse(value)
 							await this.plugin.saveSettings()
 						} catch {
