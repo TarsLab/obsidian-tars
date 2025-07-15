@@ -9,7 +9,7 @@ export default {
 	newChat: '新对话',
 	'Conversion failed. Selected sections is a': '转换失败。选中的段落是',
 	message: '消息',
-	'Check the developer console for error details. ': '查看开发者控制台了解错误. ',
+	'Check the developer console for error details. ': '查看开发者控制台了解错误详情。',
 	'Cancel generation': '取消生成',
 
 	// commands/asstTag.ts
@@ -125,8 +125,14 @@ export default {
 	'Confirm before replacing existing assistant responses when using assistant commands':
 		'在使用助手标签命令时，替换旧的助手消息，是否需要弹窗确认',
 	'Internal links': '内部链接',
-	'Internal links in messages will be replaced with their referenced content. When disabled, only the original text of the links will be used.':
-		'在请求对话中，内部链接将被替换为其引用的内容。禁用则仅使用链接的原始文本',
+
+	'Internal links in user and system messages will be replaced with their referenced content. When disabled, only the original text of the links will be used.':
+		'用户和系统消息中的内部链接将被替换为其引用的内容。禁用时，仅使用链接的原始文本。',
+
+	// Advanced settings
+	'Internal links for assistant messages': '助手消息的内部链接',
+	'Replace internal links in assistant messages with their referenced content. Note: This feature is generally not recommended as assistant-generated content may contain non-existent links.':
+		'助手消息中的内部链接替换为其引用的内容。注意：通常情况下不建议启用此功能，因为助手生成的内容可能包含不存在的链接。',
 	'System message': '系统消息',
 	'Enable default system message': '启用默认系统消息',
 	'Automatically add a system message when none exists in the conversation':
@@ -204,7 +210,9 @@ export default {
 `,
 
 	// Claude thinking settings
-	'Enable thinking': '启用思考',
+	Thinking: '思考',
+	'When enabled, Claude will show its reasoning process before giving the final answer.':
+		'启用后，Claude 将在给出最终答案前展示其推理过程',
 	'Budget tokens for thinking': '思考令牌预算',
 	'Must be ≥1024 and less than max_tokens': '必须 ≥1024 且小于 max_tokens',
 	'Minimum value is 1024': '最小值为 1024'

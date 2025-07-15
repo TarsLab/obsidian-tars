@@ -36,6 +36,7 @@ export interface RunEnv {
 		assistantTags: string[]
 		systemTags: string[]
 		enableInternalLink: boolean
+		enableInternalLinkForAssistantMsg: boolean
 		enableDefaultSystemMsg: boolean
 		defaultSystemMsg: string
 		enableStreamLog: boolean
@@ -89,6 +90,7 @@ export const buildRunEnv = async (app: App, settings: PluginSettings): Promise<R
 		assistantTags: settings.providers.map((p) => p.tag),
 		systemTags: settings.systemTags,
 		enableInternalLink: settings.enableInternalLink,
+		enableInternalLinkForAssistantMsg: settings.enableInternalLinkForAssistantMsg,
 		enableDefaultSystemMsg: settings.enableDefaultSystemMsg,
 		defaultSystemMsg: settings.defaultSystemMsg,
 		enableStreamLog: settings.enableStreamLog
@@ -207,13 +209,14 @@ const extractTaggedBlocks = (env: RunEnv, startOffset: number, endOffset: number
 const resolveTextRangeWithLinks = async (
 	env: RunEnv,
 	section: SectionCache,
-	contentRange: readonly [number, number]
+	contentRange: readonly [number, number],
+	role: 'user' | 'assistant' | 'system'
 ) => {
 	const {
 		fileText,
 		links: links = [],
 		embeds: embeds = [],
-		options: { enableInternalLink }
+		options: { enableInternalLink, enableInternalLinkForAssistantMsg }
 	} = env
 
 	const startOffset = section.position.start.offset <= contentRange[0] ? contentRange[0] : section.position.start.offset
@@ -238,13 +241,14 @@ const resolveTextRangeWithLinks = async (
 		(item) => startOffset <= item.ref.position.start.offset && item.ref.position.end.offset <= endOffset
 	)
 
+	const shouldResolveLinks = role === 'assistant' ? enableInternalLinkForAssistantMsg : enableInternalLink
 	const resolvedLinkTexts = await Promise.all(
 		filteredRefers.map(async (item) => {
 			const referCache = item.ref
 			if (item.type === 'link') {
 				return {
 					referCache,
-					text: enableInternalLink ? await resolveLinkedContent(env, referCache.link) : referCache.original
+					text: shouldResolveLinks ? await resolveLinkedContent(env, referCache.link) : referCache.original
 				}
 			}
 			return {
@@ -270,7 +274,9 @@ const resolveTextRangeWithLinks = async (
 
 const extractTaggedBlockContent = async (env: RunEnv, taggedBlock: TaggedBlock) => {
 	const textRanges = await Promise.all(
-		taggedBlock.sections.map((section) => resolveTextRangeWithLinks(env, section, taggedBlock.contentRange))
+		taggedBlock.sections.map((section) =>
+			resolveTextRangeWithLinks(env, section, taggedBlock.contentRange, taggedBlock.role)
+		)
 	)
 	console.debug('textRanges', textRanges)
 	const accumulated = textRanges

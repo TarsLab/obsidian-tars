@@ -198,7 +198,7 @@ export class TarsSettingTab extends PluginSettingTab {
 			.setName(t('Internal links'))
 			.setDesc(
 				t(
-					'Internal links in messages will be replaced with their referenced content. When disabled, only the original text of the links will be used.'
+					'Internal links in user and system messages will be replaced with their referenced content. When disabled, only the original text of the links will be used.'
 				)
 			)
 			.addToggle((toggle) =>
@@ -212,6 +212,20 @@ export class TarsSettingTab extends PluginSettingTab {
 
 		const advancedSection = containerEl.createEl('details')
 		advancedSection.createEl('summary', { text: t('Advanced'), cls: 'tars-setting-h4' })
+
+		new Setting(advancedSection)
+			.setName(t('Internal links for assistant messages'))
+			.setDesc(
+				t(
+					'Replace internal links in assistant messages with their referenced content. Note: This feature is generally not recommended as assistant-generated content may contain non-existent links.'
+				)
+			)
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.enableInternalLinkForAssistantMsg ?? false).onChange(async (value) => {
+					this.plugin.settings.enableInternalLinkForAssistantMsg = value
+					await this.plugin.saveSettings()
+				})
+			)
 
 		let answerDelayInput: HTMLInputElement | null = null
 		new Setting(advancedSection)
@@ -531,12 +545,15 @@ export class TarsSettingTab extends PluginSettingTab {
 			)
 
 	addClaudeSections = (details: HTMLDetailsElement, options: ClaudeOptions) => {
-		new Setting(details).setName(t('Enable thinking')).addToggle((toggle) =>
-			toggle.setValue(options.enableThinking ?? false).onChange(async (value) => {
-				options.enableThinking = value
-				await this.plugin.saveSettings()
-			})
-		)
+		new Setting(details)
+			.setName(t('Thinking'))
+			.setDesc(t('When enabled, Claude will show its reasoning process before giving the final answer.'))
+			.addToggle((toggle) =>
+				toggle.setValue(options.enableThinking ?? false).onChange(async (value) => {
+					options.enableThinking = value
+					await this.plugin.saveSettings()
+				})
+			)
 
 		new Setting(details)
 			.setName(t('Budget tokens for thinking'))

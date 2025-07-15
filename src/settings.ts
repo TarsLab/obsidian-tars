@@ -34,7 +34,8 @@ export interface PluginSettings {
 		user: string
 	}
 	promptTemplates: PromptTemplate[]
-	enableInternalLink: boolean
+	enableInternalLink: boolean // For user messages and system messages
+	enableInternalLinkForAssistantMsg: boolean
 	confirmRegenerate: boolean
 	enableTagSuggest: boolean
 	tagSuggestMaxLineLength: number
@@ -60,6 +61,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	},
 	promptTemplates: [],
 	enableInternalLink: true,
+	enableInternalLinkForAssistantMsg: false,
 	answerDelayInMilliseconds: 2000,
 	confirmRegenerate: true,
 	enableTagSuggest: true,

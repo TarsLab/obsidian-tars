@@ -129,8 +129,13 @@ export default {
 	'Confirm before replacing existing assistant responses when using assistant commands':
 		'Confirm before replacing existing assistant responses when using assistant commands',
 	'Internal links': 'Internal links',
-	'Internal links in messages will be replaced with their referenced content. When disabled, only the original text of the links will be used.':
-		'Internal links in messages will be replaced with their referenced content. When disabled, only the original text of the links will be used.',
+	'Internal links in user and system messages will be replaced with their referenced content. When disabled, only the original text of the links will be used.':
+		'Internal links in user and system messages will be replaced with their referenced content. When disabled, only the original text of the links will be used.',
+
+	// Advanced settings
+	'Internal links for assistant messages': 'Internal links for assistant messages',
+	'Replace internal links in assistant messages with their referenced content. Note: This feature is generally not recommended as assistant-generated content may contain non-existent links.':
+		'Replace internal links in assistant messages with their referenced content. Note: This feature is generally not recommended as assistant-generated content may contain non-existent links.',
 	'System message': 'System message',
 	'Enable default system message': 'Enable default system message',
 	'Automatically add a system message when none exists in the conversation':
@@ -208,7 +213,9 @@ Translate the following content into English：{{s}}
 `,
 
 	// Claude thinking settings
-	'Enable thinking': 'Enable thinking',
+	Thinking: 'Thinking',
+	'When enabled, Claude will show its reasoning process before giving the final answer.':
+		'When enabled, Claude will show its reasoning process before giving the final answer.',
 	'Budget tokens for thinking': 'Budget tokens for thinking',
 	'Must be ≥1024 and less than max_tokens': 'Must be ≥1024 and less than max_tokens',
 	'Minimum value is 1024': 'Minimum value is 1024'
