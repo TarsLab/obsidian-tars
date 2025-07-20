@@ -87,7 +87,6 @@ export default class TarsPlugin extends Plugin {
 	}
 
 	onunload() {
-		// 清理状态栏管理器
 		this.statusBarManager?.dispose()
 	}
 

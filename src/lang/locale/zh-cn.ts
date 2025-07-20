@@ -215,5 +215,24 @@ export default {
 		'启用后，Claude 将在给出最终答案前展示其推理过程',
 	'Budget tokens for thinking': '思考令牌预算',
 	'Must be ≥1024 and less than max_tokens': '必须 ≥1024 且小于 max_tokens',
-	'Minimum value is 1024': '最小值为 1024'
+	'Minimum value is 1024': '最小值为 1024',
+
+	// statusBarManager.ts
+	'AI Generation Details': 'AI 生成详情',
+	Round: '回合',
+	Duration: '用时',
+	'Start Time': '开始时间',
+	'End Time': '结束时间',
+	'Error Details': '错误详情',
+	'Error Type': '错误类型',
+	'Error Message': '错误信息',
+	'Occurrence Time': '发生时间',
+	'Stack Trace': '堆栈跟踪',
+	'Copy Error Info': '复制错误信息',
+	'Error info copied to clipboard': '错误信息已复制到剪贴板',
+	'Unknown Error': '未知错误',
+	'Tars AI assistant is ready': 'Tars AI 助手已就绪',
+	'Generating round': '正在生成第',
+	'answer...': '轮回答...',
+	'Generating...': '正在生成...'
 }

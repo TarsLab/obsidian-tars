@@ -41,16 +41,16 @@ class GenerationStatsModal extends Modal {
 
 	onOpen() {
 		const { contentEl } = this
-		contentEl.createEl('h2', { text: 'AI 生成详情' })
+		contentEl.createEl('h2', { text: t('AI Generation Details') })
 
 		const statsContainer = contentEl.createDiv({ cls: 'generation-stats' })
 
-		statsContainer.createEl('p', { text: `回合: ${this.stats.round}` })
-		statsContainer.createEl('p', { text: `模型: ${this.stats.model}` })
-		statsContainer.createEl('p', { text: `字符数: ${this.stats.characters}` })
-		statsContainer.createEl('p', { text: `用时: ${this.stats.duration}` })
-		statsContainer.createEl('p', { text: `开始时间: ${this.stats.startTime.toLocaleTimeString()}` })
-		statsContainer.createEl('p', { text: `结束时间: ${this.stats.endTime.toLocaleTimeString()}` })
+		statsContainer.createEl('p', { text: `${t('Round')}: ${this.stats.round}` })
+		statsContainer.createEl('p', { text: `${t('Model')}: ${this.stats.model}` })
+		statsContainer.createEl('p', { text: `${this.stats.characters}${t('characters')}` })
+		statsContainer.createEl('p', { text: `${t('Duration')}: ${this.stats.duration}` })
+		statsContainer.createEl('p', { text: `${t('Start Time')}: ${this.stats.startTime.toLocaleTimeString()}` })
+		statsContainer.createEl('p', { text: `${t('End Time')}: ${this.stats.endTime.toLocaleTimeString()}` })
 	}
 
 	onClose() {
@@ -69,17 +69,17 @@ class ErrorDetailModal extends Modal {
 
 	onOpen() {
 		const { contentEl } = this
-		contentEl.createEl('h2', { text: '错误详情' })
+		contentEl.createEl('h2', { text: t('Error Details') })
 
 		const errorContainer = contentEl.createDiv({ cls: 'error-details' })
 
-		errorContainer.createEl('p', { text: `错误类型: ${this.error.name || 'Unknown Error'}` })
-		errorContainer.createEl('p', { text: `错误信息: ${this.error.message}` })
-		errorContainer.createEl('p', { text: `发生时间: ${this.error.timestamp.toLocaleString()}` })
+		errorContainer.createEl('p', { text: `${t('Error Type')}: ${this.error.name || t('Unknown Error')}` })
+		errorContainer.createEl('p', { text: `${t('Error Message')}: ${this.error.message}` })
+		errorContainer.createEl('p', { text: `${t('Occurrence Time')}: ${this.error.timestamp.toLocaleString()}` })
 
 		if (this.error.stack) {
 			const stackSection = errorContainer.createDiv({ cls: 'stack-trace' })
-			stackSection.createEl('h3', { text: '堆栈跟踪' })
+			stackSection.createEl('h3', { text: t('Stack Trace') })
 			const stackPre = stackSection.createEl('pre')
 			stackPre.style.background = 'var(--background-secondary)'
 			stackPre.style.padding = 'var(--size-4-2)'
@@ -92,10 +92,10 @@ class ErrorDetailModal extends Modal {
 
 		if (Platform.isDesktopApp) {
 			const buttonContainer = contentEl.createDiv({ cls: 'error-modal-buttons' })
-			const copyBtn = buttonContainer.createEl('button', { text: '复制错误信息' })
+			const copyBtn = buttonContainer.createEl('button', { text: t('Copy Error Info') })
 			copyBtn.onclick = () => {
 				navigator.clipboard.writeText(JSON.stringify(this.error, null, 2))
-				new Notice('错误信息已复制到剪贴板')
+				new Notice(t('Error info copied to clipboard'))
 			}
 		}
 	}
@@ -118,7 +118,7 @@ export class StatusBarManager {
 			type: 'idle',
 			content: {
 				text: 'Tars',
-				tooltip: 'Tars AI 助手已就绪'
+				tooltip: t('Tars AI assistant is ready')
 			},
 			timestamp: new Date()
 		}
@@ -138,7 +138,6 @@ export class StatusBarManager {
 			}
 		})
 
-		// 添加基础样式
 		this.statusBarItem.style.cursor = 'pointer'
 		this.statusBarItem.style.transition = 'opacity 0.2s ease'
 	}
@@ -155,16 +154,12 @@ export class StatusBarManager {
 	private refreshStatusBar() {
 		const { content } = this.state
 
-		// 更新文本
 		this.statusBarItem.setText(content.text)
 
-		// 更新属性
 		this.statusBarItem.setAttribute('title', content.tooltip)
 	}
 
-	// 公共方法 - 设置生成中状态
 	setGeneratingStatus(round: number) {
-		// 清除自动隐藏定时器
 		if (this.autoHideTimer) {
 			clearTimeout(this.autoHideTimer)
 			this.autoHideTimer = null
@@ -174,27 +169,24 @@ export class StatusBarManager {
 			type: 'generating',
 			content: {
 				text: `Round ${round}...`,
-				tooltip: `正在生成第 ${round} 轮回答...`
+				tooltip: `${t('Generating round')} ${round} ${t('answer...')}`
 			},
 			data: undefined
 		})
 	}
 
-	// 公共方法 - 更新生成进度
 	updateGeneratingProgress(characters: number) {
 		if (this.state.type !== 'generating') return
 
 		this.updateState({
 			content: {
 				text: `Tars: ${characters}${t('characters')}`,
-				tooltip: `正在生成... ${characters} 字符`
+				tooltip: `${t('Generating...')} ${characters} ${t('characters')}`
 			}
 		})
 	}
 
-	// 公共方法 - 设置成功状态
 	setSuccessStatus(stats: GenerationStats) {
-		// 清除自动隐藏定时器
 		if (this.autoHideTimer) {
 			clearTimeout(this.autoHideTimer)
 			this.autoHideTimer = null
@@ -204,15 +196,13 @@ export class StatusBarManager {
 			type: 'success',
 			content: {
 				text: `Tars: ${stats.characters}${t('characters')} ${stats.duration}`,
-				tooltip: `Round ${stats.round} | ${stats.characters}字符 | ${stats.duration} | ${stats.model}`
+				tooltip: `${t('Round')} ${stats.round} | ${stats.characters}${t('characters')} | ${stats.duration} | ${stats.model}`
 			},
 			data: stats
 		})
 	}
 
-	// 公共方法 - 设置错误状态
 	setErrorStatus(error: Error) {
-		// 清除自动隐藏定时器
 		if (this.autoHideTimer) {
 			clearTimeout(this.autoHideTimer)
 			this.autoHideTimer = null
@@ -229,18 +219,16 @@ export class StatusBarManager {
 			type: 'error',
 			content: {
 				text: `🔴 Tars: ${t('Error')}`,
-				tooltip: `错误: ${error.message}`
+				tooltip: `${t('Error')}: ${error.message}`
 			},
 			data: errorInfo
 		})
 
-		// 2分钟后自动清除错误状态
+		// 2 minutes later, automatically clear the error status
 		this.autoHideTimer = setTimeout(() => this.clearStatus(), 1000 * 60 * 2)
 	}
 
-	// 公共方法 - 设置取消状态
 	setCancelledStatus() {
-		// 清除自动隐藏定时器
 		if (this.autoHideTimer) {
 			clearTimeout(this.autoHideTimer)
 			this.autoHideTimer = null
@@ -250,18 +238,16 @@ export class StatusBarManager {
 			type: 'idle',
 			content: {
 				text: `❌ ${t('Generation cancelled')}`,
-				tooltip: `生成已取消`
+				tooltip: t('Generation cancelled')
 			},
 			data: undefined
 		})
 
-		// 1分钟后自动清除
+		// 1 minute later, automatically clear the status
 		this.autoHideTimer = setTimeout(() => this.clearStatus(), 1000 * 60 * 1)
 	}
 
-	// 公共方法 - 清除状态
 	clearStatus() {
-		// 清除自动隐藏定时器
 		if (this.autoHideTimer) {
 			clearTimeout(this.autoHideTimer)
 			this.autoHideTimer = null
@@ -271,18 +257,16 @@ export class StatusBarManager {
 			type: 'idle',
 			content: {
 				text: 'Tars',
-				tooltip: 'Tars AI 助手已就绪'
+				tooltip: t('Tars AI assistant is ready')
 			},
 			data: undefined
 		})
 	}
 
-	// 公共方法 - 获取当前状态（只读）
 	getState(): Readonly<StatusBarState> {
 		return { ...this.state }
 	}
 
-	// 清理资源
 	dispose() {
 		if (this.autoHideTimer) {
 			clearTimeout(this.autoHideTimer)
