@@ -3,6 +3,7 @@ import { buildRunEnv, generate, RequestController } from 'src/editor'
 import { t } from 'src/lang/helper'
 import { ProviderSettings } from 'src/providers'
 import { PluginSettings } from 'src/settings'
+import { StatusBarManager } from 'src/statusBarManager'
 import { toSpeakMark } from 'src/suggest'
 import { TagCmdMeta } from './tagCmd'
 import {
@@ -18,7 +19,7 @@ export const asstTagCmd = (
 	{ id, name, tag }: TagCmdMeta,
 	app: App,
 	settings: PluginSettings,
-	statusBarItem: HTMLElement,
+	statusBarManager: StatusBarManager,
 	requestController: RequestController
 ): Command => ({
 	id,
@@ -48,7 +49,7 @@ export const asstTagCmd = (
 					editor,
 					provider,
 					messagesEndOffset,
-					statusBarItem,
+					statusBarManager,
 					settings.editorStatus,
 					requestController
 				)
@@ -73,7 +74,7 @@ export const asstTagCmd = (
 					editor,
 					provider,
 					messagesEndOffset,
-					statusBarItem,
+					statusBarManager,
 					settings.editorStatus,
 					requestController
 				)
@@ -81,11 +82,11 @@ export const asstTagCmd = (
 				// If it's an asstTag, prompt the user whether to regenerate
 				if (settings.confirmRegenerate) {
 					const onConfirm = async () => {
-						await regenerate(app, settings, statusBarItem, requestController, editor, provider, range, mark)
+						await regenerate(app, settings, statusBarManager, requestController, editor, provider, range, mark)
 					}
 					new ConfirmModal(app, onConfirm).open()
 				} else {
-					await regenerate(app, settings, statusBarItem, requestController, editor, provider, range, mark)
+					await regenerate(app, settings, statusBarManager, requestController, editor, provider, range, mark)
 				}
 			} else {
 				// If it's a userTag, systemTag (warn later), newChat mixed, etc., add a new line, insert assistant tag. Let subsequent code handle the judgment
@@ -102,7 +103,7 @@ export const asstTagCmd = (
 					editor,
 					provider,
 					messagesEndOffset,
-					statusBarItem,
+					statusBarManager,
 					settings.editorStatus,
 					requestController
 				)
@@ -110,9 +111,12 @@ export const asstTagCmd = (
 		} catch (error) {
 			console.error(error)
 			if (error.name === 'AbortError') {
+				statusBarManager.setCancelledStatus()
 				new Notice(t('Generation cancelled'))
 				return
 			}
+
+			statusBarManager.setErrorStatus(error as Error)
 			new Notice(
 				`🔴 ${Platform.isDesktopApp ? t('Check the developer console for error details. ') : ''}${error}`,
 				10 * 1000
@@ -124,7 +128,7 @@ export const asstTagCmd = (
 const regenerate = async (
 	app: App,
 	settings: PluginSettings,
-	statusBarItem: HTMLElement,
+	statusBarManager: StatusBarManager,
 	requestController: RequestController,
 	editor: Editor,
 	provider: ProviderSettings,
@@ -142,7 +146,7 @@ const regenerate = async (
 		ch: 0
 	})
 	const env = await buildRunEnv(app, settings)
-	await generate(env, editor, provider, messagesEndOffset, statusBarItem, settings.editorStatus, requestController)
+	await generate(env, editor, provider, messagesEndOffset, statusBarManager, settings.editorStatus, requestController)
 }
 
 class ConfirmModal extends Modal {

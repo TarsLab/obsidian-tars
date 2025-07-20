@@ -19,6 +19,7 @@ import { t } from 'src/lang/helper'
 import { CreatePlainText, Message, ProviderSettings, ResolveEmbedAsBinary, SaveAttachment, Vendor } from './providers'
 import { withStreamLogging } from './providers/decorator'
 import { APP_FOLDER, EditorStatus, PluginSettings, availableVendors } from './settings'
+import { GenerationStats, StatusBarManager } from './statusBarManager'
 import { TagRole } from './suggest'
 
 export interface RunEnv {
@@ -449,7 +450,7 @@ export const generate = async (
 	editor: Editor,
 	provider: ProviderSettings,
 	endOffset: number,
-	statusBarItem: HTMLElement,
+	statusBarManager: StatusBarManager,
 	editorStatus: EditorStatus,
 	requestController: RequestController
 ) => {
@@ -484,7 +485,7 @@ export const generate = async (
 		const sendRequest = await createDecoratedSendRequest(env, vendor, provider)
 
 		const startTime = new Date()
-		statusBarItem.setText(`Round ${round}:...`)
+		statusBarManager.setGeneratingStatus(round)
 
 		let llmResponse = ''
 		const controller = requestController.getController()
@@ -495,12 +496,23 @@ export const generate = async (
 			if (startPos == null) startPos = editor.getCursor('to')
 			lastEditPos = insertText(editor, text, editorStatus, lastEditPos)
 			llmResponse += text
-			statusBarItem.setText(`Round ${round}: ${llmResponse.length}${t('characters')}`)
+			statusBarManager.updateGeneratingProgress(llmResponse.length)
 		}
 
 		const endTime = new Date()
 		const duration = formatDuration(endTime.getTime() - startTime.getTime())
-		statusBarItem.setText(`Round ${round}: ${llmResponse.length}${t('characters')} ${duration}`)
+
+		// 创建统计信息并设置成功状态
+		const stats: GenerationStats = {
+			round,
+			characters: llmResponse.length,
+			duration,
+			model: provider.options.model || provider.vendor,
+			startTime,
+			endTime
+		}
+
+		statusBarManager.setSuccessStatus(stats)
 
 		if (llmResponse.length === 0) {
 			throw new Error(t('No text generated'))

@@ -168,7 +168,7 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 				if (messageStreamEvent.delta.stop_reason) {
 					const stopReason = messageStreamEvent.delta.stop_reason
 					if (stopReason !== 'end_turn') {
-						new Notice(`🔴 Unexpected stop reason: ${stopReason}`, 5 * 1000)
+						throw new Error(`🔴 Unexpected stop reason: ${stopReason}`)
 					}
 				}
 			}

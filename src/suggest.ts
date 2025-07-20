@@ -12,6 +12,7 @@ import {
 import { RequestController, buildRunEnv, generate } from './editor'
 import { t } from './lang/helper'
 import { PluginSettings } from './settings'
+import { StatusBarManager } from './statusBarManager'
 
 export type TagRole = 'user' | 'assistant' | 'system' | 'newChat'
 
@@ -72,21 +73,21 @@ const needsNewLine = (cursor: EditorPosition, editor: Editor) => {
 export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 	settings: PluginSettings
 	tagLowerCaseMap: Map<string, Omit<TagEntry, 'replacement'>>
-	statusBarItem: HTMLElement
+	statusBarManager: StatusBarManager
 	requestController: RequestController
 
 	constructor(
 		app: App,
 		settings: PluginSettings,
 		tagLowerCaseMap: Map<string, Omit<TagEntry, 'replacement'>>,
-		statusBarItem: HTMLElement,
+		statusBarManager: StatusBarManager,
 		requestController: RequestController
 	) {
 		super(app)
 		this.app = app
 		this.settings = settings
 		this.tagLowerCaseMap = tagLowerCaseMap
-		this.statusBarItem = statusBarItem
+		this.statusBarManager = statusBarManager
 		this.requestController = requestController
 	}
 
@@ -198,16 +199,19 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 				editor,
 				provider,
 				messagesEndOffset,
-				this.statusBarItem,
+				this.statusBarManager,
 				this.settings.editorStatus,
 				this.requestController
 			)
 		} catch (error) {
 			console.error('error', error)
 			if (error.name === 'AbortError') {
+				this.statusBarManager.setCancelledStatus()
 				new Notice(t('Generation cancelled'))
 				return
 			}
+
+			this.statusBarManager.setErrorStatus(error as Error)
 			new Notice(
 				`🔴 ${Platform.isDesktopApp ? t('Check the developer console for error details. ') : ''}${error}`,
 				10 * 1000
