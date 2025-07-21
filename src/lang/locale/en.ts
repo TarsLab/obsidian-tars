@@ -218,5 +218,27 @@ Translate the following content into English：{{s}}
 		'When enabled, Claude will show its reasoning process before giving the final answer.',
 	'Budget tokens for thinking': 'Budget tokens for thinking',
 	'Must be ≥1024 and less than max_tokens': 'Must be ≥1024 and less than max_tokens',
-	'Minimum value is 1024': 'Minimum value is 1024'
+	'Minimum value is 1024': 'Minimum value is 1024',
+
+	// statusBarManager.ts
+	'AI Generation Details': 'AI Generation Details',
+	Round: 'Round',
+	Duration: 'Duration',
+	'Start Time': 'Start Time',
+	'End Time': 'End Time',
+	'Error Details': 'Error Details',
+	'Error Type': 'Error Type',
+	'Error Message': 'Error Message',
+	'Occurrence Time': 'Occurrence Time',
+	'Stack Trace': 'Stack Trace',
+	'Copy Error Info': 'Copy Error Info',
+	'Error info copied to clipboard': 'Error info copied to clipboard',
+	'Unknown Error': 'Unknown Error',
+	'Tars AI assistant is ready': 'Tars AI assistant is ready',
+	'Generating round': 'Generating round',
+	'answer...': 'answer...',
+	'Generating...': 'Generating...',
+	'Click status bar for error details. ': 'Click status bar for error details. ',
+	Vendor: 'Vendor',
+	Characters: 'Characters'
 }

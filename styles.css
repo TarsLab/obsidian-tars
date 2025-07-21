@@ -37,3 +37,83 @@ summary.tars-setting-h4 {
 .syntax-error-textarea {
 	width: 100%;
 }
+
+/* Generation Stats Modal Styles */
+.generation-stats {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2);
+}
+
+.generation-stats p {
+	margin: 0;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: var(--size-2-1) var(--size-2-3);
+	background-color: var(--background-secondary);
+	border-radius: var(--radius-s);
+	font-family: var(--font-monospace);
+	font-size: var(--font-ui-small);
+}
+
+/* Error Detail Modal Styles */
+.error-details {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2);
+}
+
+.error-details p {
+	margin: 0;
+	padding: var(--size-2-1) var(--size-2-3);
+	background-color: var(--background-secondary);
+	border-radius: var(--radius-s);
+	font-family: var(--font-monospace);
+	font-size: var(--font-ui-small);
+	word-break: break-word;
+}
+
+.stack-trace {
+	margin-top: var(--size-4-2);
+}
+
+.stack-trace h3 {
+	margin: 0 0 var(--size-4-1) 0;
+	color: var(--text-error);
+	font-size: var(--font-ui-medium);
+}
+
+.stack-trace-pre {
+	background: var(--background-secondary);
+	padding: var(--size-4-2);
+	border-radius: var(--radius-s);
+	font-size: var(--font-ui-smaller);
+	overflow: auto;
+	max-height: 200px;
+	margin: 0;
+}
+
+.error-modal-buttons {
+	margin-top: var(--size-4-3);
+	display: flex;
+	gap: var(--size-4-1);
+	justify-content: flex-end;
+}
+
+.error-modal-buttons button {
+	padding: var(--size-2-2) var(--size-4-2);
+	border-radius: var(--radius-m);
+	border: 1px solid var(--background-modifier-border);
+	background-color: var(--interactive-normal);
+	color: var(--text-normal);
+	cursor: pointer;
+}
+
+.error-modal-buttons button:hover {
+	background-color: var(--interactive-hover);
+}
+
+.error-modal-buttons button:active {
+	background-color: var(--interactive-active);
+}

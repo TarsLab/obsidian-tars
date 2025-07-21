@@ -5,7 +5,6 @@ import {
 	EmbedCache,
 	LinkCache,
 	MetadataCache,
-	Notice,
 	ReferenceCache,
 	SectionCache,
 	TagCache,
@@ -19,6 +18,7 @@ import { t } from 'src/lang/helper'
 import { CreatePlainText, Message, ProviderSettings, ResolveEmbedAsBinary, SaveAttachment, Vendor } from './providers'
 import { withStreamLogging } from './providers/decorator'
 import { APP_FOLDER, EditorStatus, PluginSettings, availableVendors } from './settings'
+import { GenerationStats, StatusBarManager } from './statusBarManager'
 import { TagRole } from './suggest'
 
 export interface RunEnv {
@@ -449,7 +449,7 @@ export const generate = async (
 	editor: Editor,
 	provider: ProviderSettings,
 	endOffset: number,
-	statusBarItem: HTMLElement,
+	statusBarManager: StatusBarManager,
 	editorStatus: EditorStatus,
 	requestController: RequestController
 ) => {
@@ -484,7 +484,7 @@ export const generate = async (
 		const sendRequest = await createDecoratedSendRequest(env, vendor, provider)
 
 		const startTime = new Date()
-		statusBarItem.setText(`Round ${round}:...`)
+		statusBarManager.setGeneratingStatus(round)
 
 		let llmResponse = ''
 		const controller = requestController.getController()
@@ -495,17 +495,30 @@ export const generate = async (
 			if (startPos == null) startPos = editor.getCursor('to')
 			lastEditPos = insertText(editor, text, editorStatus, lastEditPos)
 			llmResponse += text
-			statusBarItem.setText(`Round ${round}: ${llmResponse.length}${t('characters')}`)
+			statusBarManager.updateGeneratingProgress(llmResponse.length)
 		}
 
 		const endTime = new Date()
 		const duration = formatDuration(endTime.getTime() - startTime.getTime())
-		statusBarItem.setText(`Round ${round}: ${llmResponse.length}${t('characters')} ${duration}`)
+
+		// Create statistics and set success status
+		const stats: GenerationStats = {
+			round,
+			characters: llmResponse.length,
+			duration,
+			model: provider.options.model,
+			vendor: provider.vendor,
+			startTime,
+			endTime
+		}
+
+		statusBarManager.setSuccessStatus(stats)
 
 		if (llmResponse.length === 0) {
 			throw new Error(t('No text generated'))
 		}
 
+		console.debug('✨ ' + t('AI generate') + ' ✨ ', llmResponse)
 		if (startPos) {
 			const endPos = editor.getCursor('to')
 			const insertedText = editor.getRange(startPos, endPos)
@@ -517,11 +530,8 @@ export const generate = async (
 		}
 
 		if (controller.signal.aborted) {
-			new Notice(t('Generation cancelled'))
-		} else {
-			new Notice(t('Text generated successfully'))
+			throw new DOMException('Operation was aborted', 'AbortError')
 		}
-		console.debug('✨ ' + t('AI generate') + ' ✨ ', llmResponse)
 	} finally {
 		requestController.cleanup()
 	}

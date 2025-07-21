@@ -15,11 +15,12 @@ import { t } from './lang/helper'
 import { getTitleFromCmdId, loadTemplateFileCommand, promptTemplateCmd, templateToCmdId } from './prompt'
 import { TarsSettingTab } from './settingTab'
 import { DEFAULT_SETTINGS, PluginSettings } from './settings'
+import { StatusBarManager } from './statusBarManager'
 import { getMaxTriggerLineLength, TagEditorSuggest, TagEntry } from './suggest'
 
 export default class TarsPlugin extends Plugin {
 	settings: PluginSettings
-	statusBarItem: HTMLElement
+	statusBarManager: StatusBarManager
 	tagCmdIds: string[] = []
 	promptCmdIds: string[] = []
 	tagLowerCaseMap: Map<string, Omit<TagEntry, 'replacement'>> = new Map()
@@ -30,8 +31,8 @@ export default class TarsPlugin extends Plugin {
 
 		console.debug('loading Tars plugin...')
 
-		this.statusBarItem = this.addStatusBarItem()
-		this.statusBarItem.setText('Tars')
+		const statusBarItem = this.addStatusBarItem()
+		this.statusBarManager = new StatusBarManager(this.app, statusBarItem)
 
 		this.buildTagCommands(true)
 		this.buildPromptCommands(true)
@@ -54,7 +55,7 @@ export default class TarsPlugin extends Plugin {
 					this.app,
 					this.settings,
 					this.tagLowerCaseMap,
-					this.statusBarItem,
+					this.statusBarManager,
 					this.getRequestController()
 				)
 			)
@@ -84,7 +85,9 @@ export default class TarsPlugin extends Plugin {
 		this.addSettingTab(new TarsSettingTab(this.app, this))
 	}
 
-	onunload() {}
+	onunload() {
+		this.statusBarManager?.dispose()
+	}
 
 	addTagCommand(cmdId: string) {
 		const tagCmdMeta = getMeta(cmdId)
@@ -100,7 +103,7 @@ export default class TarsPlugin extends Plugin {
 				break
 			case 'assistant':
 				this.addCommand(
-					asstTagCmd(tagCmdMeta, this.app, this.settings, this.statusBarItem, this.getRequestController())
+					asstTagCmd(tagCmdMeta, this.app, this.settings, this.statusBarManager, this.getRequestController())
 				)
 				break
 			default:
