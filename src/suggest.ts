@@ -212,10 +212,7 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 			}
 
 			this.statusBarManager.setErrorStatus(error as Error)
-			new Notice(
-				`🔴 ${Platform.isDesktopApp ? t('Check the developer console for error details. ') : ''}${error}`,
-				10 * 1000
-			)
+			new Notice(`🔴 ${Platform.isDesktopApp ? t('Click status bar for error details. ') : ''}${error}`, 10 * 1000)
 		}
 		this.close()
 	}

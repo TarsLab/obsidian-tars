@@ -234,5 +234,6 @@ export default {
 	'Tars AI assistant is ready': 'Tars AI 助手已就绪',
 	'Generating round': '正在生成第',
 	'answer...': '轮回答...',
-	'Generating...': '正在生成...'
+	'Generating...': '正在生成...',
+	'Click status bar for error details. ': '点击状态栏查看错误详情。'
 }

@@ -237,5 +237,6 @@ Translate the following content into English：{{s}}
 	'Tars AI assistant is ready': 'Tars AI assistant is ready',
 	'Generating round': 'Generating round',
 	'answer...': 'answer...',
-	'Generating...': 'Generating...'
+	'Generating...': 'Generating...',
+	'Click status bar for error details. ': 'Click status bar for error details. '
 }
