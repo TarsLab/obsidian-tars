@@ -84,6 +84,16 @@ summary.tars-setting-h4 {
 	font-size: var(--font-ui-medium);
 }
 
+.stack-trace-pre {
+	background: var(--background-secondary);
+	padding: var(--size-4-2);
+	border-radius: var(--radius-s);
+	font-size: var(--font-ui-smaller);
+	overflow: auto;
+	max-height: 200px;
+	margin: 0;
+}
+
 .error-modal-buttons {
 	margin-top: var(--size-4-3);
 	display: flex;

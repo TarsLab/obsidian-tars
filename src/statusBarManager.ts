@@ -80,13 +80,7 @@ class ErrorDetailModal extends Modal {
 		if (this.error.stack) {
 			const stackSection = errorContainer.createDiv({ cls: 'stack-trace' })
 			stackSection.createEl('h3', { text: t('Stack Trace') })
-			const stackPre = stackSection.createEl('pre')
-			stackPre.style.background = 'var(--background-secondary)'
-			stackPre.style.padding = 'var(--size-4-2)'
-			stackPre.style.borderRadius = 'var(--radius-s)'
-			stackPre.style.fontSize = 'var(--font-ui-smaller)'
-			stackPre.style.overflow = 'auto'
-			stackPre.style.maxHeight = '200px'
+			const stackPre = stackSection.createEl('pre', { cls: 'stack-trace-pre' })
 			stackPre.textContent = this.error.stack
 		}
 
