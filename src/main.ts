@@ -20,7 +20,6 @@ import { getMaxTriggerLineLength, TagEditorSuggest, TagEntry } from './suggest'
 
 export default class TarsPlugin extends Plugin {
 	settings: PluginSettings
-	statusBarItem: HTMLElement
 	statusBarManager: StatusBarManager
 	tagCmdIds: string[] = []
 	promptCmdIds: string[] = []
@@ -32,8 +31,8 @@ export default class TarsPlugin extends Plugin {
 
 		console.debug('loading Tars plugin...')
 
-		this.statusBarItem = this.addStatusBarItem()
-		this.statusBarManager = new StatusBarManager(this.app, this.statusBarItem)
+		const statusBarItem = this.addStatusBarItem()
+		this.statusBarManager = new StatusBarManager(this.app, statusBarItem)
 
 		this.buildTagCommands(true)
 		this.buildPromptCommands(true)

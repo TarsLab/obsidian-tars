@@ -231,7 +231,7 @@ export class StatusBarManager {
 		this.updateState({
 			type: 'idle',
 			content: {
-				text: `❌ ${t('Generation cancelled')}`,
+				text: `⚠️ Tars: ${t('Generation cancelled')}`,
 				tooltip: t('Generation cancelled')
 			},
 			data: undefined

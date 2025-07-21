@@ -5,7 +5,6 @@ import {
 	EmbedCache,
 	LinkCache,
 	MetadataCache,
-	Notice,
 	ReferenceCache,
 	SectionCache,
 	TagCache,
@@ -518,6 +517,7 @@ export const generate = async (
 			throw new Error(t('No text generated'))
 		}
 
+		console.debug('✨ ' + t('AI generate') + ' ✨ ', llmResponse)
 		if (startPos) {
 			const endPos = editor.getCursor('to')
 			const insertedText = editor.getRange(startPos, endPos)
@@ -529,11 +529,8 @@ export const generate = async (
 		}
 
 		if (controller.signal.aborted) {
-			new Notice(t('Generation cancelled'))
-		} else {
-			new Notice(t('Text generated successfully'))
+			throw new DOMException('Operation was aborted', 'AbortError')
 		}
-		console.debug('✨ ' + t('AI generate') + ' ✨ ', llmResponse)
 	} finally {
 		requestController.cleanup()
 	}
