@@ -84,6 +84,13 @@ const formatMsg = async (msg: Message, resolveEmbedAsBinary: ResolveEmbedAsBinar
 		? await Promise.all(msg.embeds.map((embed) => convertEmbedToImageUrl(embed, resolveEmbedAsBinary)))
 		: []
 
+	// If there are no embeds/images, return a simple text message format
+	if (content.length === 0) {
+		return {
+			role: msg.role,
+			content: msg.content
+		}
+	}
 	if (msg.content.trim()) {
 		content.push({
 			type: 'text' as const,
