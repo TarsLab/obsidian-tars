@@ -20,6 +20,7 @@ export interface GenerationStats {
 	characters: number
 	duration: string
 	model: string
+	vendor: string
 	startTime: Date
 	endTime: Date
 }
@@ -47,6 +48,7 @@ class GenerationStatsModal extends Modal {
 
 		statsContainer.createEl('p', { text: `${t('Round')}: ${this.stats.round}` })
 		statsContainer.createEl('p', { text: `${t('Model')}: ${this.stats.model}` })
+		statsContainer.createEl('p', { text: `${t('Vendor')}: ${this.stats.vendor}` })
 		statsContainer.createEl('p', { text: `${this.stats.characters}${t('characters')}` })
 		statsContainer.createEl('p', { text: `${t('Duration')}: ${this.stats.duration}` })
 		statsContainer.createEl('p', { text: `${t('Start Time')}: ${this.stats.startTime.toLocaleTimeString()}` })

@@ -501,12 +501,13 @@ export const generate = async (
 		const endTime = new Date()
 		const duration = formatDuration(endTime.getTime() - startTime.getTime())
 
-		// 创建统计信息并设置成功状态
+		// Create statistics and set success status
 		const stats: GenerationStats = {
 			round,
 			characters: llmResponse.length,
 			duration,
-			model: provider.options.model || provider.vendor,
+			model: provider.options.model,
+			vendor: provider.vendor,
 			startTime,
 			endTime
 		}

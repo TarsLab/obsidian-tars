@@ -235,5 +235,6 @@ export default {
 	'Generating round': '正在生成第',
 	'answer...': '轮回答...',
 	'Generating...': '正在生成...',
-	'Click status bar for error details. ': '点击状态栏查看错误详情。'
+	'Click status bar for error details. ': '点击状态栏查看错误详情。',
+	Vendor: '服务商'
 }
