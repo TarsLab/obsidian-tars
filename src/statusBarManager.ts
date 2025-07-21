@@ -49,7 +49,7 @@ class GenerationStatsModal extends Modal {
 		statsContainer.createEl('p', { text: `${t('Round')}: ${this.stats.round}` })
 		statsContainer.createEl('p', { text: `${t('Model')}: ${this.stats.model}` })
 		statsContainer.createEl('p', { text: `${t('Vendor')}: ${this.stats.vendor}` })
-		statsContainer.createEl('p', { text: `${this.stats.characters}${t('characters')}` })
+		statsContainer.createEl('p', { text: `${t('Characters')}: ${this.stats.characters}` })
 		statsContainer.createEl('p', { text: `${t('Duration')}: ${this.stats.duration}` })
 		statsContainer.createEl('p', { text: `${t('Start Time')}: ${this.stats.startTime.toLocaleTimeString()}` })
 		statsContainer.createEl('p', { text: `${t('End Time')}: ${this.stats.endTime.toLocaleTimeString()}` })

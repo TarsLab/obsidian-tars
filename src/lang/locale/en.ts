@@ -239,5 +239,6 @@ Translate the following content into English：{{s}}
 	'answer...': 'answer...',
 	'Generating...': 'Generating...',
 	'Click status bar for error details. ': 'Click status bar for error details. ',
-	Vendor: 'Vendor'
+	Vendor: 'Vendor',
+	Characters: 'Characters'
 }

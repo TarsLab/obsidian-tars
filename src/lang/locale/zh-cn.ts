@@ -236,5 +236,6 @@ export default {
 	'answer...': '轮回答...',
 	'Generating...': '正在生成...',
 	'Click status bar for error details. ': '点击状态栏查看错误详情。',
-	Vendor: '服务商'
+	Vendor: '服务商',
+	Characters: '字符数'
 }
