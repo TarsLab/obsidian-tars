@@ -20,7 +20,7 @@
 		"@types/node": "^16.18.101",
 		"axios": "^1.8.3",
 		"builtin-modules": "3.3.0",
-		"esbuild": "0.17.3",
+		"esbuild": "^0.25.8",
 		"eslint": "^9.19.0",
 		"eslint-config-prettier": "^10.0.1",
 		"handlebars": "^4.7.8",
