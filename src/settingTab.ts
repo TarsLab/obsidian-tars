@@ -1,4 +1,4 @@
-import { App, Notice, PluginSettingTab, Setting } from 'obsidian'
+import { App, Notice, PluginSettingTab, requestUrl, Setting } from 'obsidian'
 import { exportCmd, replaceCmd, replaceCmdId } from './commands'
 import { exportCmdId } from './commands/export'
 import { t } from './lang/helper'
@@ -7,9 +7,10 @@ import { SelectModelModal, SelectVendorModal } from './modal'
 import { BaseOptions, Optional, ProviderSettings, Vendor } from './providers'
 import { ClaudeOptions, claudeVendor } from './providers/claude'
 import { GptImageOptions, gptImageVendor } from './providers/gptImage'
+import { kimiVendor } from './providers/kimi'
 import { ollamaVendor } from './providers/ollama'
-import { fetchOpenRouterModels, openRouterVendor } from './providers/openRouter'
-import { fetchModels, siliconFlowVendor } from './providers/siliconflow'
+import { openRouterVendor } from './providers/openRouter'
+import { siliconFlowVendor } from './providers/siliconflow'
 import { getCapabilityEmoji } from './providers/utils'
 import { availableVendors, DEFAULT_SETTINGS } from './settings'
 
@@ -320,7 +321,8 @@ export class TarsSettingTab extends PluginSettingTab {
 		this.addTagSection(details, settings, index, vendor.name)
 
 		// model setting
-		if (vendor.name === siliconFlowVendor.name) {
+		const modelConfig = MODEL_FETCH_CONFIGS[vendor.name as keyof typeof MODEL_FETCH_CONFIGS]
+		if (modelConfig) {
 			new Setting(details)
 				.setName(t('Model'))
 				.setDesc(capabilities)
@@ -328,12 +330,16 @@ export class TarsSettingTab extends PluginSettingTab {
 					btn
 						.setButtonText(settings.options.model ? settings.options.model : t('Select the model to use'))
 						.onClick(async () => {
-							if (!settings.options.apiKey) {
+							// Check if API key is required but not provided
+							if (modelConfig.requiresApiKey && !settings.options.apiKey) {
 								new Notice(t('Please input API key first'))
 								return
 							}
 							try {
-								const models = await fetchModels(settings.options.apiKey)
+								const models = await fetchModels(
+									modelConfig.url,
+									modelConfig.requiresApiKey ? settings.options.apiKey : undefined
+								)
 								const onChoose = async (selectedModel: string) => {
 									settings.options.model = selectedModel
 									await this.plugin.saveSettings()
@@ -341,28 +347,18 @@ export class TarsSettingTab extends PluginSettingTab {
 								}
 								new SelectModelModal(this.app, models, onChoose).open()
 							} catch (error) {
-								new Notice('🔴' + error)
-							}
-						})
-				})
-		} else if (vendor.name === openRouterVendor.name) {
-			new Setting(details)
-				.setName(t('Model'))
-				.setDesc(capabilities)
-				.addButton((btn) => {
-					btn
-						.setButtonText(settings.options.model ? settings.options.model : t('Select the model to use'))
-						.onClick(async () => {
-							try {
-								const models = await fetchOpenRouterModels()
-								const onChoose = async (selectedModel: string) => {
-									settings.options.model = selectedModel
-									await this.plugin.saveSettings()
-									btn.setButtonText(selectedModel)
+								if (error instanceof Error) {
+									const errorMessage = error.message.toLowerCase()
+									if (errorMessage.includes('401') || errorMessage.includes('unauthorized')) {
+										new Notice('🔑 ' + t('API key may be incorrect. Please check your API key.'))
+									} else if (errorMessage.includes('403') || errorMessage.includes('forbidden')) {
+										new Notice('🚫 ' + t('Access denied. Please check your API permissions.'))
+									} else {
+										new Notice('🔴 ' + error.message)
+									}
+								} else {
+									new Notice('🔴 ' + String(error))
 								}
-								new SelectModelModal(this.app, models, onChoose).open()
-							} catch (error) {
-								new Notice('🔴' + error)
 							}
 						})
 				})
@@ -804,3 +800,31 @@ const isValidUrl = (url: string) => {
 		return false
 	}
 }
+
+const fetchModels = async (url: string, apiKey?: string): Promise<string[]> => {
+	const response = await requestUrl({
+		url,
+		headers: {
+			...(apiKey && { Authorization: `Bearer ${apiKey}` }),
+			'Content-Type': 'application/json'
+		}
+	})
+	const result = response.json
+	return result.data.map((model: { id: string }) => model.id)
+}
+
+// Model fetching configurations for different vendors
+const MODEL_FETCH_CONFIGS = {
+	[siliconFlowVendor.name]: {
+		url: 'https://api.siliconflow.cn/v1/models?type=text&sub_type=chat',
+		requiresApiKey: true
+	},
+	[openRouterVendor.name]: {
+		url: 'https://openrouter.ai/api/v1/models',
+		requiresApiKey: false
+	},
+	[kimiVendor.name]: {
+		url: 'https://api.moonshot.cn/v1/models',
+		requiresApiKey: true
+	}
+} as const

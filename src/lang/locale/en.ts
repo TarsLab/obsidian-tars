@@ -40,6 +40,8 @@ export default {
 	'API secret is required': 'API secret is required',
 	'Model is required': 'Model is required',
 	'API URL is required': 'API URL is required',
+	'API key may be incorrect. Please check your API key.': 'API key may be incorrect. Please check your API key.',
+	'Access denied. Please check your API permissions.': 'Access denied. Please check your API permissions.',
 	'Text Generation': 'Text Generation',
 	'Image Vision': 'Image Vision',
 	'PDF Vision': 'PDF Vision',

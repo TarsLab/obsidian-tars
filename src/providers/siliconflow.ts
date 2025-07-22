@@ -1,4 +1,3 @@
-import { requestUrl } from 'obsidian'
 import OpenAI from 'openai'
 import { t } from 'src/lang/helper'
 import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
@@ -85,16 +84,4 @@ export const siliconFlowVendor: Vendor = {
 	models: [],
 	websiteToObtainKey: 'https://siliconflow.cn',
 	capabilities: ['Text Generation', 'Image Vision', 'Reasoning']
-}
-
-export const fetchModels = async (apiKey: string): Promise<string[]> => {
-	const response = await requestUrl({
-		url: 'https://api.siliconflow.cn/v1/models?type=text&sub_type=chat',
-		headers: {
-			Authorization: `Bearer ${apiKey}`,
-			'Content-Type': 'application/json'
-		}
-	})
-	const result = response.json
-	return result.data.map((model: { id: string }) => model.id)
 }

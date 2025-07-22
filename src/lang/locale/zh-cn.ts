@@ -40,6 +40,8 @@ export default {
 	'API secret is required': '请配置对应的 API secret',
 	'Model is required': '请配置对应的模型',
 	'API URL is required': '请配置对应的 API URL',
+	'API key may be incorrect. Please check your API key.': 'API key 可能不正确，请检查您的 API key。',
+	'Access denied. Please check your API permissions.': '访问被拒绝，请检查您的 API 权限。',
 	'Text Generation': '文本生成',
 	'Image Vision': '图像视觉',
 	'PDF Vision': 'PDF视觉',

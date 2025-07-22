@@ -1,4 +1,4 @@
-import { EmbedCache, requestUrl } from 'obsidian'
+import { EmbedCache } from 'obsidian'
 import { t } from 'src/lang/helper'
 import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 import { arrayBufferToBase64, getMimeTypeFromFilename } from './utils'
@@ -132,15 +132,4 @@ export const openRouterVendor: Vendor = {
 	models: [],
 	websiteToObtainKey: 'https://openrouter.ai',
 	capabilities: ['Text Generation', 'Image Vision', 'PDF Vision']
-}
-
-export const fetchOpenRouterModels = async (): Promise<string[]> => {
-	const response = await requestUrl({
-		url: 'https://openrouter.ai/api/v1/models',
-		headers: {
-			'Content-Type': 'application/json'
-		}
-	})
-	const result = response.json
-	return result.data.map((model: { id: string }) => model.id)
 }
