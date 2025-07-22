@@ -103,25 +103,16 @@ const formatMsg = async (msg: Message, resolveEmbedAsBinary: ResolveEmbedAsBinar
 	}
 }
 
-const models = [
-	'moonshot-v1-128k',
-	'moonshot-v1-32k',
-	'moonshot-v1-32k-vision-preview',
-	'kimi-thinking-preview',
-	'kimi-k2-0711-preview',
-	'kimi-latest-32k'
-]
-
 export const kimiVendor: Vendor = {
 	name: 'Kimi',
 	defaultOptions: {
 		apiKey: '',
 		baseURL: 'https://api.moonshot.cn/v1/chat/completions',
-		model: models[0],
+		model: '',
 		parameters: {}
 	},
 	sendRequestFunc,
-	models,
+	models: [],
 	websiteToObtainKey: 'https://www.moonshot.cn',
 	capabilities: ['Text Generation', 'Image Vision', 'Reasoning']
 }
