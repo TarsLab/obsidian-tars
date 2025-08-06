@@ -35,6 +35,7 @@ export type Capability =
 	| 'Image Editing'
 	| 'Web Search'
 	| 'Reasoning'
+	| 'MCP Tools'
 
 export interface Vendor {
 	readonly name: string

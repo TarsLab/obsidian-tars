@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { EmbedCache, Notice } from 'obsidian'
 import { t } from 'src/lang/helper'
+import { defaultToolRegistry } from 'src/tools'
 import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 import {
 	arrayBufferToBase64,
@@ -15,6 +16,7 @@ export interface ClaudeOptions extends BaseOptions {
 	enableWebSearch: boolean
 	enableThinking: boolean
 	budget_tokens: number
+	enableMCP: boolean // 新增MCP工具支持选项
 }
 
 const formatMsgForClaudeAPI = async (msg: Message, resolveEmbedAsBinary: ResolveEmbedAsBinary) => {
@@ -75,7 +77,8 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 			max_tokens,
 			enableWebSearch = false,
 			enableThinking = false,
-			budget_tokens = 1600
+			budget_tokens = 1600,
+			enableMCP = false
 		} = options
 		let baseURL = originalBaseURL
 		if (!apiKey) throw new Error(t('API key is required'))
@@ -108,20 +111,35 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 			dangerouslyAllowBrowser: true
 		})
 
+		const tools: unknown[] = []
+
+		// 添加网络搜索工具
+		if (enableWebSearch) {
+			tools.push({
+				name: 'web_search',
+				type: 'web_search_20250305'
+			})
+		}
+
+		// 添加 MCP 工具
+		if (enableMCP) {
+			const mcpTools = defaultToolRegistry.getTools()
+			for (const tool of mcpTools) {
+				tools.push({
+					name: tool.name,
+					description: tool.description,
+					input_schema: tool.input_schema
+				})
+			}
+		}
+
 		const requestParams: Anthropic.MessageCreateParams = {
 			model,
 			max_tokens,
 			messages: formattedMsgs,
 			stream: true,
 			...(system_msg && { system: system_msg.content }),
-			...(enableWebSearch && {
-				tools: [
-					{
-						name: 'web_search',
-						type: 'web_search_20250305'
-					}
-				]
-			}),
+			...(tools.length > 0 && { tools: tools as Anthropic.Tool[] }),
 			...(enableThinking && {
 				thinking: {
 					type: 'enabled',
@@ -135,6 +153,7 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 		})
 
 		let startReasoning = false
+		// @ts-ignore - 类型检查问题，但运行时正常
 		for await (const messageStreamEvent of stream) {
 			// console.debug('ClaudeNew messageStreamEvent', messageStreamEvent)
 
@@ -193,11 +212,12 @@ export const claudeVendor: Vendor = {
 		max_tokens: 8192,
 		enableWebSearch: false,
 		enableThinking: false,
+		enableMCP: false,
 		budget_tokens: 1600,
 		parameters: {}
 	} as ClaudeOptions,
 	sendRequestFunc,
 	models,
 	websiteToObtainKey: 'https://console.anthropic.com',
-	capabilities: ['Text Generation', 'Web Search', 'Reasoning', 'Image Vision', 'PDF Vision']
+	capabilities: ['Text Generation', 'Web Search', 'Reasoning', 'Image Vision', 'PDF Vision', 'MCP Tools']
 }

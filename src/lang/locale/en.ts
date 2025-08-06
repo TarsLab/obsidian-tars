@@ -49,6 +49,7 @@ export default {
 	'Image Editing': 'Image Editing',
 	'Web Search': 'Web Search',
 	Reasoning: 'Reasoning',
+	'MCP Tools': 'MCP Tools',
 	'Only PNG, JPEG, GIF, and WebP images are supported.': 'Only PNG, JPEG, GIF, and WebP images are supported.',
 	'Only PNG, JPEG, GIF, WebP, and PDF files are supported.': 'Only PNG, JPEG, GIF, WebP, and PDF files are supported.',
 
@@ -221,6 +222,8 @@ Translate the following content into English：{{s}}
 	'Budget tokens for thinking': 'Budget tokens for thinking',
 	'Must be ≥1024 and less than max_tokens': 'Must be ≥1024 and less than max_tokens',
 	'Minimum value is 1024': 'Minimum value is 1024',
+	'Enable Model Context Protocol tools for file operations and vault interactions':
+		'Enable Model Context Protocol tools for file operations and vault interactions',
 
 	// statusBarManager.ts
 	'AI Generation Details': 'AI Generation Details',

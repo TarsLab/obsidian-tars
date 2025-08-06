@@ -552,6 +552,16 @@ export class TarsSettingTab extends PluginSettingTab {
 			)
 
 		new Setting(details)
+			.setName(t('MCP Tools'))
+			.setDesc(t('Enable Model Context Protocol tools for file operations and vault interactions'))
+			.addToggle((toggle) =>
+				toggle.setValue(options.enableMCP ?? false).onChange(async (value) => {
+					options.enableMCP = value
+					await this.plugin.saveSettings()
+				})
+			)
+
+		new Setting(details)
 			.setName(t('Budget tokens for thinking'))
 			.setDesc(t('Must be ≥1024 and less than max_tokens'))
 			.addText((text) =>
