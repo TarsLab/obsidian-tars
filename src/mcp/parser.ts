@@ -1,5 +1,4 @@
-import { App } from 'obsidian'
-import { ToolResult, defaultToolRegistry } from '../tools'
+import { ToolRegistry, ToolResult } from '../tools'
 
 // MCP工具调用解析器
 export interface ToolUseBlock {
@@ -47,15 +46,15 @@ export function parseToolUse(content: string): ToolUseBlock[] {
 }
 
 // 执行工具并生成结果
-export async function executeTools(app: App, toolUses: ToolUseBlock[]): Promise<ToolResultBlock[]> {
+export async function executeTools(toolRegistry: ToolRegistry, toolUses: ToolUseBlock[]): Promise<ToolResultBlock[]> {
 	const results: ToolResultBlock[] = []
 
 	for (const toolUse of toolUses) {
 		try {
 			let result: ToolResult
 
-			if (defaultToolRegistry.has(toolUse.name)) {
-				result = await defaultToolRegistry.execute(app, toolUse.name, toolUse.input)
+			if (toolRegistry.has(toolUse.name)) {
+				result = await toolRegistry.execute(toolUse.name, toolUse.input)
 			} else {
 				result = {
 					content: [{ type: 'text', text: `Unknown tool: ${toolUse.name}` }],

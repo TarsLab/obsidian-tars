@@ -20,12 +20,17 @@ export interface ToolResult {
 	isError?: boolean
 }
 
+export interface ToolEnv {
+	app: App
+}
+
 // 工具执行函数类型
-export type ToolFunction = (app: App, parameters: Record<string, unknown>) => Promise<ToolResult>
+export type ToolFunction = (env: ToolEnv, parameters: Record<string, unknown>) => Promise<ToolResult>
 
 // 工具注册表
 export class ToolRegistry {
 	private tools: Map<string, { tool: Tool; execute: ToolFunction }> = new Map()
+	private env: ToolEnv | null = null
 
 	register(tool: Tool, execute: ToolFunction) {
 		this.tools.set(tool.name, { tool, execute })
@@ -35,7 +40,17 @@ export class ToolRegistry {
 		return Array.from(this.tools.values()).map(({ tool }) => tool)
 	}
 
-	async execute(app: App, name: string, parameters: Record<string, unknown>): Promise<ToolResult> {
+	setEnv(env: ToolEnv) {
+		this.env = env
+	}
+
+	async execute(name: string, parameters: Record<string, unknown>): Promise<ToolResult> {
+		if (!this.env) {
+			return {
+				content: [{ type: 'text', text: `Tool environment is not set` }],
+				isError: true
+			}
+		}
 		const toolInfo = this.tools.get(name)
 		if (!toolInfo) {
 			return {
@@ -45,7 +60,7 @@ export class ToolRegistry {
 		}
 
 		try {
-			return await toolInfo.execute(app, parameters)
+			return await toolInfo.execute(this.env, parameters)
 		} catch (error) {
 			return {
 				content: [{ type: 'text', text: `Tool execution failed: ${error.message}` }],
@@ -58,6 +73,3 @@ export class ToolRegistry {
 		return this.tools.has(name)
 	}
 }
-
-// 默认工具注册表实例
-export const defaultToolRegistry = new ToolRegistry()

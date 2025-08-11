@@ -1,4 +1,5 @@
 import { EmbedCache } from 'obsidian'
+import { ToolRegistry } from 'src/tools'
 
 export type MsgRole = 'user' | 'assistant' | 'system'
 
@@ -24,7 +25,8 @@ export type SendRequest = (
 	messages: readonly Message[],
 	controller: AbortController,
 	resolveEmbedAsBinary: ResolveEmbedAsBinary,
-	saveAttachment?: SaveAttachment
+	saveAttachment?: SaveAttachment,
+	toolRegistry?: ToolRegistry
 ) => AsyncGenerator<string, void, unknown>
 
 export type Capability =
@@ -52,6 +54,8 @@ export interface BaseOptions {
 	model: string
 	parameters: Record<string, unknown>
 	enableWebSearch?: boolean
+	enableMCP?: boolean
+	enableThinking?: boolean
 }
 
 export interface ProviderSettings {

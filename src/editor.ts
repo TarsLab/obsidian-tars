@@ -20,8 +20,11 @@ import { withStreamLogging } from './providers/decorator'
 import { APP_FOLDER, EditorStatus, PluginSettings, availableVendors } from './settings'
 import { GenerationStats, StatusBarManager } from './statusBarManager'
 import { TagRole } from './suggest'
+import { ToolRegistry } from './tools'
+import { registerFileSystemTools } from './tools/fileSystem'
 
 export interface RunEnv {
+	readonly app: App
 	readonly appMeta: MetadataCache
 	readonly vault: Vault
 	readonly fileText: string
@@ -114,6 +117,7 @@ export const buildRunEnv = async (app: App, settings: PluginSettings): Promise<R
 	}
 
 	return {
+		app,
 		appMeta,
 		vault,
 		fileText,
@@ -489,9 +493,17 @@ export const generate = async (
 		let llmResponse = ''
 		const controller = requestController.getController()
 
+		let toolRegistry: ToolRegistry | undefined = undefined
+		if (provider.options.enableMCP) {
+			toolRegistry = new ToolRegistry()
+			toolRegistry.setEnv({ app: env.app })
+			registerFileSystemTools(toolRegistry)
+			console.debug('MCP tools registered')
+		}
+
 		let lastEditPos: EditorPosition | null = null
 		let startPos: EditorPosition | null = null
-		for await (const text of sendRequest(messages, controller, env.resolveEmbed, env.saveAttachment)) {
+		for await (const text of sendRequest(messages, controller, env.resolveEmbed, env.saveAttachment, toolRegistry)) {
 			if (startPos == null) startPos = editor.getCursor('to')
 			lastEditPos = insertText(editor, text, editorStatus, lastEditPos)
 			llmResponse += text

@@ -17,8 +17,6 @@ import { TarsSettingTab } from './settingTab'
 import { DEFAULT_SETTINGS, PluginSettings } from './settings'
 import { StatusBarManager } from './statusBarManager'
 import { getMaxTriggerLineLength, TagEditorSuggest, TagEntry } from './suggest'
-import { registerFileSystemTools } from './tools/fileSystem'
-import { registerVaultTools } from './tools/vault'
 
 export default class TarsPlugin extends Plugin {
 	settings: PluginSettings
@@ -32,10 +30,6 @@ export default class TarsPlugin extends Plugin {
 		await this.loadSettings()
 
 		console.debug('loading Tars plugin...')
-
-		// 初始化 MCP 工具
-		registerFileSystemTools()
-		registerVaultTools()
 
 		const statusBarItem = this.addStatusBarItem()
 		this.statusBarManager = new StatusBarManager(this.app, statusBarItem)

@@ -1,5 +1,5 @@
-import { App, TFile, TFolder } from 'obsidian'
-import { Tool, ToolFunction, ToolResult, defaultToolRegistry } from './index'
+import { TFile, TFolder } from 'obsidian'
+import { Tool, ToolEnv, ToolFunction, ToolRegistry, ToolResult } from './index'
 
 // 文件系统相关工具
 
@@ -19,7 +19,11 @@ const readFileTool: Tool = {
 	}
 }
 
-const readFileFunction: ToolFunction = async (app: App, parameters: Record<string, unknown>): Promise<ToolResult> => {
+const readFileFunction: ToolFunction = async (
+	env: ToolEnv,
+	parameters: Record<string, unknown>
+): Promise<ToolResult> => {
+	const { app } = env
 	const { path } = parameters
 	if (typeof path !== 'string') {
 		return {
@@ -74,7 +78,11 @@ const writeFileTool: Tool = {
 	}
 }
 
-const writeFileFunction: ToolFunction = async (app: App, parameters: Record<string, unknown>): Promise<ToolResult> => {
+const writeFileFunction: ToolFunction = async (
+	env: ToolEnv,
+	parameters: Record<string, unknown>
+): Promise<ToolResult> => {
+	const { app } = env
 	const { path, content, createIfNotExists = true } = parameters
 
 	if (typeof path !== 'string' || typeof content !== 'string') {
@@ -130,9 +138,10 @@ const listDirectoryTool: Tool = {
 }
 
 const listDirectoryFunction: ToolFunction = async (
-	app: App,
+	env: ToolEnv,
 	parameters: Record<string, unknown>
 ): Promise<ToolResult> => {
+	const { app } = env
 	const { path = '' } = parameters
 
 	if (typeof path !== 'string') {
@@ -189,7 +198,11 @@ const deleteFileTool: Tool = {
 	}
 }
 
-const deleteFileFunction: ToolFunction = async (app: App, parameters: Record<string, unknown>): Promise<ToolResult> => {
+const deleteFileFunction: ToolFunction = async (
+	env: ToolEnv,
+	parameters: Record<string, unknown>
+): Promise<ToolResult> => {
+	const { app } = env
 	const { path } = parameters
 
 	if (typeof path !== 'string') {
@@ -221,9 +234,9 @@ const deleteFileFunction: ToolFunction = async (app: App, parameters: Record<str
 }
 
 // 注册文件系统工具
-export function registerFileSystemTools() {
-	defaultToolRegistry.register(readFileTool, readFileFunction)
-	defaultToolRegistry.register(writeFileTool, writeFileFunction)
-	defaultToolRegistry.register(listDirectoryTool, listDirectoryFunction)
-	defaultToolRegistry.register(deleteFileTool, deleteFileFunction)
+export function registerFileSystemTools(toolRegistry: ToolRegistry) {
+	toolRegistry.register(readFileTool, readFileFunction)
+	toolRegistry.register(writeFileTool, writeFileFunction)
+	toolRegistry.register(listDirectoryTool, listDirectoryFunction)
+	toolRegistry.register(deleteFileTool, deleteFileFunction)
 }

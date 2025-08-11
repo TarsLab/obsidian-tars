@@ -1,8 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { EmbedCache, Notice } from 'obsidian'
 import { t } from 'src/lang/helper'
-import { defaultToolRegistry } from 'src/tools'
-import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
+import { ToolRegistry } from 'src/tools'
+import { BaseOptions, Message, ResolveEmbedAsBinary, SaveAttachment, SendRequest, Vendor } from '.'
 import {
 	arrayBufferToBase64,
 	CALLOUT_BLOCK_END,
@@ -67,7 +67,13 @@ const formatEmbed = async (embed: EmbedCache, resolveEmbedAsBinary: ResolveEmbed
 }
 
 const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
-	async function* (messages: Message[], controller: AbortController, resolveEmbedAsBinary: ResolveEmbedAsBinary) {
+	async function* (
+		messages: Message[],
+		controller: AbortController,
+		resolveEmbedAsBinary: ResolveEmbedAsBinary,
+		_saveAttachment: SaveAttachment,
+		toolRegistry: ToolRegistry
+	) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const {
@@ -123,7 +129,7 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 
 		// 添加 MCP 工具
 		if (enableMCP) {
-			const mcpTools = defaultToolRegistry.getTools()
+			const mcpTools = toolRegistry.getTools()
 			for (const tool of mcpTools) {
 				tools.push({
 					name: tool.name,
@@ -153,6 +159,9 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 		})
 
 		let startReasoning = false
+		let currentToolUse: Anthropic.Messages.ToolUseBlock | null = null // 当前的工具调用
+		let toolUseBuffer = '' // 收集工具调用参数
+
 		// @ts-ignore - 类型检查问题，但运行时正常
 		for await (const messageStreamEvent of stream) {
 			// console.debug('ClaudeNew messageStreamEvent', messageStreamEvent)
@@ -160,16 +169,22 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 			// Handle different types of stream events
 			if (messageStreamEvent.type === 'content_block_delta') {
 				if (messageStreamEvent.delta.type === 'text_delta') {
+					const text = messageStreamEvent.delta.text
+
 					if (startReasoning) {
 						startReasoning = false
-						yield CALLOUT_BLOCK_END + messageStreamEvent.delta.text
+						yield CALLOUT_BLOCK_END + text
 					} else {
-						yield messageStreamEvent.delta.text
+						yield text
 					}
 				}
 				if (messageStreamEvent.delta.type === 'thinking_delta') {
 					const prefix = !startReasoning ? ((startReasoning = true), CALLOUT_BLOCK_START) : ''
 					yield prefix + messageStreamEvent.delta.thinking.replace(/\n/g, '\n> ') // Each line of the callout needs to have '>' at the beginning
+				}
+				// 处理工具调用的增量数据
+				if (messageStreamEvent.delta.type === 'input_json_delta' && currentToolUse) {
+					toolUseBuffer += messageStreamEvent.delta.partial_json || ''
 				}
 			} else if (messageStreamEvent.type === 'content_block_start') {
 				// Handle content block start events, including tool usage
@@ -180,15 +195,46 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 				) {
 					new Notice(getCapabilityEmoji('Web Search') + 'Web Search')
 				}
+				// 处理 MCP 工具调用开始
+				if (enableMCP && messageStreamEvent.content_block.type === 'tool_use') {
+					currentToolUse = messageStreamEvent.content_block as Anthropic.Messages.ToolUseBlock
+					toolUseBuffer = ''
+					const toolName = currentToolUse.name
+					if (toolRegistry.has(toolName)) {
+						new Notice(getCapabilityEmoji('MCP Tools') + `正在调用工具: ${toolName}`)
+					}
+				}
+			} else if (messageStreamEvent.type === 'content_block_stop') {
+				// 工具调用结束，执行工具
+				if (enableMCP && currentToolUse) {
+					try {
+						const toolInput = JSON.parse(toolUseBuffer || JSON.stringify(currentToolUse.input) || '{}')
+
+						console.debug('Executing tool:', currentToolUse.name, 'with input:', toolInput)
+
+						const result = await toolRegistry.execute(currentToolUse.name, toolInput)
+
+						// 格式化工具结果并输出
+						const resultText = result.content.map((c) => c.text).join('\n')
+						const status = result.isError ? '❌' : '✅'
+						yield `\n\n${status} **工具调用结果 (${currentToolUse.name}):**\n${resultText}\n\n`
+					} catch (error) {
+						yield `\n\n❌ **工具调用失败:** ${error.message}\n\n`
+					}
+
+					currentToolUse = null
+					toolUseBuffer = ''
+				}
 			} else if (messageStreamEvent.type === 'message_delta') {
 				// Handle message-level incremental updates
 				// console.debug('Message delta received', messageStreamEvent.delta)
 				// Check stop reason and notify user
 				if (messageStreamEvent.delta.stop_reason) {
 					const stopReason = messageStreamEvent.delta.stop_reason
-					if (stopReason !== 'end_turn') {
-						throw new Error(`🔴 Unexpected stop reason: ${stopReason}`)
-					}
+					console.debug('Stop reason:', stopReason)
+					// if (stopReason !== 'end_turn') {
+					// 	throw new Error(`🔴 Unexpected stop reason: ${stopReason}`)
+					// }
 				}
 			}
 		}
