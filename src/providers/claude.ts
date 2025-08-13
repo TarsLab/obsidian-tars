@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { EmbedCache, Notice } from 'obsidian'
 import { t } from 'src/lang/helper'
 import { ToolRegistry } from 'src/tools'
+import { saveToolResult, ToolResult } from 'src/toolStorage'
 import { BaseOptions, Message, ResolveEmbedAsBinary, SaveAttachment, SendRequest, Vendor } from '.'
 import {
 	arrayBufferToBase64,
@@ -207,6 +208,7 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 			} else if (messageStreamEvent.type === 'content_block_stop') {
 				// 工具调用结束，执行工具
 				if (enableTarsTools && currentToolUse) {
+					const vault = toolRegistry.env.app.vault
 					try {
 						const toolInput = JSON.parse(toolUseBuffer || JSON.stringify(currentToolUse.input) || '{}')
 
@@ -214,12 +216,29 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 
 						const result = await toolRegistry.execute(currentToolUse.name, toolInput)
 
-						// 格式化工具结果并输出
+						// 创建工具结果对象
+						const toolResult: ToolResult = {
+							timestamp: new Date().toISOString(),
+							tool_use_id: currentToolUse.id,
+							tool_name: currentToolUse.name,
+							input: toolInput,
+							result: {
+								type: 'tool_result',
+								tool_use_id: currentToolUse.id,
+								content: result.content,
+								...(result.isError && { is_error: true })
+							}
+						}
+
+						// 保存工具结果到 JSONL 并获取引用
+						const reference = await saveToolResult(vault, toolResult)
+
+						// 格式化工具结果并输出，包含引用链接
 						const resultText = result.content.map((c) => c.text).join('\n')
 						const status = result.isError ? '❌' : '✅'
-						yield `\n\n${status} **工具调用结果 (${currentToolUse.name}):**\n${resultText}\n\n`
+						yield `\n\n${status} **工具调用结果** [🔧 ${currentToolUse.name}](${reference}):\n${resultText}\n\n`
 					} catch (error) {
-						yield `\n\n❌ **工具调用失败:** ${error.message}\n\n`
+						throw new Error(`工具调用失败: ${error.message}`)
 					}
 
 					currentToolUse = null

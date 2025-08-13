@@ -495,8 +495,7 @@ export const generate = async (
 
 		let toolRegistry: ToolRegistry | undefined = undefined
 		if (provider.options.enableTarsTools) {
-			toolRegistry = new ToolRegistry()
-			toolRegistry.setEnv({ app: env.app })
+			toolRegistry = new ToolRegistry({ app: env.app })
 			registerFileSystemTools(toolRegistry)
 			console.debug('Tars tools registered')
 		}

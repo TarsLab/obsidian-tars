@@ -30,7 +30,11 @@ export type ToolFunction = (env: ToolEnv, parameters: Record<string, unknown>) =
 // 工具注册表
 export class ToolRegistry {
 	private tools: Map<string, { tool: Tool; execute: ToolFunction }> = new Map()
-	private env: ToolEnv | null = null
+	public env: ToolEnv
+
+	constructor(env: ToolEnv) {
+		this.env = env
+	}
 
 	register(tool: Tool, execute: ToolFunction) {
 		this.tools.set(tool.name, { tool, execute })
@@ -38,10 +42,6 @@ export class ToolRegistry {
 
 	getTools(): Tool[] {
 		return Array.from(this.tools.values()).map(({ tool }) => tool)
-	}
-
-	setEnv(env: ToolEnv) {
-		this.env = env
 	}
 
 	async execute(name: string, parameters: Record<string, unknown>): Promise<ToolResult> {
