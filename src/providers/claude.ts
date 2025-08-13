@@ -16,7 +16,7 @@ export interface ClaudeOptions extends BaseOptions {
 	enableWebSearch: boolean
 	enableThinking: boolean
 	budget_tokens: number
-	enableMCP: boolean // 新增MCP工具支持选项
+	enableTarsTools: boolean // 新增Tars工具支持选项
 }
 
 const formatMsgForClaudeAPI = async (msg: Message, resolveEmbedAsBinary: ResolveEmbedAsBinary) => {
@@ -84,7 +84,7 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 			enableWebSearch = false,
 			enableThinking = false,
 			budget_tokens = 1600,
-			enableMCP = false
+			enableTarsTools = false
 		} = options
 		let baseURL = originalBaseURL
 		if (!apiKey) throw new Error(t('API key is required'))
@@ -127,10 +127,10 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 			})
 		}
 
-		// 添加 MCP 工具
-		if (enableMCP) {
-			const mcpTools = toolRegistry.getTools()
-			for (const tool of mcpTools) {
+		// 添加 Tars 工具
+		if (enableTarsTools) {
+			const tarsTools = toolRegistry.getTools()
+			for (const tool of tarsTools) {
 				tools.push({
 					name: tool.name,
 					description: tool.description,
@@ -195,18 +195,18 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 				) {
 					new Notice(getCapabilityEmoji('Web Search') + 'Web Search')
 				}
-				// 处理 MCP 工具调用开始
-				if (enableMCP && messageStreamEvent.content_block.type === 'tool_use') {
+				// 处理 Tars 工具调用开始
+				if (enableTarsTools && messageStreamEvent.content_block.type === 'tool_use') {
 					currentToolUse = messageStreamEvent.content_block as Anthropic.Messages.ToolUseBlock
 					toolUseBuffer = ''
 					const toolName = currentToolUse.name
 					if (toolRegistry.has(toolName)) {
-						new Notice(getCapabilityEmoji('MCP Tools') + `正在调用工具: ${toolName}`)
+						new Notice(getCapabilityEmoji('Tars Tools') + `正在调用工具: ${toolName}`)
 					}
 				}
 			} else if (messageStreamEvent.type === 'content_block_stop') {
 				// 工具调用结束，执行工具
-				if (enableMCP && currentToolUse) {
+				if (enableTarsTools && currentToolUse) {
 					try {
 						const toolInput = JSON.parse(toolUseBuffer || JSON.stringify(currentToolUse.input) || '{}')
 
@@ -258,12 +258,12 @@ export const claudeVendor: Vendor = {
 		max_tokens: 8192,
 		enableWebSearch: false,
 		enableThinking: false,
-		enableMCP: false,
+		enableTarsTools: false,
 		budget_tokens: 1600,
 		parameters: {}
 	} as ClaudeOptions,
 	sendRequestFunc,
 	models,
 	websiteToObtainKey: 'https://console.anthropic.com',
-	capabilities: ['Text Generation', 'Web Search', 'Reasoning', 'Image Vision', 'PDF Vision', 'MCP Tools']
+	capabilities: ['Text Generation', 'Web Search', 'Reasoning', 'Image Vision', 'PDF Vision', 'Tars Tools']
 }

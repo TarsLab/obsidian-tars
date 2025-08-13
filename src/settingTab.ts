@@ -552,11 +552,11 @@ export class TarsSettingTab extends PluginSettingTab {
 			)
 
 		new Setting(details)
-			.setName(t('MCP Tools'))
-			.setDesc(t('Enable Model Context Protocol tools for file operations and vault interactions'))
+			.setName(t('Tars Tools'))
+			.setDesc(t('Enable Tars plugin tools for file operations and vault interactions'))
 			.addToggle((toggle) =>
-				toggle.setValue(options.enableMCP ?? false).onChange(async (value) => {
-					options.enableMCP = value
+				toggle.setValue(options.enableTarsTools ?? false).onChange(async (value) => {
+					options.enableTarsTools = value
 					await this.plugin.saveSettings()
 				})
 			)

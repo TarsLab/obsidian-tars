@@ -37,7 +37,7 @@ export type Capability =
 	| 'Image Editing'
 	| 'Web Search'
 	| 'Reasoning'
-	| 'MCP Tools'
+	| 'Tars Tools'
 
 export interface Vendor {
 	readonly name: string
@@ -54,7 +54,7 @@ export interface BaseOptions {
 	model: string
 	parameters: Record<string, unknown>
 	enableWebSearch?: boolean
-	enableMCP?: boolean
+	enableTarsTools?: boolean
 	enableThinking?: boolean
 }
 

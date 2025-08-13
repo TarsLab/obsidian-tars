@@ -494,11 +494,11 @@ export const generate = async (
 		const controller = requestController.getController()
 
 		let toolRegistry: ToolRegistry | undefined = undefined
-		if (provider.options.enableMCP) {
+		if (provider.options.enableTarsTools) {
 			toolRegistry = new ToolRegistry()
 			toolRegistry.setEnv({ app: env.app })
 			registerFileSystemTools(toolRegistry)
-			console.debug('MCP tools registered')
+			console.debug('Tars tools registered')
 		}
 
 		let lastEditPos: EditorPosition | null = null

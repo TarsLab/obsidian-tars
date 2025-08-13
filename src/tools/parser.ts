@@ -1,4 +1,4 @@
-import { ToolRegistry, ToolResult } from '../tools'
+import { ToolRegistry, ToolResult } from '.'
 
 // MCP工具调用解析器
 export interface ToolUseBlock {

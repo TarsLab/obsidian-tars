@@ -49,6 +49,8 @@ export default {
 	'Image Editing': '图像编辑',
 	'Web Search': '网络搜索',
 	Reasoning: '推理',
+	'Tars Tools': 'Tars 工具',
+	'Enable Tars plugin tools for file operations and vault interactions': '启用 Tars 插件工具进行文件操作和库交互',
 	'Only PNG, JPEG, GIF, and WebP images are supported.': '仅支持 PNG、JPEG、GIF 和 WebP 格式的图片。',
 	'Only PNG, JPEG, GIF, WebP, and PDF files are supported.': '仅支持 PNG、JPEG、GIF、WebP 和 PDF 文件。',
 

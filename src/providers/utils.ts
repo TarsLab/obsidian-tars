@@ -93,7 +93,7 @@ export const getCapabilityEmoji = (capability: Capability): string => {
 			return '🔍'
 		case 'Reasoning':
 			return '🧠'
-		case 'MCP Tools':
+		case 'Tars Tools':
 			return '🔧'
 	}
 }
