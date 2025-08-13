@@ -303,6 +303,26 @@ export class TarsSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings()
 				})
 			)
+
+		// Tool Storage Section
+		containerEl.createEl('br')
+		new Setting(containerEl).setName(t('Tool Result Storage')).setHeading()
+
+		new Setting(containerEl)
+			.setName(t('Retention period (days)'))
+			.setDesc(t('How long to keep tool result files before automatic cleanup'))
+			.addText((text) =>
+				text
+					.setPlaceholder('30')
+					.setValue(this.plugin.settings.toolStorageRetentionDays.toString())
+					.onChange(async (value) => {
+						const days = parseInt(value)
+						if (days >= 1 && days <= 365) {
+							this.plugin.settings.toolStorageRetentionDays = days
+							await this.plugin.saveSettings()
+						}
+					})
+			)
 	}
 
 	createProviderSetting = (index: number, settings: ProviderSettings, isOpen: boolean = false) => {

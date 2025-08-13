@@ -83,6 +83,10 @@ export default class TarsPlugin extends Plugin {
 		if (this.settings.enableExportToJSONL) this.addCommand(exportCmd(this.app, this.settings))
 
 		this.addSettingTab(new TarsSettingTab(this.app, this))
+
+		this.app.workspace.onLayoutReady(() => {
+			// TODO
+		})
 	}
 
 	onunload() {

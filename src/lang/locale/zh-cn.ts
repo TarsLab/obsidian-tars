@@ -221,6 +221,11 @@ export default {
 	'Must be ≥1024 and less than max_tokens': '必须 ≥1024 且小于 max_tokens',
 	'Minimum value is 1024': '最小值为 1024',
 
+	// Tool Storage
+	'Tool Result Storage': '工具结果存储',
+	'Retention period (days)': '保留期限（天）',
+	'How long to keep tool result files before automatic cleanup': '自动清理前保留工具结果文件的时间',
+
 	// statusBarManager.ts
 	'AI Generation Details': 'AI 生成详情',
 	Round: '回合',

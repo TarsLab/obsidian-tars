@@ -225,6 +225,12 @@ Translate the following content into English：{{s}}
 	'Enable Tars plugin tools for file operations and vault interactions':
 		'Enable Tars plugin tools for file operations and vault interactions',
 
+	// Tool Storage
+	'Tool Result Storage': 'Tool Result Storage',
+	'Retention period (days)': 'Retention period (days)',
+	'How long to keep tool result files before automatic cleanup':
+		'How long to keep tool result files before automatic cleanup',
+
 	// statusBarManager.ts
 	'AI Generation Details': 'AI Generation Details',
 	Round: 'Round',

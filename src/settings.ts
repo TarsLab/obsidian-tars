@@ -16,6 +16,7 @@ import { siliconFlowVendor } from './providers/siliconflow'
 import { zhipuVendor } from './providers/zhipu'
 
 export const APP_FOLDER = 'Tars'
+export const TOOLS_DIRECTORY = '.tars/tools/' // 工具结果存储目录
 
 export interface EditorStatus {
 	isTextInserting: boolean
@@ -45,6 +46,7 @@ export interface PluginSettings {
 	enableDefaultSystemMsg: boolean
 	defaultSystemMsg: string
 	enableStreamLog: boolean
+	toolStorageRetentionDays: number
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -70,7 +72,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	enableReplaceTag: false,
 	enableDefaultSystemMsg: false,
 	defaultSystemMsg: '',
-	enableStreamLog: false
+	enableStreamLog: false,
+	toolStorageRetentionDays: 30
 }
 
 export const availableVendors: Vendor[] = [
