@@ -124,7 +124,7 @@ const sendRequestFunc = (settings: GptImageOptions): SendRequest =>
 			const indexFlag = n > 1 ? `-${i + 1}` : ''
 			const filename = `gptImage-${formatTime}${indexFlag}.${output_format}`
 			console.debug(`Saving image as ${filename}`)
-			await saveAttachment(filename, imageBuffer)
+			await saveAttachment(filename, imageBuffer.buffer)
 
 			yield `![[${filename}|${displayWidth}]]\n\n`
 		}
