@@ -1,5 +1,5 @@
 import { Vault } from 'obsidian'
-import { TOOLS_DIRECTORY } from '../settings'
+import { TOOLS_DIRECTORY } from './settings'
 
 // 验证日期格式
 export const isValidDate = (dateStr: string): boolean => {
