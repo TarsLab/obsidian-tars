@@ -1,4 +1,4 @@
-import { EmbedCache } from 'obsidian'
+import { EmbedCache, FootnoteCache } from 'obsidian'
 import { ToolRegistry } from 'src/tools'
 
 export type MsgRole = 'user' | 'assistant' | 'system'
@@ -19,6 +19,7 @@ export interface Message {
 	readonly role: MsgRole
 	readonly content: string
 	readonly embeds?: EmbedCache[]
+	readonly footnotes?: FootnoteCache[]
 }
 
 export type SendRequest = (

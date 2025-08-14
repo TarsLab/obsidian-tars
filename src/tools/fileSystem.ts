@@ -155,6 +155,7 @@ const listDirectoryFunction: ToolFunction = async (
 		const folder = path === '' ? app.vault.getRoot() : app.vault.getAbstractFileByPath(path)
 
 		if (!folder || !(folder instanceof TFolder)) {
+			console.error(`Directory not found: ${path || 'root'}`)
 			return {
 				content: [{ type: 'text', text: `Directory not found: ${path || 'root'}` }],
 				isError: true
@@ -175,6 +176,7 @@ const listDirectoryFunction: ToolFunction = async (
 			]
 		}
 	} catch (error) {
+		console.error(error)
 		return {
 			content: [{ type: 'text', text: `Failed to list directory: ${error.message}` }],
 			isError: true

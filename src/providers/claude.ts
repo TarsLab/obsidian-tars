@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { EmbedCache, Notice } from 'obsidian'
 import { t } from 'src/lang/helper'
 import { ToolRegistry } from 'src/tools'
-import { saveToolResult, ToolResult } from 'src/toolStorage'
+import { storeToolEvent, ToolResultMsg, ToolUseMsg } from 'src/tools/storage'
 import { BaseOptions, Message, ResolveEmbedAsBinary, SaveAttachment, SendRequest, Vendor } from '.'
 import {
 	arrayBufferToBase64,
@@ -203,6 +203,24 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 					const toolName = currentToolUse.name
 					if (toolRegistry.has(toolName)) {
 						new Notice(getCapabilityEmoji('Tars Tools') + `正在调用工具: ${toolName}`)
+
+						// 立即记录工具调用（新的分开记录系统）
+						console.debug('Tool use recorded:', currentToolUse.id, currentToolUse.name)
+						const vault = toolRegistry.env.app.vault
+						try {
+							const useMsg: ToolUseMsg = {
+								type: 'tool_use',
+								id: currentToolUse.id,
+								name: currentToolUse.name,
+								input: currentToolUse.input as Record<string, unknown>,
+								timestamp: new Date().toISOString()
+							}
+							const ref = await storeToolEvent(vault, useMsg)
+							console.debug('Tool use recorded:', currentToolUse.id, currentToolUse.name)
+							console.debug('Tool use reference:', ref)
+						} catch (error) {
+							console.error('Failed to record tool use:', error)
+						}
 					}
 				}
 			} else if (messageStreamEvent.type === 'content_block_stop') {
@@ -216,22 +234,16 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 
 						const result = await toolRegistry.execute(currentToolUse.name, toolInput)
 
-						// 创建工具结果对象
-						const toolResult: ToolResult = {
-							timestamp: new Date().toISOString(),
+						// 记录工具结果（新的分开记录系统）
+						const resultMsg: ToolResultMsg = {
+							type: 'tool_result',
 							tool_use_id: currentToolUse.id,
-							tool_name: currentToolUse.name,
-							input: toolInput,
-							result: {
-								type: 'tool_result',
-								tool_use_id: currentToolUse.id,
-								content: result.content,
-								...(result.isError && { is_error: true })
-							}
+							content: result.content,
+							is_error: result.isError || false,
+							error_message: '',
+							timestamp: new Date().toISOString()
 						}
-
-						// 保存工具结果到 JSONL 并获取引用
-						const reference = await saveToolResult(vault, toolResult)
+						const reference = await storeToolEvent(vault, resultMsg)
 
 						// 格式化工具结果并输出，包含引用链接
 						const resultText = result.content.map((c) => c.text).join('\n')

@@ -16,7 +16,7 @@ import { siliconFlowVendor } from './providers/siliconflow'
 import { zhipuVendor } from './providers/zhipu'
 
 export const APP_FOLDER = 'Tars'
-export const TOOLS_DIRECTORY = '.tars/tools/' // 工具结果存储目录
+export const TOOLS_DIRECTORY = APP_FOLDER + '/tools' // 工具结果存储目录
 
 export interface EditorStatus {
 	isTextInserting: boolean

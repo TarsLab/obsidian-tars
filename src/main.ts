@@ -84,9 +84,9 @@ export default class TarsPlugin extends Plugin {
 
 		this.addSettingTab(new TarsSettingTab(this.app, this))
 
-		this.app.workspace.onLayoutReady(() => {
-			// TODO
-		})
+		// this.app.workspace.onLayoutReady(() => {
+		// TODO
+		// })
 	}
 
 	onunload() {
