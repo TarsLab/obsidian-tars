@@ -246,5 +246,8 @@ export default {
 	'Generating...': '正在生成...',
 	'Click status bar for error details. ': '点击状态栏查看错误详情。',
 	Vendor: '服务商',
-	Characters: '字符数'
+	Characters: '字符数',
+
+	// tool
+	tool: '工具'
 }

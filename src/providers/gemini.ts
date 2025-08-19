@@ -1,18 +1,20 @@
 import { Content, GoogleGenerativeAI } from '@google/generative-ai'
+import { Capabilities } from 'src/environment'
 import { t } from 'src/lang/helper'
-import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
+import { BaseOptions, filterToChatMessages, Message, SendRequest, Vendor } from '.'
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
-	async function* (messages: Message[], controller: AbortController, _resolveEmbedAsBinary: ResolveEmbedAsBinary) {
+	async function* (messages: Message[], controller: AbortController, _capabilities: Capabilities) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, baseURL: baseUrl, model } = options
 		if (!apiKey) throw new Error(t('API key is required'))
 
+		const msgs = filterToChatMessages(messages)
 		const [system_msg, messagesWithoutSys, lastMsg] =
-			messages[0].role === 'system'
-				? [messages[0], messages.slice(1, -1), messages[messages.length - 1]]
-				: [null, messages.slice(0, -1), messages[messages.length - 1]]
+			msgs[0].role === 'system'
+				? [msgs[0], msgs.slice(1, -1), msgs[msgs.length - 1]]
+				: [null, msgs.slice(0, -1), msgs[msgs.length - 1]]
 		const systemInstruction = system_msg?.content
 		const history: Content[] = messagesWithoutSys.map((m) => ({
 			role: m.role === 'assistant' ? 'model' : m.role,
@@ -42,5 +44,5 @@ export const geminiVendor: Vendor = {
 	sendRequestFunc,
 	models: [],
 	websiteToObtainKey: 'https://makersuite.google.com/app/apikey',
-	capabilities: ['Text Generation']
+	features: ['Text Generation']
 }

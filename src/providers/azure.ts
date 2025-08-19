@@ -1,6 +1,7 @@
 import { AzureOpenAI } from 'openai'
+import { Capabilities } from 'src/environment'
 import { t } from 'src/lang/helper'
-import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
+import { BaseOptions, filterToChatMessages, Message, SendRequest, Vendor } from '.'
 import { CALLOUT_BLOCK_END, CALLOUT_BLOCK_START } from './utils'
 
 interface AzureOptions extends BaseOptions {
@@ -9,7 +10,7 @@ interface AzureOptions extends BaseOptions {
 }
 
 const sendRequestFunc = (settings: AzureOptions): SendRequest =>
-	async function* (messages: Message[], controller: AbortController, _resolveEmbedAsBinary: ResolveEmbedAsBinary) {
+	async function* (messages: Message[], controller: AbortController, _capabilities: Capabilities) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters } // 这样的设计，让parameters 可以覆盖掉前面的设置 optionsExcludingParams
 		const { apiKey, model, endpoint, apiVersion, ...remains } = options
@@ -22,11 +23,11 @@ const sendRequestFunc = (settings: AzureOptions): SendRequest =>
 			{ role: 'system', content: `Initiate your response with "<think>\n嗯" at the beginning of every output.` },
 			...messages
 		]
-
+		const msgs = filterToChatMessages(messages)
 		const stream = await client.chat.completions.create(
 			{
 				model,
-				messages,
+				messages: msgs,
 				stream: true,
 				...remains
 			},
@@ -83,5 +84,5 @@ export const azureVendor: Vendor = {
 	sendRequestFunc,
 	models,
 	websiteToObtainKey: 'https://portal.azure.com',
-	capabilities: ['Text Generation', 'Reasoning']
+	features: ['Text Generation', 'Reasoning']
 }

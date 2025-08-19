@@ -1,17 +1,21 @@
 import axios from 'axios'
+import { Capabilities, ResolveEmbedAsBinary } from 'src/environment'
 import { t } from 'src/lang/helper'
-import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
+import { BaseOptions, ChatMessage, filterToChatMessages, Message, SendRequest, Vendor } from '.'
 import { CALLOUT_BLOCK_END, CALLOUT_BLOCK_START, convertEmbedToImageUrl } from './utils'
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
-	async function* (messages: Message[], controller: AbortController, resolveEmbedAsBinary: ResolveEmbedAsBinary) {
+	async function* (messages: Message[], controller: AbortController, capabilities: Capabilities) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, baseURL, model, ...remains } = options
 		if (!apiKey) throw new Error(t('API key is required'))
 		if (!model) throw new Error(t('Model is required'))
 
-		const formattedMessages = await Promise.all(messages.map((msg) => formatMsg(msg, resolveEmbedAsBinary)))
+		const { resolveEmbedAsBinary } = capabilities
+		const formattedMessages = await Promise.all(
+			filterToChatMessages(messages).map((msg) => formatMsg(msg, resolveEmbedAsBinary))
+		)
 		const data = {
 			model,
 			messages: formattedMessages,
@@ -79,7 +83,7 @@ type ContentItem =
 	  }
 	| { type: 'text'; text: string }
 
-const formatMsg = async (msg: Message, resolveEmbedAsBinary: ResolveEmbedAsBinary) => {
+const formatMsg = async (msg: ChatMessage, resolveEmbedAsBinary: ResolveEmbedAsBinary) => {
 	const content: ContentItem[] = msg.embeds
 		? await Promise.all(msg.embeds.map((embed) => convertEmbedToImageUrl(embed, resolveEmbedAsBinary)))
 		: []
@@ -114,5 +118,5 @@ export const kimiVendor: Vendor = {
 	sendRequestFunc,
 	models: [],
 	websiteToObtainKey: 'https://www.moonshot.cn',
-	capabilities: ['Text Generation', 'Image Vision', 'Reasoning']
+	features: ['Text Generation', 'Image Vision', 'Reasoning']
 }

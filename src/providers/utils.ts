@@ -1,6 +1,7 @@
 import { EmbedCache } from 'obsidian'
 import { t } from 'src/lang/helper'
-import { Capability, ResolveEmbedAsBinary } from '.'
+import { Feature } from '.'
+import { ResolveEmbedAsBinary } from 'src/environment'
 
 export const getMimeTypeFromFilename = (filename: string) => {
 	const extension = filename.split('.').pop()?.toLowerCase() || ''
@@ -77,8 +78,8 @@ export const convertEmbedToImageUrl = async (embed: EmbedCache, resolveEmbedAsBi
 	}
 }
 
-export const getCapabilityEmoji = (capability: Capability): string => {
-	switch (capability) {
+export const getFeatureEmoji = (feature: Feature): string => {
+	switch (feature) {
 		case 'Text Generation':
 			return '✍️'
 		case 'Image Vision':

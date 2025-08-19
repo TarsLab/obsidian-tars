@@ -1,41 +1,7 @@
 import { normalizePath, Vault } from 'obsidian'
+import { RunEnv } from 'src/environment'
+import { ToolExecution, ToolResult, ToolUse } from '.'
 import { TOOLS_DIRECTORY } from '../settings'
-
-// export interface ToolUseBlock {	// anthropic
-// 	id: string
-// 	input: unknown
-// 	name: string
-// 	type: 'tool_use'
-// }
-
-export interface ToolUseMsg {
-	type: 'tool_use'
-	id: string
-	name: string
-	input: Record<string, unknown> // 工具输入参数（已解析为对象）
-	timestamp: string
-}
-
-// export interface ToolResultBlockParam {	// anthropic
-//   tool_use_id: string;
-//   type: 'tool_result';
-
-//   cache_control?: CacheControlEphemeral | null;
-//   content?: string | Array<TextBlockParam | ImageBlockParam | SearchResultBlockParam>;
-//   is_error?: boolean;
-// }
-
-export interface ToolResultMsg {
-	type: 'tool_result'
-	tool_use_id: string // 关联的工具调用ID
-
-	content: string | Array<{ text: string }>
-	is_error?: boolean
-	error_message?: string
-	timestamp: string
-}
-
-export type ToolEventMsg = ToolUseMsg | ToolResultMsg
 
 // 快速获取 JSONL 文件行数（内存友好）
 export const getJsonlLineCount = async (vault: Vault, filePath: string): Promise<number> => {
@@ -77,20 +43,28 @@ export const formatToday = () => {
 	return today
 }
 
-// 保存工具调用记录
-export const storeToolEvent = async (vault: Vault, toolEvent: ToolEventMsg): Promise<string> => {
+export const storeToolExecution = async (
+	env: RunEnv,
+	toolUses: ToolUse[],
+	toolResults: ToolResult[]
+): Promise<ToolExecution> => {
 	// 这里的时间格式, 参与逻辑判断. 固定时区 UTC. 即使用户修改电脑时区, 不受影响.
 	const today = formatToday()
 	const jsonlFile = `${today}.jsonl`
 	const jsonlPath = normalizePath(`${TOOLS_DIRECTORY}/${jsonlFile}`)
-
+	const { vault } = env
 	// 确保目录存在
 	await ensureToolsDirectory(vault)
 
-	const jsonlContent = JSON.stringify(toolEvent) + '\n'
+	const data = {
+		tool_uses: toolUses,
+		tool_results: toolResults
+	}
+	const jsonlContent = JSON.stringify(data) + '\n'
 	const tFile = vault.getFileByPath(jsonlPath)
-	console.debug(`Tool event JSONL path: ${jsonlPath}`)
+	console.debug(`Tool result JSONL path: ${jsonlPath}`)
 	let lineNumber = 1
+
 	if (tFile) {
 		await vault.process(tFile, (fileText) => {
 			lineNumber = getContentLineCount(fileText) + 1
@@ -103,12 +77,17 @@ export const storeToolEvent = async (vault: Vault, toolEvent: ToolEventMsg): Pro
 	}
 
 	const reference = today + lineNumber.toString().padStart(3, '0')
-	return reference
+	return { type: 'tool_execution', reference, toolUses, toolResults }
 }
 
 // 批量读取工具事件
-export const readToolEvents = async (_vault: Vault, _references: string[]): Promise<ToolEventMsg[]> => {
-	const events: ToolEventMsg[] = []
-	// TODO
-	return events
-}
+// export const readToolEvents = async (_vault: Vault, _references: string[]): Promise<ToolBlock[]> => {
+// 	const events: ToolBlock[] = []
+// 	// TODO
+// 	return events
+// }
+
+// export const extractToolBlock = (line: string): ToolBlock | null => {
+// 	const parsed = JSON.parse(line) as ToolBlock
+// 	return parsed.type === 'tool_use' || parsed.type === 'tool_result' ? parsed : null
+// }

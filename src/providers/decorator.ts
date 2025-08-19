@@ -1,6 +1,6 @@
 import { normalizePath } from 'obsidian'
 import { APP_FOLDER } from 'src/settings'
-import { CreatePlainText, SendRequest } from '.'
+import { isTextOutput, SendRequest } from '.'
 
 interface TextWithTime {
 	readonly text: string
@@ -13,30 +13,34 @@ interface ResponseWithTime {
 	readonly texts: TextWithTime[]
 }
 
-export const withStreamLogging = (originalFunc: SendRequest, createPlainText: CreatePlainText): SendRequest => {
-	return async function* (messages, controller, resolveEmbedAsBinary, saveAttachment) {
+export const withStreamLogging = (originalFunc: SendRequest): SendRequest => {
+	return async function* (messages, controller, capabilities) {
 		const startTime = Date.now()
 		const texts: TextWithTime[] = []
 		try {
-			for await (const text of originalFunc(messages, controller, resolveEmbedAsBinary, saveAttachment)) {
+			for await (const outputChunk of originalFunc(messages, controller, capabilities)) {
 				const currentTime = Date.now()
-				texts.push({ text, time: currentTime - startTime })
-				yield text
+				if (isTextOutput(outputChunk)) {
+					texts.push({ text: outputChunk, time: currentTime - startTime })
+					yield outputChunk
+				}
 			}
 		} finally {
 			const lastMsg = messages[messages.length - 1]
-			// eslint-disable-next-line no-control-regex
-			const ILLEGAL_FILENAME_CHARS = /[<>:"/\\|?*\u0000-\u001F\u007F-\u009F]/g
-			const brief = lastMsg.content.slice(0, 20).replace(ILLEGAL_FILENAME_CHARS, '').trim() || 'untitled'
+			if (lastMsg && 'content' in lastMsg && lastMsg.content) {
+				// eslint-disable-next-line no-control-regex
+				const ILLEGAL_FILENAME_CHARS = /[<>:"/\\|?*\u0000-\u001F\u007F-\u009F]/g
+				const brief = lastMsg.content.slice(0, 20).replace(ILLEGAL_FILENAME_CHARS, '').trim() || 'untitled'
 
-			const filePath = normalizePath(`${APP_FOLDER}/${formatDate(new Date())}-${brief}.json`)
-			const response: ResponseWithTime = {
-				lastMsg: messages[messages.length - 1].content.trim(),
-				createdAt: new Date().toISOString(),
-				texts
+				const filePath = normalizePath(`${APP_FOLDER}/${formatDate(new Date())}-${brief}.json`)
+				const response: ResponseWithTime = {
+					lastMsg: lastMsg.content.trim(),
+					createdAt: new Date().toISOString(),
+					texts
+				}
+				await capabilities.createFile(filePath, JSON.stringify(response, null, 2))
+				console.debug('Response logged to:', filePath)
 			}
-			await createPlainText(filePath, JSON.stringify(response, null, 2))
-			console.debug('Response logged to:', filePath)
 		}
 	}
 }

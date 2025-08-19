@@ -1,5 +1,6 @@
 import { TFile, TFolder } from 'obsidian'
-import { Tool, ToolEnv, ToolFunction, ToolRegistry, ToolResult } from './index'
+import { RunEnv } from 'src/environment'
+import { Tool, ToolFunction, ToolRegistry, ToolResponse } from './index'
 
 // 文件系统相关工具
 
@@ -20,9 +21,9 @@ const readFileTool: Tool = {
 }
 
 const readFileFunction: ToolFunction = async (
-	env: ToolEnv,
+	env: RunEnv,
 	parameters: Record<string, unknown>
-): Promise<ToolResult> => {
+): Promise<ToolResponse> => {
 	const { app } = env
 	const { path } = parameters
 	if (typeof path !== 'string') {
@@ -79,9 +80,9 @@ const writeFileTool: Tool = {
 }
 
 const writeFileFunction: ToolFunction = async (
-	env: ToolEnv,
+	env: RunEnv,
 	parameters: Record<string, unknown>
-): Promise<ToolResult> => {
+): Promise<ToolResponse> => {
 	const { app } = env
 	const { path, content, createIfNotExists = true } = parameters
 
@@ -138,9 +139,9 @@ const listDirectoryTool: Tool = {
 }
 
 const listDirectoryFunction: ToolFunction = async (
-	env: ToolEnv,
+	env: RunEnv,
 	parameters: Record<string, unknown>
-): Promise<ToolResult> => {
+): Promise<ToolResponse> => {
 	const { app } = env
 	const { path = '' } = parameters
 
@@ -201,9 +202,9 @@ const deleteFileTool: Tool = {
 }
 
 const deleteFileFunction: ToolFunction = async (
-	env: ToolEnv,
+	env: RunEnv,
 	parameters: Record<string, unknown>
-): Promise<ToolResult> => {
+): Promise<ToolResponse> => {
 	const { app } = env
 	const { path } = parameters
 

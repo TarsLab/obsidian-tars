@@ -1,53 +1,12 @@
-import {
-	App,
-	Editor,
-	EditorPosition,
-	EmbedCache,
-	LinkCache,
-	MetadataCache,
-	ReferenceCache,
-	SectionCache,
-	TagCache,
-	Vault,
-	debounce,
-	normalizePath,
-	parseLinktext,
-	resolveSubpath
-} from 'obsidian'
+import { Editor, EditorPosition, SectionCache, debounce, normalizePath, parseLinktext, resolveSubpath } from 'obsidian'
 import { t } from 'src/lang/helper'
-import { CreatePlainText, Message, ProviderSettings, ResolveEmbedAsBinary, SaveAttachment, Vendor } from './providers'
+import { RunEnv, buildCapabilities } from './environment'
+import { Message, ProviderSettings, ToolMessage, Vendor, isTextOutput, isToolExecution } from './providers'
 import { withStreamLogging } from './providers/decorator'
-import { APP_FOLDER, EditorStatus, PluginSettings, availableVendors } from './settings'
+import { APP_FOLDER, EditorStatus, availableVendors } from './settings'
 import { GenerationStats, StatusBarManager } from './statusBarManager'
 import { TagRole } from './suggest'
-import { ToolRegistry } from './tools'
-import { registerFileSystemTools } from './tools/fileSystem'
-
-export interface RunEnv {
-	readonly app: App
-	readonly appMeta: MetadataCache
-	readonly vault: Vault
-	readonly fileText: string
-	readonly filePath: string
-	readonly tags: TagCache[]
-	readonly sections: SectionCache[]
-	readonly links?: LinkCache[]
-	readonly embeds?: ReferenceCache[]
-	readonly options: {
-		newChatTags: string[]
-		userTags: string[]
-		assistantTags: string[]
-		systemTags: string[]
-		enableInternalLink: boolean
-		enableInternalLinkForAssistantMsg: boolean
-		enableDefaultSystemMsg: boolean
-		defaultSystemMsg: string
-		enableStreamLog: boolean
-	}
-	saveAttachment: SaveAttachment
-	resolveEmbed: ResolveEmbedAsBinary
-	createPlainText: CreatePlainText
-}
+import { ToolExecution } from './tools'
 
 interface Tag extends Omit<Message, 'content'> {
 	readonly tag: TagRole
@@ -60,77 +19,6 @@ interface TaggedBlock extends Tag {
 	readonly contentRange: [number, number]
 	readonly line: [number, number]
 	readonly sections: SectionCache[]
-}
-
-const ignoreSectionTypes: readonly string[] = ['callout']
-
-export const buildRunEnv = async (app: App, settings: PluginSettings): Promise<RunEnv> => {
-	const activeFile = app.workspace.getActiveFile()
-	if (!activeFile) {
-		throw new Error('No active file')
-	}
-
-	const appMeta = app.metadataCache
-	const vault = app.vault
-	const fileText = await vault.cachedRead(activeFile)
-	const filePath = activeFile.path
-	const fileMeta = appMeta.getFileCache(activeFile)
-	if (!fileMeta) {
-		throw new Error(t('Waiting for metadata to be ready. Please try again.'))
-	}
-
-	const ignoreSections = fileMeta.sections?.filter((s) => ignoreSectionTypes.includes(s.type)) || []
-	const filteredTags = (fileMeta.tags || []).filter(
-		(t) =>
-			!ignoreSections.some(
-				(s) => s.position.start.offset <= t.position.start.offset && t.position.end.offset <= s.position.end.offset
-			)
-	)
-
-	const options = {
-		newChatTags: settings.newChatTags,
-		userTags: settings.userTags,
-		assistantTags: settings.providers.map((p) => p.tag),
-		systemTags: settings.systemTags,
-		enableInternalLink: settings.enableInternalLink,
-		enableInternalLinkForAssistantMsg: settings.enableInternalLinkForAssistantMsg,
-		enableDefaultSystemMsg: settings.enableDefaultSystemMsg,
-		defaultSystemMsg: settings.defaultSystemMsg,
-		enableStreamLog: settings.enableStreamLog
-	}
-
-	const saveAttachment = async (filename: string, data: ArrayBuffer) => {
-		const attachmentPath = await app.fileManager.getAvailablePathForAttachment(filename)
-		await vault.createBinary(attachmentPath, data)
-	}
-	const resolveEmbed = async (embed: EmbedCache) => {
-		const { path, subpath } = parseLinktext(embed.link)
-		console.debug('resolveEmbed path', path, 'subpath', subpath)
-		const targetFile = appMeta.getFirstLinkpathDest(path, filePath)
-		if (targetFile === null) {
-			throw new Error('LinkText broken: ' + embed.link.substring(0, 20))
-		}
-		return await vault.readBinary(targetFile)
-	}
-	const createPlainText = async (filePath: string, text: string) => {
-		await vault.create(filePath, text)
-	}
-
-	return {
-		app,
-		appMeta,
-		vault,
-		fileText,
-		filePath,
-		tags: filteredTags,
-		sections: fileMeta.sections?.filter((s) => !ignoreSectionTypes.includes(s.type)) || [],
-		links: fileMeta.links,
-		embeds: fileMeta.embeds,
-		options,
-		saveAttachment,
-		resolveEmbed,
-		createPlainText
-	}
 }
 
 const resolveLinkedContent = async (env: RunEnv, linkText: string) => {
@@ -161,7 +49,7 @@ const extractTaggedBlocks = (env: RunEnv, startOffset: number, endOffset: number
 	const {
 		tags,
 		sections,
-		options: { userTags, assistantTags, systemTags }
+		options: { userTags, assistantTags, systemTags, toolTags }
 	} = env
 
 	const roleMappedTags: Tag[] = tags
@@ -174,7 +62,9 @@ const extractTaggedBlocks = (env: RunEnv, startOffset: number, endOffset: number
 					? 'assistant'
 					: systemTags.some((st) => st.toLowerCase() === lowerCaseTag)
 						? 'system'
-						: null
+						: toolTags.some((tt) => tt.toLowerCase() === lowerCaseTag)
+							? 'tool'
+							: null
 			return role != null
 				? {
 						tag: t.tag,
@@ -214,7 +104,7 @@ const resolveTextRangeWithLinks = async (
 	env: RunEnv,
 	section: SectionCache,
 	contentRange: readonly [number, number],
-	role: 'user' | 'assistant' | 'system'
+	role: 'user' | 'assistant' | 'system' | 'tool'
 ) => {
 	const {
 		fileText,
@@ -295,7 +185,7 @@ const filterEmbeds = (env: RunEnv, contentRange: [number, number]) =>
 		(embed) => contentRange[0] <= embed.position.start.offset && embed.position.end.offset <= contentRange[1]
 	)
 
-const extractConversation = async (env: RunEnv, startOffset: number, endOffset: number) => {
+const extractTaggedMessages = async (env: RunEnv, startOffset: number, endOffset: number) => {
 	const {
 		tags: tagsInMeta,
 		options: { newChatTags }
@@ -310,7 +200,7 @@ const extractConversation = async (env: RunEnv, startOffset: number, endOffset: 
 	const conversationStart = lastNewChatTag ? lastNewChatTag.position.end.offset : startOffset
 
 	const taggedBlocks = extractTaggedBlocks(env, conversationStart, endOffset)
-	const conversation = await Promise.all(
+	const taggedMessages = await Promise.all(
 		taggedBlocks.map(async (tag) => {
 			const message = {
 				...tag,
@@ -324,7 +214,7 @@ const extractConversation = async (env: RunEnv, startOffset: number, endOffset: 
 			return message
 		})
 	)
-	return conversation
+	return taggedMessages
 }
 
 const debouncedResetInsertState = debounce(
@@ -362,7 +252,7 @@ const insertText = (editor: Editor, text: string, editorStatus: EditorStatus, la
 	return newEditPos
 }
 
-export const extractConversationsTextOnly = async (env: RunEnv) => {
+export const extractAllTaggedMessages = async (env: RunEnv) => {
 	const {
 		tags,
 		options: { newChatTags }
@@ -383,20 +273,20 @@ export const extractConversationsTextOnly = async (env: RunEnv) => {
 
 	console.debug('ranges', ranges)
 
-	const conversations = await Promise.all(
+	const allTaggedMessages = await Promise.all(
 		ranges.map(async (r) => {
 			const taggedBlocks = extractTaggedBlocks(env, r.startOffset, r.endOffset)
-			const conversation = Promise.all(
+			const taggedMessages = Promise.all(
 				taggedBlocks.map(async (tag) => ({
 					...tag,
 					content: await extractTaggedBlockContent(env, tag)
 				}))
 			)
-			return conversation
+			return taggedMessages
 		})
 	)
 
-	return conversations.filter((arr) => arr.length > 0)
+	return allTaggedMessages.filter((arr) => arr.length > 0)
 }
 
 export const getMsgPositionByLine = (env: RunEnv, line: number) => {
@@ -442,7 +332,7 @@ const createDecoratedSendRequest = async (env: RunEnv, vendor: Vendor, provider:
 			await env.vault.createFolder(APP_FOLDER)
 		}
 		console.debug('Using stream logging')
-		return withStreamLogging(vendor.sendRequestFunc(provider.options), env.createPlainText)
+		return withStreamLogging(vendor.sendRequestFunc(provider.options))
 	} else {
 		return vendor.sendRequestFunc(provider.options)
 	}
@@ -463,10 +353,21 @@ export const generate = async (
 			throw new Error('No vendor found ' + provider.vendor)
 		}
 
-		const conversation = await extractConversation(env, 0, endOffset)
-		const messages = conversation.map((c) =>
-			c.embeds ? { role: c.role, content: c.content, embeds: c.embeds } : { role: c.role, content: c.content }
-		)
+		const taggedMessages = await extractTaggedMessages(env, 0, endOffset)
+		const messages: Message[] = taggedMessages.map((c) => {
+			if (c.role === 'tool') {
+				// Handle tool messages - these should have toolUses and toolResults
+				return {
+					role: 'tool',
+					embeds: c.embeds,
+					toolUses: [], // TODO: Extract from content
+					toolResults: [] // TODO: Extract from content
+				} as ToolMessage
+			} else {
+				// Handle chat messages
+				return c.embeds ? { role: c.role, content: c.content, embeds: c.embeds } : { role: c.role, content: c.content }
+			}
+		})
 		console.debug('messages', messages)
 
 		const lastMsg = messages.last()
@@ -484,7 +385,7 @@ export const generate = async (
 		}
 
 		const round = messages.filter((m) => m.role === 'assistant').length + 1
-
+		const capabilities = buildCapabilities(env, provider.options.enableTarsTools)
 		const sendRequest = await createDecoratedSendRequest(env, vendor, provider)
 
 		const startTime = new Date()
@@ -493,20 +394,25 @@ export const generate = async (
 		let llmResponse = ''
 		const controller = requestController.getController()
 
-		let toolRegistry: ToolRegistry | undefined = undefined
-		if (provider.options.enableTarsTools) {
-			toolRegistry = new ToolRegistry({ app: env.app })
-			registerFileSystemTools(toolRegistry)
-			console.debug('Tars tools registered')
-		}
-
 		let lastEditPos: EditorPosition | null = null
 		let startPos: EditorPosition | null = null
-		for await (const text of sendRequest(messages, controller, env.resolveEmbed, env.saveAttachment, toolRegistry)) {
+		let toolExecution: ToolExecution | null = null
+		for await (const outputChunk of sendRequest(messages, controller, capabilities)) {
 			if (startPos == null) startPos = editor.getCursor('to')
-			lastEditPos = insertText(editor, text, editorStatus, lastEditPos)
-			llmResponse += text
-			statusBarManager.updateGeneratingProgress(llmResponse.length)
+
+			if (isTextOutput(outputChunk)) {
+				lastEditPos = insertText(editor, outputChunk, editorStatus, lastEditPos)
+				llmResponse += outputChunk
+				statusBarManager.updateGeneratingProgress(llmResponse.length)
+			} else if (isToolExecution(outputChunk)) {
+				// Handle assistant tag output
+				// set toolMsgs
+				toolExecution = outputChunk
+			}
+		}
+		if (toolExecution) {
+			// TODO
+			// 不用解析, 直接下一步请求
 		}
 
 		const endTime = new Date()

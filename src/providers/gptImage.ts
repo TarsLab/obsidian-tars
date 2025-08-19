@@ -1,7 +1,8 @@
 import { Notice } from 'obsidian'
 import OpenAI from 'openai'
+import { Capabilities } from 'src/environment'
 import { t } from 'src/lang/helper'
-import { BaseOptions, Message, ResolveEmbedAsBinary, SaveAttachment, SendRequest, Vendor } from '.'
+import { BaseOptions, filterToChatMessages, Message, SendRequest, Vendor } from '.'
 import { getMimeTypeFromFilename } from './utils'
 
 const models = ['gpt-image-1']
@@ -27,25 +28,20 @@ export interface GptImageOptions extends BaseOptions {
 }
 
 const sendRequestFunc = (settings: GptImageOptions): SendRequest =>
-	async function* (
-		messages: Message[],
-		controller: AbortController,
-		resolveEmbedAsBinary: ResolveEmbedAsBinary,
-		saveAttachment?: SaveAttachment
-	) {
+	async function* (messages: Message[], controller: AbortController, capabilities: Capabilities) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, baseURL, model, displayWidth, background, n, output_compression, output_format, quality, size } =
 			options
 		if (!apiKey) throw new Error(t('API key is required'))
-		if (!saveAttachment) throw new Error('saveAttachment is required')
 
-		console.debug('messages:', messages)
+		const msgs = filterToChatMessages(messages)
+		console.debug('messages:', msgs)
 		console.debug('options:', options)
-		if (messages.length > 1) {
+		if (msgs.length > 1) {
 			new Notice(t('Only the last user message is used for image generation. Other messages are ignored.'))
 		}
-		const lastMsg = messages.last()
+		const lastMsg = msgs.last()
 		if (!lastMsg) {
 			throw new Error('No user message found in the conversation')
 		}
@@ -58,6 +54,7 @@ const sendRequestFunc = (settings: GptImageOptions): SendRequest =>
 		})
 
 		new Notice(t('This is a non-streaming request, please wait...'), 5 * 1000)
+		const { resolveEmbedAsBinary, saveAttachment } = capabilities
 		let response = null
 		if (lastMsg.embeds && lastMsg.embeds.length > 0) {
 			if (lastMsg.embeds.length > 1) {
@@ -148,5 +145,5 @@ export const gptImageVendor: Vendor = {
 	sendRequestFunc,
 	models,
 	websiteToObtainKey: 'https://platform.openai.com/api-keys',
-	capabilities: ['Image Generation', 'Image Editing']
+	features: ['Image Generation', 'Image Editing']
 }

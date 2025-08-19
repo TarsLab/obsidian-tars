@@ -9,7 +9,8 @@ import {
 	Platform,
 	TFile
 } from 'obsidian'
-import { RequestController, buildRunEnv, generate } from './editor'
+import { RequestController, generate } from './editor'
+import { buildRunEnv } from './environment'
 import { t } from './lang/helper'
 import { PluginSettings } from './settings'
 import { StatusBarManager } from './statusBarManager'

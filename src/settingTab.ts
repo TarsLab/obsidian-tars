@@ -11,7 +11,7 @@ import { kimiVendor } from './providers/kimi'
 import { ollamaVendor } from './providers/ollama'
 import { openRouterVendor } from './providers/openRouter'
 import { siliconFlowVendor } from './providers/siliconflow'
-import { getCapabilityEmoji } from './providers/utils'
+import { getFeatureEmoji } from './providers/utils'
 import { availableVendors, DEFAULT_SETTINGS } from './settings'
 
 export class TarsSettingTab extends PluginSettingTab {
@@ -333,10 +333,8 @@ export class TarsSettingTab extends PluginSettingTab {
 		details.createEl('summary', { text: getSummary(settings.tag, vendor.name), cls: 'tars-setting-h4' })
 		details.open = isOpen
 
-		const capabilities =
-			t('Supported features') +
-			' : ' +
-			vendor.capabilities.map((cap) => `${getCapabilityEmoji(cap)} ${t(cap)}`).join('    ')
+		const features =
+			t('Supported features') + ' : ' + vendor.features.map((cap) => `${getFeatureEmoji(cap)} ${t(cap)}`).join('    ')
 
 		this.addTagSection(details, settings, index, vendor.name)
 
@@ -345,7 +343,7 @@ export class TarsSettingTab extends PluginSettingTab {
 		if (modelConfig) {
 			new Setting(details)
 				.setName(t('Model'))
-				.setDesc(capabilities)
+				.setDesc(features)
 				.addButton((btn) => {
 					btn
 						.setButtonText(settings.options.model ? settings.options.model : t('Select the model to use'))
@@ -383,9 +381,9 @@ export class TarsSettingTab extends PluginSettingTab {
 						})
 				})
 		} else if (vendor.models.length > 0) {
-			this.addModelDropDownSection(details, settings.options, vendor.models, capabilities)
+			this.addModelDropDownSection(details, settings.options, vendor.models, features)
 		} else {
-			this.addModelTextSection(details, settings.options, capabilities)
+			this.addModelTextSection(details, settings.options, features)
 		}
 
 		if (vendor.name !== ollamaVendor.name) {
@@ -399,7 +397,7 @@ export class TarsSettingTab extends PluginSettingTab {
 		if ('apiSecret' in settings.options)
 			this.addAPISecretOptional(details, settings.options as BaseOptions & Pick<Optional, 'apiSecret'>)
 
-		if (vendor.capabilities.includes('Web Search')) {
+		if (vendor.features.includes('Web Search')) {
 			new Setting(details)
 				.setName(t('Web search'))
 				.setDesc(t('Enable web search for AI'))

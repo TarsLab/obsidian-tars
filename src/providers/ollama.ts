@@ -1,14 +1,15 @@
 import { Ollama } from 'ollama/browser'
-import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
+import { Capabilities } from 'src/environment'
+import { BaseOptions, filterToChatMessages, Message, SendRequest, Vendor } from '.'
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
-	async function* (messages: Message[], controller: AbortController, _resolveEmbedAsBinary: ResolveEmbedAsBinary) {
+	async function* (messages: Message[], controller: AbortController, _capabilities: Capabilities) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { baseURL, model, ...remains } = options
 
 		const ollama = new Ollama({ host: baseURL })
-		const response = await ollama.chat({ model, messages, stream: true, ...remains })
+		const response = await ollama.chat({ model, messages: filterToChatMessages(messages), stream: true, ...remains })
 		for await (const part of response) {
 			if (controller.signal.aborted) {
 				ollama.abort()
@@ -29,5 +30,5 @@ export const ollamaVendor: Vendor = {
 	sendRequestFunc,
 	models: [],
 	websiteToObtainKey: 'https://ollama.com',
-	capabilities: ['Text Generation']
+	features: ['Text Generation']
 }

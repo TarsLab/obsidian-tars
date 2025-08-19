@@ -1,7 +1,8 @@
 import axios from 'axios'
 import { Notice, Platform, requestUrl } from 'obsidian'
+import { Capabilities } from 'src/environment'
 import { t } from 'src/lang/helper'
-import { BaseOptions, Message, Optional, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
+import { BaseOptions, Message, Optional, SendRequest, Vendor } from '.'
 
 interface TokenResponse {
 	access_token: string
@@ -77,7 +78,7 @@ const getLines = (buffer: string[], text: string): string[] => {
 }
 
 const sendRequestFunc = (settings: QianFanOptions): SendRequest =>
-	async function* (messages: Message[], controller: AbortController, _resolveEmbedAsBinary: ResolveEmbedAsBinary) {
+	async function* (messages: Message[], controller: AbortController, _capabilities: Capabilities) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, apiSecret, baseURL, model, token: currentToken, ...remains } = options
@@ -167,5 +168,5 @@ export const qianFanVendor: Vendor = {
 	sendRequestFunc,
 	models: models,
 	websiteToObtainKey: 'https://qianfan.cloud.baidu.com',
-	capabilities: ['Text Generation']
+	features: ['Text Generation']
 }

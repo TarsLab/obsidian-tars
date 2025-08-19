@@ -28,6 +28,7 @@ export interface PluginSettings {
 	systemTags: string[]
 	newChatTags: string[]
 	userTags: string[]
+	toolTags: string[]
 	roleEmojis: {
 		assistant: string
 		system: string
@@ -55,6 +56,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	systemTags: ['System', '系统'],
 	newChatTags: ['NewChat', '新对话'],
 	userTags: ['User', '我'],
+	toolTags: ['Tool', '工具'],
 	roleEmojis: {
 		assistant: '✨',
 		system: '🔧',

@@ -1,9 +1,10 @@
 import { Notice, requestUrl } from 'obsidian'
+import { Capabilities } from 'src/environment'
 import { t } from 'src/lang/helper'
-import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
+import { BaseOptions, Message, SendRequest, Vendor } from '.'
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
-	async function* (messages: Message[], _controller: AbortController, _resolveEmbedAsBinary: ResolveEmbedAsBinary) {
+	async function* (messages: Message[], _controller: AbortController, _capabilities: Capabilities) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, baseURL, model, ...remains } = options
@@ -43,5 +44,5 @@ export const doubaoVendor: Vendor = {
 	sendRequestFunc,
 	models: [],
 	websiteToObtainKey: 'https://www.volcengine.com',
-	capabilities: ['Text Generation']
+	features: ['Text Generation']
 }

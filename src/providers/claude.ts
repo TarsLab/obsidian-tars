@@ -1,14 +1,15 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { EmbedCache, Notice } from 'obsidian'
+import { Capabilities, ResolveEmbedAsBinary } from 'src/environment'
 import { t } from 'src/lang/helper'
-import { ToolRegistry } from 'src/tools'
-import { storeToolEvent, ToolResultMsg, ToolUseMsg } from 'src/tools/storage'
-import { BaseOptions, Message, ResolveEmbedAsBinary, SaveAttachment, SendRequest, Vendor } from '.'
+import { ToolUse } from 'src/tools'
+import { storeToolExecution } from 'src/tools/storage'
+import { BaseOptions, ChatMessage, Message, SendRequest, Vendor } from '.'
 import {
 	arrayBufferToBase64,
 	CALLOUT_BLOCK_END,
 	CALLOUT_BLOCK_START,
-	getCapabilityEmoji,
+	getFeatureEmoji,
 	getMimeTypeFromFilename
 } from './utils'
 
@@ -20,7 +21,7 @@ export interface ClaudeOptions extends BaseOptions {
 	enableTarsTools: boolean // 新增Tars工具支持选项
 }
 
-const formatMsgForClaudeAPI = async (msg: Message, resolveEmbedAsBinary: ResolveEmbedAsBinary) => {
+const formatMsgForClaudeAPI = async (msg: ChatMessage, resolveEmbedAsBinary: ResolveEmbedAsBinary) => {
 	const content: (Anthropic.TextBlockParam | Anthropic.ImageBlockParam | Anthropic.DocumentBlockParam)[] = msg.embeds
 		? await Promise.all(msg.embeds.map((embed) => formatEmbed(embed, resolveEmbedAsBinary)))
 		: []
@@ -68,13 +69,7 @@ const formatEmbed = async (embed: EmbedCache, resolveEmbedAsBinary: ResolveEmbed
 }
 
 const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
-	async function* (
-		messages: Message[],
-		controller: AbortController,
-		resolveEmbedAsBinary: ResolveEmbedAsBinary,
-		_saveAttachment: SaveAttachment,
-		toolRegistry: ToolRegistry
-	) {
+	async function* (messages: Message[], controller: AbortController, capabilities: Capabilities) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const {
@@ -107,8 +102,9 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 			}
 		})
 
+		const { resolveEmbedAsBinary, toolRegistry, runEnv } = capabilities
 		const formattedMsgs = await Promise.all(
-			messagesWithoutSys.map((msg) => formatMsgForClaudeAPI(msg, resolveEmbedAsBinary))
+			messagesWithoutSys.map((msg) => (msg.role === 'tool' ? null : formatMsgForClaudeAPI(msg, resolveEmbedAsBinary)))
 		)
 
 		const client = new Anthropic({
@@ -194,61 +190,45 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 					messageStreamEvent.content_block.type === 'server_tool_use' &&
 					messageStreamEvent.content_block.name === 'web_search'
 				) {
-					new Notice(getCapabilityEmoji('Web Search') + 'Web Search')
+					new Notice(getFeatureEmoji('Web Search') + 'Web Search')
 				}
 				// 处理 Tars 工具调用开始
 				if (enableTarsTools && messageStreamEvent.content_block.type === 'tool_use') {
 					currentToolUse = messageStreamEvent.content_block as Anthropic.Messages.ToolUseBlock
 					toolUseBuffer = ''
 					const toolName = currentToolUse.name
-					if (toolRegistry.has(toolName)) {
-						new Notice(getCapabilityEmoji('Tars Tools') + `正在调用工具: ${toolName}`)
 
-						// 立即记录工具调用（新的分开记录系统）
+					if (toolRegistry.has(toolName)) {
+						// 保存到内存, ToolRegistry 加个变量
 						console.debug('Tool use recorded:', currentToolUse.id, currentToolUse.name)
-						const vault = toolRegistry.env.app.vault
-						try {
-							const useMsg: ToolUseMsg = {
-								type: 'tool_use',
-								id: currentToolUse.id,
-								name: currentToolUse.name,
-								input: currentToolUse.input as Record<string, unknown>,
-								timestamp: new Date().toISOString()
-							}
-							const ref = await storeToolEvent(vault, useMsg)
-							console.debug('Tool use recorded:', currentToolUse.id, currentToolUse.name)
-							console.debug('Tool use reference:', ref)
-						} catch (error) {
-							console.error('Failed to record tool use:', error)
-						}
 					}
 				}
 			} else if (messageStreamEvent.type === 'content_block_stop') {
 				// 工具调用结束，执行工具
 				if (enableTarsTools && currentToolUse) {
-					const vault = toolRegistry.env.app.vault
 					try {
 						const toolInput = JSON.parse(toolUseBuffer || JSON.stringify(currentToolUse.input) || '{}')
 
 						console.debug('Executing tool:', currentToolUse.name, 'with input:', toolInput)
-
-						const result = await toolRegistry.execute(currentToolUse.name, toolInput)
-
-						// 记录工具结果（新的分开记录系统）
-						const resultMsg: ToolResultMsg = {
-							type: 'tool_result',
-							tool_use_id: currentToolUse.id,
-							content: result.content,
-							is_error: result.isError || false,
-							error_message: '',
-							timestamp: new Date().toISOString()
+						// 1. 转为 toolUseBlock
+						// 3. yield 提示用户工具调用
+						// 4. execute
+						// 5. storage , yield 保存得到的引用
+						const toolUseBlock: ToolUse = {
+							type: 'tool_use',
+							id: currentToolUse.id,
+							name: currentToolUse.name,
+							input: toolInput
 						}
-						const reference = await storeToolEvent(vault, resultMsg)
 
+						yield `  \n# Tool : 🔧 [${toolUseBlock.name}]......  \n`
+						const toolResults = await toolRegistry.execute(runEnv, [toolUseBlock])
+
+						const toolExecution = await storeToolExecution(runEnv, [toolUseBlock], toolResults)
+
+						yield toolExecution
 						// 格式化工具结果并输出，包含引用链接
-						const resultText = result.content.map((c) => c.text).join('\n')
-						const status = result.isError ? '❌' : '✅'
-						yield `\n\n${status} **工具调用结果** [🔧 ${currentToolUse.name}](${reference}):\n${resultText}\n\n`
+						// const resultText = result.content.map((c) => c.text).join('\n')
 					} catch (error) {
 						throw new Error(`工具调用失败: ${error.message}`)
 					}
@@ -296,5 +276,5 @@ export const claudeVendor: Vendor = {
 	sendRequestFunc,
 	models,
 	websiteToObtainKey: 'https://console.anthropic.com',
-	capabilities: ['Text Generation', 'Web Search', 'Reasoning', 'Image Vision', 'PDF Vision', 'Tars Tools']
+	features: ['Text Generation', 'Web Search', 'Reasoning', 'Image Vision', 'PDF Vision', 'Tars Tools']
 }

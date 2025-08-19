@@ -1,5 +1,6 @@
 import { App, Command, Editor, EditorRange, MarkdownView, Modal, Notice, Platform, Setting } from 'obsidian'
-import { buildRunEnv, generate, RequestController } from 'src/editor'
+import { generate, RequestController } from 'src/editor'
+import { buildRunEnv } from 'src/environment'
 import { t } from 'src/lang/helper'
 import { ProviderSettings } from 'src/providers'
 import { PluginSettings } from 'src/settings'

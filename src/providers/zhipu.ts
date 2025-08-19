@@ -1,7 +1,8 @@
 import * as jose from 'jose'
 import OpenAI from 'openai'
+import { Capabilities } from 'src/environment'
 import { t } from 'src/lang/helper'
-import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
+import { BaseOptions, Message, SendRequest, Vendor, filterToChatMessages } from '.'
 
 interface Token {
 	id: string
@@ -16,7 +17,7 @@ export interface ZhipuOptions extends BaseOptions {
 }
 
 const sendRequestFunc = (settings: ZhipuOptions): SendRequest =>
-	async function* (messages: Message[], controller: AbortController, _resolveEmbedAsBinary: ResolveEmbedAsBinary) {
+	async function* (messages: Message[], controller: AbortController, _capabilities: Capabilities) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, baseURL, model, token: currentToken, tokenExpireInMinutes, enableWebSearch, ...remains } = options
@@ -25,7 +26,7 @@ const sendRequestFunc = (settings: ZhipuOptions): SendRequest =>
 
 		const { token } = await validOrCreate(currentToken, apiKey, tokenExpireInMinutes)
 		settings.token = token
-
+		const msgs = filterToChatMessages(messages)
 		const client = new OpenAI({
 			apiKey: token.id,
 			baseURL,
@@ -46,7 +47,7 @@ const sendRequestFunc = (settings: ZhipuOptions): SendRequest =>
 		const stream = await client.chat.completions.create(
 			{
 				model,
-				messages,
+				messages: msgs,
 				stream: true,
 				tools: tools,
 				...remains
@@ -120,5 +121,5 @@ export const zhipuVendor: Vendor = {
 	sendRequestFunc,
 	models,
 	websiteToObtainKey: 'https://open.bigmodel.cn/',
-	capabilities: ['Text Generation', 'Web Search']
+	features: ['Text Generation', 'Web Search']
 }

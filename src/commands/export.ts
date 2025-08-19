@@ -1,8 +1,15 @@
-import { App, Notice, normalizePath } from 'obsidian'
-import { buildRunEnv, extractConversationsTextOnly } from 'src/editor'
+import { App, normalizePath, Notice } from 'obsidian'
+import { extractAllTaggedMessages } from 'src/editor'
+import { buildRunEnv } from 'src/environment'
 import { t } from 'src/lang/helper'
-import { Message } from 'src/providers'
 import { PluginSettings } from 'src/settings'
+
+// Type for the enriched tagged messages returned by extractAllTaggedMessages
+type ExtractedMessage = {
+	content: string
+	role: 'user' | 'assistant' | 'system' | 'tool'
+	[key: string]: unknown
+}
 
 export const exportCmdId = 'export-to-jsonl'
 
@@ -16,7 +23,7 @@ export const exportCmd = (app: App, settings: PluginSettings) => ({
 
 const exportConversation = async (app: App, settings: PluginSettings) => {
 	const env = await buildRunEnv(app, settings)
-	const conversations = await extractConversationsTextOnly(env)
+	const conversations = await extractAllTaggedMessages(env)
 	console.debug('conversations', conversations)
 
 	let query_responses = []
@@ -49,8 +56,16 @@ const exportConversation = async (app: App, settings: PluginSettings) => {
 	)
 }
 
-const to_query_response_history = (conversation: readonly Message[]) => {
-	const messages = conversation.slice()
+const to_query_response_history = (conversation: readonly ExtractedMessage[]) => {
+	// Convert ExtractedMessage to ChatMessage format and filter out tool messages
+	const chatMessages = conversation
+		.filter((msg) => msg.role !== 'tool')
+		.map((msg) => ({
+			role: msg.role as 'user' | 'assistant' | 'system',
+			content: msg.content
+		}))
+
+	const messages = chatMessages
 
 	if (messages.length < 2) {
 		throw new Error('No conversation')

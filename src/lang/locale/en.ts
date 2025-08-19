@@ -251,5 +251,8 @@ Translate the following content into English：{{s}}
 	'Generating...': 'Generating...',
 	'Click status bar for error details. ': 'Click status bar for error details. ',
 	Vendor: 'Vendor',
-	Characters: 'Characters'
+	Characters: 'Characters',
+
+	// tool
+	tool: 'tool'
 }
