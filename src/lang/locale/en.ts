@@ -99,6 +99,7 @@ export default {
 		'Keywords for tags in the text box are separated by spaces',
 	'New chat tags': 'New chat tags',
 	'User message tags': 'User message tags',
+	'Tool message tags': 'Tool message tags',
 	'System message tags': 'System message tags',
 	'At least one tag is required': 'At least one tag is required',
 	'Assistant message tag': 'Assistant message tag',

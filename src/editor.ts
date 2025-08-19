@@ -1,12 +1,13 @@
 import { Editor, EditorPosition, SectionCache, debounce, normalizePath, parseLinktext, resolveSubpath } from 'obsidian'
 import { t } from 'src/lang/helper'
 import { RunEnv, buildCapabilities } from './environment'
-import { Message, ProviderSettings, ToolMessage, Vendor, isTextOutput, isToolExecution } from './providers'
+import { Message, ProviderSettings, ToolMessage, Vendor, isArrayOfToolUses, isTextOutput } from './providers'
 import { withStreamLogging } from './providers/decorator'
 import { APP_FOLDER, EditorStatus, availableVendors } from './settings'
 import { GenerationStats, StatusBarManager } from './statusBarManager'
 import { TagRole } from './suggest'
-import { ToolExecution } from './tools'
+import { ToolUse } from './tools'
+import { readToolExecution, storeToolExecution } from './tools/storage'
 
 interface Tag extends Omit<Message, 'content'> {
 	readonly tag: TagRole
@@ -354,24 +355,36 @@ export const generate = async (
 		}
 
 		const taggedMessages = await extractTaggedMessages(env, 0, endOffset)
-		const messages: Message[] = taggedMessages.map((c) => {
-			if (c.role === 'tool') {
-				// Handle tool messages - these should have toolUses and toolResults
-				return {
-					role: 'tool',
-					embeds: c.embeds,
-					toolUses: [], // TODO: Extract from content
-					toolResults: [] // TODO: Extract from content
-				} as ToolMessage
-			} else {
-				// Handle chat messages
-				return c.embeds ? { role: c.role, content: c.content, embeds: c.embeds } : { role: c.role, content: c.content }
-			}
-		})
+		const messages: Message[] = await Promise.all(
+			taggedMessages.map(async (c) => {
+				if (c.role === 'tool') {
+					// Handle tool messages - these should have toolUses and toolResults
+					const execution = await readToolExecution(env.vault, c.content)
+					return {
+						role: 'tool',
+						toolUses: execution.toolUses,
+						toolResults: execution.toolResults
+					} as ToolMessage
+				} else {
+					// Handle chat messages
+					return c.embeds
+						? { role: c.role, content: c.content, embeds: c.embeds }
+						: { role: c.role, content: c.content }
+				}
+			})
+		)
 		console.debug('messages', messages)
 
+		if (messages.length === 0) {
+			throw new Error('Please add at least one message first.')
+		}
+
 		const lastMsg = messages.last()
-		if (!lastMsg || lastMsg.role !== 'user' || lastMsg.content.trim().length === 0) {
+		if (!lastMsg || (lastMsg.role !== 'user' && lastMsg.role !== 'tool')) {
+			throw new Error('The last message must be a user message or tool message.')
+		}
+
+		if (lastMsg.role === 'user' && lastMsg.content.trim().length === 0) {
 			throw new Error(t('Please add a user message first, or wait for the user message to be parsed.'))
 		}
 
@@ -396,7 +409,7 @@ export const generate = async (
 
 		let lastEditPos: EditorPosition | null = null
 		let startPos: EditorPosition | null = null
-		let toolExecution: ToolExecution | null = null
+		let toolsToExecute: ToolUse[] | null = null
 		for await (const outputChunk of sendRequest(messages, controller, capabilities)) {
 			if (startPos == null) startPos = editor.getCursor('to')
 
@@ -404,15 +417,10 @@ export const generate = async (
 				lastEditPos = insertText(editor, outputChunk, editorStatus, lastEditPos)
 				llmResponse += outputChunk
 				statusBarManager.updateGeneratingProgress(llmResponse.length)
-			} else if (isToolExecution(outputChunk)) {
-				// Handle assistant tag output
-				// set toolMsgs
-				toolExecution = outputChunk
+			} else if (isArrayOfToolUses(outputChunk)) {
+				toolsToExecute = outputChunk
+				console.debug('Tools to execute:', toolsToExecute)
 			}
-		}
-		if (toolExecution) {
-			// TODO
-			// 不用解析, 直接下一步请求
 		}
 
 		const endTime = new Date()
@@ -431,7 +439,7 @@ export const generate = async (
 
 		statusBarManager.setSuccessStatus(stats)
 
-		if (llmResponse.length === 0) {
+		if (llmResponse.length === 0 && toolsToExecute === null) {
 			throw new Error(t('No text generated'))
 		}
 
@@ -444,6 +452,13 @@ export const generate = async (
 				console.debug('format text with leading breaks')
 				editor.replaceRange(formattedText, startPos, endPos)
 			}
+		}
+
+		if (toolsToExecute) {
+			const toolResults = await capabilities.toolRegistry.execute(env, toolsToExecute)
+			const toolExecution = await storeToolExecution(env, toolsToExecute, toolResults)
+			const text = `\n\n#Tool : ${toolExecution.reference}  \n`
+			lastEditPos = insertText(editor, text, editorStatus, lastEditPos)
 		}
 
 		if (controller.signal.aborted) {

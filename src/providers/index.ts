@@ -1,6 +1,6 @@
 import { EmbedCache } from 'obsidian'
 import { Capabilities } from 'src/environment'
-import { ToolExecution, ToolResult, ToolUse } from 'src/tools'
+import { ToolResult, ToolUse } from 'src/tools'
 
 // 聊天消息 - 聊天对话中的消息
 export interface ChatMessage {
@@ -19,7 +19,7 @@ export interface ToolMessage {
 
 export type Message = ChatMessage | ToolMessage
 
-export type StreamOutputBlock = string | ToolExecution
+export type StreamOutputBlock = string | ToolUse[]
 
 export type SendRequest = (
 	messages: readonly Message[],
@@ -72,12 +72,10 @@ export const filterToChatMessages = (messages: readonly Message[]): ChatMessage[
 	return messages.filter((msg): msg is ChatMessage => msg.role !== 'tool')
 }
 
-// 类型保护函数 - 判断是否为字符串输出
 export const isTextOutput = (block: StreamOutputBlock): block is string => {
 	return typeof block === 'string'
 }
 
-// 类型保护函数 - 判断是否为工具执行块
-export const isToolExecution = (block: StreamOutputBlock): block is ToolExecution => {
-	return typeof block === 'object' && block.type === 'tool_execution'
+export const isArrayOfToolUses = (block: StreamOutputBlock): block is ToolUse[] => {
+	return Array.isArray(block) && block.every((item) => item.type === 'tool_use')
 }

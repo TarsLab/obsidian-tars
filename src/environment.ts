@@ -39,7 +39,6 @@ export interface RunEnv {
 }
 
 export interface Capabilities {
-	readonly runEnv: RunEnv
 	readonly resolveEmbedAsBinary: ResolveEmbedAsBinary
 	readonly saveAttachment: SaveAttachment
 	readonly createFile: CreateFile
@@ -135,7 +134,6 @@ export const buildCapabilities = (runEnv: RunEnv, enableTarsTools: boolean = fal
 	}
 
 	return {
-		runEnv,
 		resolveEmbedAsBinary,
 		saveAttachment,
 		createFile,

@@ -96,6 +96,7 @@ export default {
 	'Keywords for tags in the text box are separated by spaces': '在文本框中的标签关键字用空格分隔',
 	'New chat tags': '新对话的标签',
 	'User message tags': '用户消息的标签',
+	'Tool message tags': '工具消息的标签',
 	'System message tags': '系统消息的标签',
 	'At least one tag is required': '至少需要一个标签',
 	'Assistant message tag': '助手消息的标签',

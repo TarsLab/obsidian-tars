@@ -80,14 +80,50 @@ export const storeToolExecution = async (
 	return { type: 'tool_execution', reference, toolUses, toolResults }
 }
 
-// 批量读取工具事件
-// export const readToolEvents = async (_vault: Vault, _references: string[]): Promise<ToolBlock[]> => {
-// 	const events: ToolBlock[] = []
-// 	// TODO
-// 	return events
-// }
+export const readToolExecution = async (vault: Vault, reference: string): Promise<ToolExecution> => {
+	// 解析 reference: 前6位是日期(YYMMDD)，后3位是行号(001, 002, ...)
+	if (reference.length < 9) {
+		throw new Error(`Invalid reference format: ${reference}. Expected format: YYMMDDNNN`)
+	}
 
-// export const extractToolBlock = (line: string): ToolBlock | null => {
-// 	const parsed = JSON.parse(line) as ToolBlock
-// 	return parsed.type === 'tool_use' || parsed.type === 'tool_result' ? parsed : null
-// }
+	const dateStr = reference.slice(0, 6) // 前6位：日期
+	const lineNumberStr = reference.slice(6) // 行号
+	const lineNumber = parseInt(lineNumberStr, 10)
+
+	if (isNaN(lineNumber) || lineNumber < 1) {
+		throw new Error(`Invalid line number in reference: ${reference}`)
+	}
+
+	const jsonlFile = `${dateStr}.jsonl`
+	const jsonlPath = normalizePath(`${TOOLS_DIRECTORY}/${jsonlFile}`)
+
+	// 检查文件是否存在
+	if (!(await vault.adapter.exists(jsonlPath))) {
+		throw new Error(`Tool execution file not found: ${jsonlPath}`)
+	}
+
+	// 读取文件内容
+	const content = await vault.adapter.read(jsonlPath)
+	const lines = content.split('\n').filter((line) => line.trim().length > 0)
+
+	// 检查行号是否有效
+	if (lineNumber > lines.length) {
+		throw new Error(`Line number ${lineNumber} exceeds file length ${lines.length} in ${jsonlPath}`)
+	}
+
+	// 获取指定行的内容（行号从1开始，数组索引从0开始）
+	const targetLine = lines[lineNumber - 1]
+	const data = JSON.parse(targetLine)
+
+	// 验证数据格式
+	if (!data.tool_uses || !data.tool_results) {
+		throw new Error(`Invalid data format in ${jsonlPath} at line ${lineNumber}`)
+	}
+
+	return {
+		type: 'tool_execution',
+		reference,
+		toolUses: data.tool_uses,
+		toolResults: data.tool_results
+	}
+}

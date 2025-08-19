@@ -3,8 +3,7 @@ import { EmbedCache, Notice } from 'obsidian'
 import { Capabilities, ResolveEmbedAsBinary } from 'src/environment'
 import { t } from 'src/lang/helper'
 import { ToolUse } from 'src/tools'
-import { storeToolExecution } from 'src/tools/storage'
-import { BaseOptions, ChatMessage, Message, SendRequest, Vendor } from '.'
+import { BaseOptions, ChatMessage, Message, SendRequest, ToolMessage, Vendor } from '.'
 import {
 	arrayBufferToBase64,
 	CALLOUT_BLOCK_END,
@@ -68,6 +67,83 @@ const formatEmbed = async (embed: EmbedCache, resolveEmbedAsBinary: ResolveEmbed
 	}
 }
 
+/**
+ * 将消息数组转换为 Anthropic API 格式
+ * 正确处理工具消息，按照 Anthropic 的格式要求
+ */
+const convertMessagesToAnthropicFormat = async (
+	messagesWithoutSys: Message[],
+	resolveEmbedAsBinary: ResolveEmbedAsBinary
+): Promise<Anthropic.MessageParam[]> => {
+	const anthropicMessages: Anthropic.MessageParam[] = []
+
+	for (let i = 0; i < messagesWithoutSys.length; i++) {
+		const currentMsg = messagesWithoutSys[i]
+
+		if (currentMsg.role === 'tool') {
+			// 工具消息需要拆分处理
+			const toolMsg = currentMsg as ToolMessage
+
+			// 1. 将 toolUses 添加到前一个 assistant 消息
+			if (anthropicMessages.length > 0 && anthropicMessages[anthropicMessages.length - 1].role === 'assistant') {
+				const lastAssistantMsg = anthropicMessages[anthropicMessages.length - 1]
+				// 添加 tool_use 块到 assistant 消息的 content
+				for (const toolUse of toolMsg.toolUses) {
+					;(lastAssistantMsg.content as Anthropic.ContentBlockParam[]).push({
+						type: 'tool_use',
+						id: toolUse.id,
+						name: toolUse.name,
+						input: toolUse.input
+					} as Anthropic.ToolUseBlockParam)
+				}
+			}
+
+			// 2. 将 toolResults 添加到下一个 user 消息（如果存在）
+			const nextMsg = messagesWithoutSys[i + 1]
+			if (nextMsg && nextMsg.role === 'user') {
+				// 下一条是 user 消息，将 tool_result 添加到其开头
+				const formattedNextMsg = await formatMsgForClaudeAPI(nextMsg, resolveEmbedAsBinary)
+
+				// tool_result 必须在 content 数组的最前面
+				const toolResults: Anthropic.ToolResultBlockParam[] = toolMsg.toolResults.map((result) => ({
+					type: 'tool_result',
+					tool_use_id: result.tool_use_id,
+					content: typeof result.content === 'string' ? result.content : JSON.stringify(result.content),
+					...(result.is_error && { is_error: result.is_error })
+				}))
+
+				// 合并内容，tool_result 在前面
+				const combinedContent: Anthropic.ContentBlockParam[] = [...toolResults, ...formattedNextMsg.content]
+
+				anthropicMessages.push({
+					role: 'user',
+					content: combinedContent
+				})
+				i++ // 跳过下一个消息，因为已经处理了
+			} else {
+				// 如果没有下一个 user 消息，创建一个只包含 tool_result 的 user 消息
+				const toolResults: Anthropic.ToolResultBlockParam[] = toolMsg.toolResults.map((result) => ({
+					type: 'tool_result',
+					tool_use_id: result.tool_use_id,
+					content: typeof result.content === 'string' ? result.content : JSON.stringify(result.content),
+					...(result.is_error && { is_error: result.is_error })
+				}))
+
+				anthropicMessages.push({
+					role: 'user',
+					content: toolResults
+				})
+			}
+		} else {
+			// 非工具消息正常处理
+			const formattedMsg = await formatMsgForClaudeAPI(currentMsg, resolveEmbedAsBinary)
+			anthropicMessages.push(formattedMsg)
+		}
+	}
+
+	return anthropicMessages
+}
+
 const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, capabilities: Capabilities) {
 		const { parameters, ...optionsExcludingParams } = settings
@@ -102,10 +178,11 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 			}
 		})
 
-		const { resolveEmbedAsBinary, toolRegistry, runEnv } = capabilities
-		const formattedMsgs = await Promise.all(
-			messagesWithoutSys.map((msg) => (msg.role === 'tool' ? null : formatMsgForClaudeAPI(msg, resolveEmbedAsBinary)))
-		)
+		const { resolveEmbedAsBinary, toolRegistry } = capabilities
+
+		// 处理消息转换为 Anthropic 格式
+		const anthropicMessages = await convertMessagesToAnthropicFormat(messagesWithoutSys, resolveEmbedAsBinary)
+		console.debug('Converted messages for Anthropic:', anthropicMessages)
 
 		const client = new Anthropic({
 			apiKey,
@@ -139,7 +216,7 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 		const requestParams: Anthropic.MessageCreateParams = {
 			model,
 			max_tokens,
-			messages: formattedMsgs,
+			messages: anthropicMessages,
 			stream: true,
 			...(system_msg && { system: system_msg.content }),
 			...(tools.length > 0 && { tools: tools as Anthropic.Tool[] }),
@@ -156,8 +233,14 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 		})
 
 		let startReasoning = false
-		let currentToolUse: Anthropic.Messages.ToolUseBlock | null = null // 当前的工具调用
-		let toolUseBuffer = '' // 收集工具调用参数
+		// 收集工具调用参数
+		const activeToolUses = new Map<
+			string,
+			{
+				toolUse: Anthropic.Messages.ToolUseBlock
+				buffer: string
+			}
+		>()
 
 		// @ts-ignore - 类型检查问题，但运行时正常
 		for await (const messageStreamEvent of stream) {
@@ -180,8 +263,17 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 					yield prefix + messageStreamEvent.delta.thinking.replace(/\n/g, '\n> ') // Each line of the callout needs to have '>' at the beginning
 				}
 				// 处理工具调用的增量数据
-				if (messageStreamEvent.delta.type === 'input_json_delta' && currentToolUse) {
-					toolUseBuffer += messageStreamEvent.delta.partial_json || ''
+				if (messageStreamEvent.delta.type === 'input_json_delta') {
+					const blockIndex = messageStreamEvent.index
+					// 查找对应的工具调用（通过索引或其他方式）
+					for (const [, toolData] of activeToolUses.entries()) {
+						// 简化处理：如果只有一个活跃工具，就更新它
+						if (activeToolUses.size === 1 || blockIndex === undefined) {
+							toolData.buffer += messageStreamEvent.delta.partial_json || ''
+							break
+						}
+						// 更复杂的索引匹配逻辑可以在这里实现
+					}
 				}
 			} else if (messageStreamEvent.type === 'content_block_start') {
 				// Handle content block start events, including tool usage
@@ -194,48 +286,17 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 				}
 				// 处理 Tars 工具调用开始
 				if (enableTarsTools && messageStreamEvent.content_block.type === 'tool_use') {
-					currentToolUse = messageStreamEvent.content_block as Anthropic.Messages.ToolUseBlock
-					toolUseBuffer = ''
-					const toolName = currentToolUse.name
+					const toolUse = messageStreamEvent.content_block as Anthropic.Messages.ToolUseBlock
 
-					if (toolRegistry.has(toolName)) {
-						// 保存到内存, ToolRegistry 加个变量
-						console.debug('Tool use recorded:', currentToolUse.id, currentToolUse.name)
-					}
+					// 添加到活跃工具列表
+					activeToolUses.set(toolUse.id, {
+						toolUse: toolUse,
+						buffer: ''
+					})
+					console.debug('Tool use recorded:', toolUse.id, toolUse.name)
 				}
 			} else if (messageStreamEvent.type === 'content_block_stop') {
-				// 工具调用结束，执行工具
-				if (enableTarsTools && currentToolUse) {
-					try {
-						const toolInput = JSON.parse(toolUseBuffer || JSON.stringify(currentToolUse.input) || '{}')
-
-						console.debug('Executing tool:', currentToolUse.name, 'with input:', toolInput)
-						// 1. 转为 toolUseBlock
-						// 3. yield 提示用户工具调用
-						// 4. execute
-						// 5. storage , yield 保存得到的引用
-						const toolUseBlock: ToolUse = {
-							type: 'tool_use',
-							id: currentToolUse.id,
-							name: currentToolUse.name,
-							input: toolInput
-						}
-
-						yield `  \n# Tool : 🔧 [${toolUseBlock.name}]......  \n`
-						const toolResults = await toolRegistry.execute(runEnv, [toolUseBlock])
-
-						const toolExecution = await storeToolExecution(runEnv, [toolUseBlock], toolResults)
-
-						yield toolExecution
-						// 格式化工具结果并输出，包含引用链接
-						// const resultText = result.content.map((c) => c.text).join('\n')
-					} catch (error) {
-						throw new Error(`工具调用失败: ${error.message}`)
-					}
-
-					currentToolUse = null
-					toolUseBuffer = ''
-				}
+				// content_block_stop 不需要特殊处理，工具执行在流结束后统一处理
 			} else if (messageStreamEvent.type === 'message_delta') {
 				// Handle message-level incremental updates
 				// console.debug('Message delta received', messageStreamEvent.delta)
@@ -248,6 +309,37 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 					// }
 				}
 			}
+		}
+
+		// 流结束后，统一处理所有收集到的工具调用
+		if (enableTarsTools && activeToolUses.size > 0) {
+			const toolsToExecute: ToolUse[] = []
+
+			for (const [, toolData] of activeToolUses.entries()) {
+				try {
+					const toolInput = JSON.parse(toolData.buffer || JSON.stringify(toolData.toolUse.input) || '{}')
+
+					console.debug('Tool:', toolData.toolUse.name, 'with input:', toolInput)
+
+					const toolUseBlock: ToolUse = {
+						type: 'tool_use',
+						id: toolData.toolUse.id,
+						name: toolData.toolUse.name,
+						input: toolInput
+					}
+
+					toolsToExecute.push(toolUseBlock)
+				} catch (error) {
+					console.error(`Failed to parse tool input for ${toolData.toolUse.name}:`, error)
+				}
+			}
+
+			if (toolsToExecute.length > 0) {
+				yield toolsToExecute
+			}
+
+			// 清理工具调用状态
+			activeToolUses.clear()
 		}
 	}
 

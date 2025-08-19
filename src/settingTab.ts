@@ -127,6 +127,34 @@ export class TarsSettingTab extends PluginSettingTab {
 					})
 			})
 
+		let toolTagsInput: HTMLInputElement | null = null
+		new Setting(containerEl)
+			.setName('🤖' + ' ' + t('Tool message tags'))
+			.addExtraButton((btn) => {
+				btn
+					.setIcon('reset')
+					.setTooltip(t('Restore default'))
+					.onClick(async () => {
+						this.plugin.settings.toolTags = DEFAULT_SETTINGS.toolTags
+						await this.plugin.saveSettings()
+						if (toolTagsInput) {
+							toolTagsInput.value = this.plugin.settings.toolTags.join(' ')
+						}
+					})
+			})
+			.addText((text) => {
+				toolTagsInput = text.inputEl
+				text
+					.setPlaceholder(DEFAULT_SETTINGS.toolTags.join(' '))
+					.setValue(this.plugin.settings.toolTags.join(' '))
+					.onChange(async (value) => {
+						const tags = value.split(' ').filter((e) => e.length > 0)
+						if (!validateTagList(tags)) return
+						this.plugin.settings.toolTags = tags
+						await this.plugin.saveSettings()
+					})
+			})
+
 		let systemTagsInput: HTMLInputElement | null = null
 		new Setting(containerEl)
 			.setName(this.plugin.settings.roleEmojis.system + ' ' + t('System message tags'))
