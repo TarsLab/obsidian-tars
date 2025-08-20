@@ -14,10 +14,7 @@ import {
 
 export interface ClaudeOptions extends BaseOptions {
 	max_tokens: number
-	enableWebSearch: boolean
-	enableThinking: boolean
 	budget_tokens: number
-	enableTarsTools: boolean // 新增Tars工具支持选项
 }
 
 const formatMsgForClaudeAPI = async (msg: ChatMessage, resolveEmbedAsBinary: ResolveEmbedAsBinary) => {
@@ -153,10 +150,10 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 			baseURL: originalBaseURL,
 			model,
 			max_tokens,
-			enableWebSearch = false,
-			enableThinking = false,
+			enableWebSearch,
+			enableThinking,
 			budget_tokens = 1600,
-			enableTarsTools = false
+			enableTarsTools
 		} = options
 		let baseURL = originalBaseURL
 		if (!apiKey) throw new Error(t('API key is required'))
