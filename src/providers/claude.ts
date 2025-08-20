@@ -303,10 +303,28 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 				// Check stop reason and notify user
 				if (messageStreamEvent.delta.stop_reason) {
 					const stopReason = messageStreamEvent.delta.stop_reason
-					console.debug('Stop reason:', stopReason)
-					// if (stopReason !== 'end_turn') {
-					// 	throw new Error(`🔴 Unexpected stop reason: ${stopReason}`)
-					// }
+					// console.debug('Stop reason:', stopReason)
+					switch (stopReason) {
+						case 'end_turn':
+						case 'stop_sequence':
+						case 'tool_use':
+							break
+						case 'max_tokens':
+							throw new Error(
+								'⚠️ Response truncated: Maximum token limit reached. Consider increasing max_tokens setting.'
+							)
+						case 'pause_turn':
+							throw new Error(
+								'⏸️ Response paused: The conversation was paused due to length. You can continue by sending another message.'
+							)
+						case 'refusal':
+							throw new Error(
+								'🚫 Content blocked: The response was blocked due to content policy. Please rephrase your request.'
+							)
+						default:
+							console.error(`⚠️ Unexpected stop reason: ${stopReason}`)
+							break
+					}
 				}
 			}
 		}
