@@ -339,6 +339,50 @@ const createDecoratedSendRequest = async (env: RunEnv, vendor: Vendor, provider:
 	}
 }
 
+export const buildMessages = async (env: RunEnv, endOffset: number) => {
+	const taggedMessages = await extractTaggedMessages(env, 0, endOffset)
+	const messages: Message[] = await Promise.all(
+		taggedMessages.map(async (c) => {
+			if (c.role === 'tool') {
+				// Handle tool messages - these should have toolUses and toolResults
+				const execution = await readToolExecution(env.vault, c.content)
+				return {
+					role: 'tool',
+					toolUses: execution.toolUses,
+					toolResults: execution.toolResults
+				} as ToolMessage
+			} else {
+				// Handle chat messages
+				return c.embeds ? { role: c.role, content: c.content, embeds: c.embeds } : { role: c.role, content: c.content }
+			}
+		})
+	)
+	console.debug('messages', messages)
+
+	if (messages.length === 0) {
+		throw new Error('Please add at least one message first.')
+	}
+
+	const lastMsg = messages.last()
+	if (!lastMsg || (lastMsg.role !== 'user' && lastMsg.role !== 'tool')) {
+		throw new Error('The last message must be a user message or tool message.')
+	}
+
+	if (lastMsg.role === 'user' && lastMsg.content.trim().length === 0) {
+		throw new Error(t('Please add a user message first, or wait for the user message to be parsed.'))
+	}
+
+	if (env.options.enableDefaultSystemMsg && messages[0]?.role !== 'system' && env.options.defaultSystemMsg) {
+		// If the first message is not a system message, add the default system message
+		messages.unshift({
+			role: 'system',
+			content: env.options.defaultSystemMsg
+		})
+		console.debug('Default system message added:', env.options.defaultSystemMsg)
+	}
+	return messages
+}
+
 export const generate = async (
 	env: RunEnv,
 	editor: Editor,
@@ -353,50 +397,7 @@ export const generate = async (
 		if (!vendor) {
 			throw new Error('No vendor found ' + provider.vendor)
 		}
-
-		const taggedMessages = await extractTaggedMessages(env, 0, endOffset)
-		const messages: Message[] = await Promise.all(
-			taggedMessages.map(async (c) => {
-				if (c.role === 'tool') {
-					// Handle tool messages - these should have toolUses and toolResults
-					const execution = await readToolExecution(env.vault, c.content)
-					return {
-						role: 'tool',
-						toolUses: execution.toolUses,
-						toolResults: execution.toolResults
-					} as ToolMessage
-				} else {
-					// Handle chat messages
-					return c.embeds
-						? { role: c.role, content: c.content, embeds: c.embeds }
-						: { role: c.role, content: c.content }
-				}
-			})
-		)
-		console.debug('messages', messages)
-
-		if (messages.length === 0) {
-			throw new Error('Please add at least one message first.')
-		}
-
-		const lastMsg = messages.last()
-		if (!lastMsg || (lastMsg.role !== 'user' && lastMsg.role !== 'tool')) {
-			throw new Error('The last message must be a user message or tool message.')
-		}
-
-		if (lastMsg.role === 'user' && lastMsg.content.trim().length === 0) {
-			throw new Error(t('Please add a user message first, or wait for the user message to be parsed.'))
-		}
-
-		if (env.options.enableDefaultSystemMsg && messages[0]?.role !== 'system' && env.options.defaultSystemMsg) {
-			// If the first message is not a system message, add the default system message
-			messages.unshift({
-				role: 'system',
-				content: env.options.defaultSystemMsg
-			})
-			console.debug('Default system message added:', env.options.defaultSystemMsg)
-		}
-
+		const messages = await buildMessages(env, endOffset)
 		const round = messages.filter((m) => m.role === 'assistant').length + 1
 		const capabilities = buildCapabilities(env, provider.options.enableTarsTools)
 		const sendRequest = await createDecoratedSendRequest(env, vendor, provider)
@@ -454,15 +455,15 @@ export const generate = async (
 			}
 		}
 
+		if (controller.signal.aborted) {
+			throw new DOMException('Operation was aborted', 'AbortError')
+		}
+
 		if (toolsToExecute) {
 			const toolResults = await capabilities.toolRegistry.execute(env, toolsToExecute)
 			const toolExecution = await storeToolExecution(env, toolsToExecute, toolResults)
 			const text = `\n\n#Tool : ${toolExecution.reference}  \n`
 			lastEditPos = insertText(editor, text, editorStatus, lastEditPos)
-		}
-
-		if (controller.signal.aborted) {
-			throw new DOMException('Operation was aborted', 'AbortError')
 		}
 	} finally {
 		requestController.cleanup()
