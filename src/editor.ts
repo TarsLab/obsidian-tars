@@ -390,36 +390,37 @@ export const generate = async (
 	endOffset: number,
 	statusBarManager: StatusBarManager,
 	editorStatus: EditorStatus,
-	requestController: RequestController
+	requestController: RequestController,
+	messages?: Message[]
 ) => {
 	try {
 		const vendor = availableVendors.find((v) => v.name === provider.vendor)
 		if (!vendor) {
 			throw new Error('No vendor found ' + provider.vendor)
 		}
-		const messages = await buildMessages(env, endOffset)
-		const round = messages.filter((m) => m.role === 'assistant').length + 1
+		const msgs = messages ?? (await buildMessages(env, endOffset))
+		const round = msgs.filter((m) => m.role === 'assistant').length + 1
 		const capabilities = buildCapabilities(env, provider.options.enableTarsTools)
 		const sendRequest = await createDecoratedSendRequest(env, vendor, provider)
 
 		const startTime = new Date()
 		statusBarManager.setGeneratingStatus(round)
 
-		let llmResponse = ''
+		let textResponse = ''
 		const controller = requestController.getController()
 
 		let lastEditPos: EditorPosition | null = null
 		let startPos: EditorPosition | null = null
 		let toolsToExecute: ToolUse[] | null = null
-		for await (const outputChunk of sendRequest(messages, controller, capabilities)) {
+		for await (const streamItem of sendRequest(msgs, controller, capabilities)) {
 			if (startPos == null) startPos = editor.getCursor('to')
 
-			if (isTextOutput(outputChunk)) {
-				lastEditPos = insertText(editor, outputChunk, editorStatus, lastEditPos)
-				llmResponse += outputChunk
-				statusBarManager.updateGeneratingProgress(llmResponse.length)
-			} else if (isArrayOfToolUses(outputChunk)) {
-				toolsToExecute = outputChunk
+			if (isTextOutput(streamItem)) {
+				lastEditPos = insertText(editor, streamItem, editorStatus, lastEditPos)
+				textResponse += streamItem
+				statusBarManager.updateGeneratingProgress(textResponse.length)
+			} else if (isArrayOfToolUses(streamItem)) {
+				toolsToExecute = streamItem
 				console.debug('Tools to execute:', toolsToExecute)
 			}
 		}
@@ -430,7 +431,7 @@ export const generate = async (
 		// Create statistics and set success status
 		const stats: GenerationStats = {
 			round,
-			characters: llmResponse.length,
+			characters: textResponse.length,
 			duration,
 			model: provider.options.model,
 			vendor: provider.vendor,
@@ -440,15 +441,15 @@ export const generate = async (
 
 		statusBarManager.setSuccessStatus(stats)
 
-		if (llmResponse.length === 0 && toolsToExecute === null) {
+		if (textResponse.length === 0 && toolsToExecute === null) {
 			throw new Error(t('No text generated'))
 		}
 
-		console.debug('✨ ' + t('AI generate') + ' ✨ ', llmResponse)
+		console.debug('✨ ' + t('AI generate') + ' ✨ ', textResponse)
 		if (startPos) {
 			const endPos = editor.getCursor('to')
 			const insertedText = editor.getRange(startPos, endPos)
-			const formattedText = formatTextWithLeadingBreaks(llmResponse)
+			const formattedText = formatTextWithLeadingBreaks(textResponse)
 			if (insertedText !== formattedText) {
 				console.debug('format text with leading breaks')
 				editor.replaceRange(formattedText, startPos, endPos)
@@ -462,8 +463,24 @@ export const generate = async (
 		if (toolsToExecute) {
 			const toolResults = await capabilities.toolRegistry.execute(env, toolsToExecute)
 			const toolExecution = await storeToolExecution(env, toolsToExecute, toolResults)
-			const text = `\n\n#Tool : ${toolExecution.reference}  \n`
+			const toolTag = env.options.toolTags[0]
+			const text = `\n\n#${toolTag} : ${toolExecution.reference}  \n\n`
 			lastEditPos = insertText(editor, text, editorStatus, lastEditPos)
+
+			const nextEndOffset = editor.posToOffset(lastEditPos)
+			insertText(editor, `#${provider.tag} : `, editorStatus, lastEditPos)
+			if (textResponse.length > 0) {
+				msgs.push({
+					role: 'assistant',
+					content: textResponse
+				})
+			}
+			msgs.push({
+				role: 'tool',
+				toolUses: toolExecution.toolUses,
+				toolResults: toolExecution.toolResults
+			})
+			await generate(env, editor, provider, nextEndOffset, statusBarManager, editorStatus, requestController, msgs)
 		}
 	} finally {
 		requestController.cleanup()
