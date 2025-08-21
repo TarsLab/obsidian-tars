@@ -13,7 +13,6 @@ interface Token {
 export interface ZhipuOptions extends BaseOptions {
 	token?: Token
 	tokenExpireInMinutes: number
-	enableWebSearch: boolean
 }
 
 const sendRequestFunc = (settings: ZhipuOptions): SendRequest =>
