@@ -150,7 +150,6 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 			baseURL: originalBaseURL,
 			model,
 			max_tokens,
-			enableWebSearch,
 			enableThinking,
 			budget_tokens = 1600,
 			enableTarsTools
@@ -189,14 +188,6 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 		})
 
 		const tools: unknown[] = []
-
-		// 添加网络搜索工具
-		if (enableWebSearch) {
-			tools.push({
-				name: 'web_search',
-				type: 'web_search_20250305'
-			})
-		}
 
 		// 添加 Tars 工具
 		if (enableTarsTools) {
@@ -383,5 +374,5 @@ export const claudeVendor: Vendor = {
 	sendRequestFunc,
 	models,
 	websiteToObtainKey: 'https://console.anthropic.com',
-	features: ['Text Generation', 'Web Search', 'Reasoning', 'Image Vision', 'PDF Vision', 'Tars Tools']
+	features: ['Text Generation', 'Reasoning', 'Image Vision', 'PDF Vision', 'Tars Tools']
 }
