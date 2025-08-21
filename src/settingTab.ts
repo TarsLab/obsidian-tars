@@ -437,6 +437,18 @@ export class TarsSettingTab extends PluginSettingTab {
 				)
 		}
 
+		if (vendor.features.includes('Tars Tools')) {
+			new Setting(details)
+				.setName(t('Tars Tools'))
+				.setDesc(t('Enable Tars plugin tools for file operations and vault interactions'))
+				.addToggle((toggle) =>
+					toggle.setValue(settings.options.enableTarsTools ?? false).onChange(async (value) => {
+						settings.options.enableTarsTools = value
+						await this.plugin.saveSettings()
+					})
+				)
+		}
+
 		if (vendor.name === claudeVendor.name) {
 			this.addClaudeSections(details, settings.options as ClaudeOptions)
 		}
@@ -593,16 +605,6 @@ export class TarsSettingTab extends PluginSettingTab {
 			.addToggle((toggle) =>
 				toggle.setValue(options.enableThinking ?? false).onChange(async (value) => {
 					options.enableThinking = value
-					await this.plugin.saveSettings()
-				})
-			)
-
-		new Setting(details)
-			.setName(t('Tars Tools'))
-			.setDesc(t('Enable Tars plugin tools for file operations and vault interactions'))
-			.addToggle((toggle) =>
-				toggle.setValue(options.enableTarsTools ?? false).onChange(async (value) => {
-					options.enableTarsTools = value
 					await this.plugin.saveSettings()
 				})
 			)
