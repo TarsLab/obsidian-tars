@@ -351,6 +351,22 @@ export class TarsSettingTab extends PluginSettingTab {
 						}
 					})
 			)
+
+		new Setting(containerEl)
+			.setName(t('Text Editor default view lines'))
+			.setDesc(t('Maximum number of lines to display when viewing a file without specifying a range'))
+			.addText((text) =>
+				text
+					.setPlaceholder('100')
+					.setValue(this.plugin.settings.textEditorDefaultViewLines.toString())
+					.onChange(async (value) => {
+						const lines = parseInt(value)
+						if (lines >= 10 && lines <= 10000) {
+							this.plugin.settings.textEditorDefaultViewLines = lines
+							await this.plugin.saveSettings()
+						}
+					})
+			)
 	}
 
 	createProviderSetting = (index: number, settings: ProviderSettings, isOpen: boolean = false) => {

@@ -12,7 +12,7 @@ import {
 import { t } from './lang/helper'
 import { PluginSettings } from './settings'
 import { ToolRegistry } from './tools'
-import { registerFileSystemTools } from './tools/fileSystem'
+import { registerTextEditorTool } from './tools/textEditor'
 
 export interface RunEnv {
 	readonly app: App
@@ -35,6 +35,7 @@ export interface RunEnv {
 		enableDefaultSystemMsg: boolean
 		defaultSystemMsg: string
 		enableStreamLog: boolean
+		textEditorDefaultViewLines: number
 	}
 }
 
@@ -92,7 +93,8 @@ export const buildRunEnv = async (app: App, settings: PluginSettings): Promise<R
 		enableInternalLinkForAssistantMsg: settings.enableInternalLinkForAssistantMsg,
 		enableDefaultSystemMsg: settings.enableDefaultSystemMsg,
 		defaultSystemMsg: settings.defaultSystemMsg,
-		enableStreamLog: settings.enableStreamLog
+		enableStreamLog: settings.enableStreamLog,
+		textEditorDefaultViewLines: settings.textEditorDefaultViewLines
 	}
 
 	return {
@@ -130,7 +132,8 @@ export const buildCapabilities = (runEnv: RunEnv, enableTarsTools: boolean = fal
 
 	const toolRegistry = new ToolRegistry()
 	if (enableTarsTools) {
-		registerFileSystemTools(toolRegistry)
+		// registerFileSystemTools(toolRegistry)
+		registerTextEditorTool(toolRegistry)
 	}
 
 	return {

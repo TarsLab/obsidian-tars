@@ -48,6 +48,7 @@ export interface PluginSettings {
 	defaultSystemMsg: string
 	enableStreamLog: boolean
 	toolStorageRetentionDays: number
+	textEditorDefaultViewLines: number
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -75,7 +76,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	enableDefaultSystemMsg: false,
 	defaultSystemMsg: '',
 	enableStreamLog: false,
-	toolStorageRetentionDays: 30
+	toolStorageRetentionDays: 30,
+	textEditorDefaultViewLines: 100
 }
 
 export const availableVendors: Vendor[] = [

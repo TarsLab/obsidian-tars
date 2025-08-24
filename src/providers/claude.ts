@@ -189,10 +189,25 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 
 		const tools: unknown[] = []
 
-		// 添加 Tars 工具
+		// 添加内置的 Text Editor Tool (Claude 4 专用)
+		if (
+			enableTarsTools &&
+			(model.includes('claude-4') || model.includes('claude-opus-4') || model.includes('claude-sonnet-4'))
+		) {
+			tools.push({
+				type: 'text_editor_20250728',
+				name: 'str_replace_based_edit_tool'
+			})
+		}
+
+		// 添加 Tars 工具 (自定义工具)
 		if (enableTarsTools) {
 			const tarsTools = toolRegistry.getTools()
 			for (const tool of tarsTools) {
+				// 跳过与内置text editor工具重名的工具
+				if (tool.name === 'str_replace_based_edit_tool') {
+					continue
+				}
 				tools.push({
 					name: tool.name,
 					description: tool.description,
@@ -272,7 +287,7 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 				) {
 					new Notice(getFeatureEmoji('Web Search') + 'Web Search')
 				}
-				// 处理 Tars 工具调用开始
+				// 处理 Tars 工具调用开始 (包括内置和自定义工具)
 				if (enableTarsTools && messageStreamEvent.content_block.type === 'tool_use') {
 					const toolUse = messageStreamEvent.content_block as Anthropic.Messages.ToolUseBlock
 
@@ -282,6 +297,11 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 						buffer: ''
 					})
 					console.debug('Tool use recorded:', toolUse.id, toolUse.name)
+
+					// 为内置text editor工具显示通知
+					if (toolUse.name === 'str_replace_based_edit_tool') {
+						new Notice('📝 Text Editor Tool')
+					}
 				}
 			} else if (messageStreamEvent.type === 'content_block_stop') {
 				// content_block_stop 不需要特殊处理，工具执行在流结束后统一处理
