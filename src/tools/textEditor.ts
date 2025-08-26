@@ -5,44 +5,57 @@ import { Tool, ToolFunction, ToolRegistry, ToolResponse } from './index'
 // Text Editor Tool - 符合 Anthropic text_editor_20250728 规范
 // 支持 view, str_replace, create, insert 命令
 
-// 通用的文件路径验证函数
-function validatePath(path: string): { isValid: boolean; error?: string } {
-	// if (!path || typeof path !== 'string') {
-	// 	return { isValid: false, error: 'Path must be a non-empty string' }
-	// }
-
-	// // 阻止路径遍历攻击
-	// if (path.includes('..') || path.startsWith('/') || path.includes('\\')) {
-	// 	return { isValid: false, error: 'Invalid path: path traversal not allowed' }
-	// }
-
-	return { isValid: true }
-}
-
 // 获取文件对象的辅助函数
-function getFileFromPath(app: App, path: string): { file?: TFile; folder?: TFolder; error?: string } {
+const getFileFromPath = (app: App, path: string): { file?: TFile; folder?: TFolder; error?: string } => {
 	try {
+		const activeFile = app.workspace.getActiveFile()
+		if (!activeFile) return { error: 'No active file' }
+
+		const isRoot = activeFile.parent?.isRoot()
+		const parentPath = activeFile.parent?.path || app.vault.getRoot().path
+
+		// 处理特殊路径
 		if (path === '.') {
-			const activeFile = app.workspace.getActiveFile()
-			if (!activeFile) {
-				return { error: 'No active file' }
-			}
-			path = activeFile.parent?.path || '/'
+			const folder = app.vault.getAbstractFileByPath(parentPath)
+			return folder instanceof TFolder ? { folder } : { error: 'Parent is not a folder' }
 		}
 
-		const abstractFile = app.vault.getAbstractFileByPath(path)
-
-		if (!abstractFile) {
-			return { error: `File or directory not found: ${path}` }
+		// 处理相对路径, obsidian vault 不支持相对格式
+		if (path.startsWith('./')) {
+			path = `${path.slice(2)}`
 		}
 
-		if (abstractFile instanceof TFile) {
-			return { file: abstractFile }
-		} else if (abstractFile instanceof TFolder) {
-			return { folder: abstractFile }
+		// 构建候选路径（按优先级排序）
+		const candidates = []
+		if (!path.includes('/') && !isRoot) {
+			// 纯文件名：优先父目录，后根目录
+			candidates.push(`${parentPath}/${path}`, path)
 		} else {
-			return { error: `Invalid file type: ${path}` }
+			// 带路径：直接使用
+			candidates.push(path)
 		}
+
+		// 对每个候选路径，先尝试原始名称，再尝试.md扩展名
+		for (const candidate of candidates) {
+			// 尝试原始路径
+			let found = app.vault.getAbstractFileByPath(candidate)
+			if (found) {
+				if (found instanceof TFile) return { file: found }
+				if (found instanceof TFolder) return { folder: found }
+			}
+
+			// 尝试添加.md（仅当没有扩展名时）
+			if (!candidate.includes('.') || candidate.endsWith('.')) {
+				found = app.vault.getAbstractFileByPath(`${candidate}.md`)
+				if (found) {
+					console.debug(`Auto-resolved ${path} to ${candidate}.md`)
+					if (found instanceof TFile) return { file: found }
+					if (found instanceof TFolder) return { folder: found }
+				}
+			}
+		}
+
+		return { error: `File or directory not found: ${path}` }
 	} catch (error) {
 		return { error: `Failed to access path: ${error.message}` }
 	}
@@ -52,15 +65,6 @@ function getFileFromPath(app: App, path: string): { file?: TFile; folder?: TFold
 const viewFunction: ToolFunction = async (env: RunEnv, parameters: Record<string, unknown>): Promise<ToolResponse> => {
 	const { app } = env
 	const { path, view_range } = parameters
-
-	// 验证路径
-	const pathValidation = validatePath(path as string)
-	if (!pathValidation.isValid) {
-		return {
-			content: [{ type: 'text', text: pathValidation.error! }],
-			isError: true
-		}
-	}
 
 	const { file, folder, error } = getFileFromPath(app, path as string)
 
@@ -74,7 +78,7 @@ const viewFunction: ToolFunction = async (env: RunEnv, parameters: Record<string
 	try {
 		if (file) {
 			// 查看文件内容
-			const content = await app.vault.read(file)
+			const content = await app.vault.cachedRead(file)
 			const lines = content.split('\n')
 
 			if (view_range && Array.isArray(view_range) && view_range.length === 2) {
@@ -149,15 +153,6 @@ const strReplaceFunction: ToolFunction = async (
 	const { app } = env
 	const { path, old_str, new_str } = parameters
 
-	// 验证路径
-	const pathValidation = validatePath(path as string)
-	if (!pathValidation.isValid) {
-		return {
-			content: [{ type: 'text', text: pathValidation.error! }],
-			isError: true
-		}
-	}
-
 	if (typeof old_str !== 'string' || typeof new_str !== 'string') {
 		return {
 			content: [{ type: 'text', text: 'old_str and new_str must be strings' }],
@@ -222,15 +217,6 @@ const createFunction: ToolFunction = async (
 	const { app } = env
 	const { path, file_text } = parameters
 
-	// 验证路径
-	const pathValidation = validatePath(path as string)
-	if (!pathValidation.isValid) {
-		return {
-			content: [{ type: 'text', text: pathValidation.error! }],
-			isError: true
-		}
-	}
-
 	if (typeof file_text !== 'string') {
 		return {
 			content: [{ type: 'text', text: 'file_text must be a string' }],
@@ -269,15 +255,6 @@ const insertFunction: ToolFunction = async (
 ): Promise<ToolResponse> => {
 	const { app } = env
 	const { path, insert_line, new_str } = parameters
-
-	// 验证路径
-	const pathValidation = validatePath(path as string)
-	if (!pathValidation.isValid) {
-		return {
-			content: [{ type: 'text', text: pathValidation.error! }],
-			isError: true
-		}
-	}
 
 	if (typeof new_str !== 'string' || typeof insert_line !== 'number') {
 		return {
@@ -328,7 +305,7 @@ const insertFunction: ToolFunction = async (
 const textEditorTool: Tool = {
 	name: 'str_replace_based_edit_tool',
 	description:
-		'A comprehensive text editor tool supporting view, str_replace, create, and insert commands for file manipulation.',
+		'A comprehensive text editor tool supporting view, str_replace, create, and insert commands for file manipulation. Automatically resolves .md files when extension is omitted.',
 	input_schema: {
 		type: 'object',
 		properties: {
@@ -340,7 +317,7 @@ const textEditorTool: Tool = {
 			},
 			path: {
 				type: 'string',
-				description: 'The path to the file or directory'
+				description: 'The path to the file or directory. For markdown files, .md extension can be omitted.'
 			},
 			view_range: {
 				type: 'array',
