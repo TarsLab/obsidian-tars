@@ -81,7 +81,7 @@ const convertMessagesToAnthropicFormat = async (
 			// 工具消息需要拆分处理
 			const toolMsg = currentMsg as ToolMessage
 
-			// 1. 将 toolUses 添加到前一个 assistant 消息
+			// 1. 将 toolUses 添加到前一个 assistant 消息，或创建新的 assistant 消息
 			if (anthropicMessages.length > 0 && anthropicMessages[anthropicMessages.length - 1].role === 'assistant') {
 				const lastAssistantMsg = anthropicMessages[anthropicMessages.length - 1]
 				// 添加 tool_use 块到 assistant 消息的 content
@@ -93,6 +93,19 @@ const convertMessagesToAnthropicFormat = async (
 						input: toolUse.input
 					} as Anthropic.ToolUseBlockParam)
 				}
+			} else {
+				// 没有前一个 assistant 消息，创建一个新的
+				const toolUseBlocks: Anthropic.ToolUseBlockParam[] = toolMsg.toolUses.map((toolUse) => ({
+					type: 'tool_use',
+					id: toolUse.id,
+					name: toolUse.name,
+					input: toolUse.input
+				}))
+
+				anthropicMessages.push({
+					role: 'assistant',
+					content: toolUseBlocks
+				})
 			}
 
 			// 2. 将 toolResults 添加到下一个 user 消息（如果存在）
