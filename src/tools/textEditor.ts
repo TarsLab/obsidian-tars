@@ -170,40 +170,43 @@ const strReplaceFunction: ToolFunction = async (
 	}
 
 	try {
-		const content = await app.vault.read(file)
-
-		// 检查 old_str 是否存在
-		if (!content.includes(old_str)) {
-			return {
-				content: [{ type: 'text', text: `String not found in file: ${old_str}` }],
-				isError: true
+		// 使用 vault.process 原子性地读取、修改和保存
+		await app.vault.process(file, (content) => {
+			// 检查 old_str 是否存在
+			if (!content.includes(old_str)) {
+				throw new Error(`String not found in file: ${old_str}`)
 			}
-		}
 
-		// 检查是否有多个匹配
-		const matches = content.split(old_str).length - 1
-		if (matches > 1) {
-			return {
-				content: [
-					{
-						type: 'text',
-						text: `Multiple matches found (${matches}). Please provide a more specific string that matches exactly once.`
-					}
-				],
-				isError: true
+			// 检查是否有多个匹配
+			const matches = content.split(old_str).length - 1
+			if (matches > 1) {
+				throw new Error(
+					`Multiple matches found (${matches}). Please provide a more specific string that matches exactly once.`
+				)
 			}
-		}
 
-		// 执行替换
-		const newContent = content.replace(old_str, new_str)
-		await app.vault.modify(file, newContent)
+			// 执行替换并返回新内容
+			return content.replace(old_str, new_str)
+		})
 
 		return {
 			content: [{ type: 'text', text: `Successfully replaced text in ${path}` }]
 		}
 	} catch (error) {
+		// 处理 vault.process 内部抛出的错误和其他错误
+		const errorMessage = error.message || 'Unknown error occurred'
+
+		// 如果是我们预期的业务错误，返回错误响应
+		if (errorMessage.includes('String not found') || errorMessage.includes('Multiple matches found')) {
+			return {
+				content: [{ type: 'text', text: errorMessage }],
+				isError: true
+			}
+		}
+
+		// 其他未预期的错误
 		return {
-			content: [{ type: 'text', text: `Failed to replace text: ${error.message}` }],
+			content: [{ type: 'text', text: `Failed to replace text: ${errorMessage}` }],
 			isError: true
 		}
 	}
@@ -273,29 +276,38 @@ const insertFunction: ToolFunction = async (
 	}
 
 	try {
-		const content = await app.vault.read(file)
-		const lines = content.split('\n')
+		// 使用 vault.process 原子性地读取、修改和保存
+		await app.vault.process(file, (content) => {
+			const lines = content.split('\n')
 
-		// 验证行号
-		if (insert_line < 0 || insert_line > lines.length) {
-			return {
-				content: [{ type: 'text', text: `Invalid line number: ${insert_line}. File has ${lines.length} lines.` }],
-				isError: true
+			// 验证行号
+			if (insert_line < 0 || insert_line > lines.length) {
+				throw new Error(`Invalid line number: ${insert_line}. File has ${lines.length} lines.`)
 			}
-		}
 
-		// 插入文本
-		lines.splice(insert_line, 0, new_str)
-		const newContent = lines.join('\n')
-
-		await app.vault.modify(file, newContent)
+			// 插入文本
+			lines.splice(insert_line, 0, new_str)
+			return lines.join('\n')
+		})
 
 		return {
 			content: [{ type: 'text', text: `Successfully inserted text at line ${insert_line} in ${path}` }]
 		}
 	} catch (error) {
+		// 处理 vault.process 内部抛出的错误和其他错误
+		const errorMessage = error.message || 'Unknown error occurred'
+
+		// 如果是我们预期的业务错误，返回错误响应
+		if (errorMessage.includes('Invalid line number')) {
+			return {
+				content: [{ type: 'text', text: errorMessage }],
+				isError: true
+			}
+		}
+
+		// 其他未预期的错误
 		return {
-			content: [{ type: 'text', text: `Failed to insert text: ${error.message}` }],
+			content: [{ type: 'text', text: `Failed to insert text: ${errorMessage}` }],
 			isError: true
 		}
 	}
