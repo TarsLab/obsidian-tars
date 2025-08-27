@@ -1,4 +1,5 @@
 import { RunEnv } from 'src/environment'
+import { textEditorFunction } from './textEditor'
 
 // 工具接口定义
 export interface Tool {
@@ -57,7 +58,7 @@ export interface ToolExecution {
 // 工具执行函数类型
 export type ToolFunction = (env: RunEnv, parameters: Record<string, unknown>) => Promise<ToolResponse>
 
-// 工具注册表
+// 工具注册表, 内置了 str_replace_based_edit_tool
 export class ToolRegistry {
 	private tools: Map<string, { tool: Tool; execute: ToolFunction }> = new Map()
 
@@ -74,11 +75,16 @@ export class ToolRegistry {
 
 		for (const toolUse of toolUses) {
 			try {
-				const toolInfo = this.tools.get(toolUse.name)
-				if (!toolInfo) {
-					throw new Error(`Tool not found: ${toolUse.name}`)
+				let result = null
+				if (toolUse.name === 'str_replace_based_edit_tool') {
+					result = await textEditorFunction(env, toolUse.input)
+				} else {
+					const toolInfo = this.tools.get(toolUse.name)
+					if (!toolInfo) {
+						throw new Error(`Tool not found: ${toolUse.name}`)
+					}
+					result = await toolInfo.execute(env, toolUse.input)
 				}
-				const result = await toolInfo.execute(env, toolUse.input)
 
 				results.push({
 					type: 'tool_result',

@@ -1,12 +1,12 @@
 import { App, TFile, TFolder } from 'obsidian'
 import { RunEnv } from 'src/environment'
-import { Tool, ToolFunction, ToolRegistry, ToolResponse } from './index'
+import { ToolFunction, ToolResponse } from './index'
 
 // Text Editor Tool - 符合 Anthropic text_editor_20250728 规范
 // 支持 view, str_replace, create, insert 命令
 
 // 获取文件对象的辅助函数
-const getFileFromPath = (app: App, path: string): { file?: TFile; folder?: TFolder; error?: string } => {
+export const getFileFromPath = (app: App, path: string): { file?: TFile; folder?: TFolder; error?: string } => {
 	try {
 		const activeFile = app.workspace.getActiveFile()
 		if (!activeFile) return { error: 'No active file' }
@@ -62,7 +62,10 @@ const getFileFromPath = (app: App, path: string): { file?: TFile; folder?: TFold
 }
 
 // view 命令功能实现
-const viewFunction: ToolFunction = async (env: RunEnv, parameters: Record<string, unknown>): Promise<ToolResponse> => {
+export const viewFunction: ToolFunction = async (
+	env: RunEnv,
+	parameters: Record<string, unknown>
+): Promise<ToolResponse> => {
 	const { app } = env
 	const { path, view_range } = parameters
 
@@ -257,11 +260,11 @@ const insertFunction: ToolFunction = async (
 	parameters: Record<string, unknown>
 ): Promise<ToolResponse> => {
 	const { app } = env
-	const { path, insert_line, new_str } = parameters
+	const { path, insert_line, insert_text } = parameters
 
-	if (typeof new_str !== 'string' || typeof insert_line !== 'number') {
+	if (typeof insert_text !== 'string' || typeof insert_line !== 'number') {
 		return {
-			content: [{ type: 'text', text: 'new_str must be a string and insert_line must be a number' }],
+			content: [{ type: 'text', text: 'insert_text must be a string and insert_line must be a number' }],
 			isError: true
 		}
 	}
@@ -286,7 +289,7 @@ const insertFunction: ToolFunction = async (
 			}
 
 			// 插入文本
-			lines.splice(insert_line, 0, new_str)
+			lines.splice(insert_line, 0, insert_text)
 			return lines.join('\n')
 		})
 
@@ -313,53 +316,7 @@ const insertFunction: ToolFunction = async (
 	}
 }
 
-// 统一的文本编辑器工具
-const textEditorTool: Tool = {
-	name: 'str_replace_based_edit_tool',
-	description:
-		'A comprehensive text editor tool supporting view, str_replace, create, and insert commands for file manipulation. Automatically resolves .md files when extension is omitted.',
-	input_schema: {
-		type: 'object',
-		properties: {
-			command: {
-				type: 'string',
-				enum: ['view', 'str_replace', 'create', 'insert'],
-				description:
-					'The command to execute: view (read file/directory), str_replace (replace text), create (new file), insert (insert at line)'
-			},
-			path: {
-				type: 'string',
-				description: 'The path to the file or directory. For markdown files, .md extension can be omitted.'
-			},
-			view_range: {
-				type: 'array',
-				items: { type: 'integer' },
-				minItems: 2,
-				maxItems: 2,
-				description: 'For view command: [start_line, end_line] range. Use -1 for end_line to read to end.'
-			},
-			old_str: {
-				type: 'string',
-				description: 'For str_replace command: the exact string to replace'
-			},
-			new_str: {
-				type: 'string',
-				description: 'For str_replace/insert command: the new text content'
-			},
-			file_text: {
-				type: 'string',
-				description: 'For create command: the initial file content'
-			},
-			insert_line: {
-				type: 'integer',
-				description: 'For insert command: line number to insert after (0 for beginning)'
-			}
-		},
-		required: ['command', 'path']
-	}
-}
-
-const textEditorFunction: ToolFunction = async (
+export const textEditorFunction: ToolFunction = async (
 	env: RunEnv,
 	parameters: Record<string, unknown>
 ): Promise<ToolResponse> => {
@@ -380,9 +337,4 @@ const textEditorFunction: ToolFunction = async (
 				isError: true
 			}
 	}
-}
-
-// 注册文本编辑器工具
-export function registerTextEditorTool(toolRegistry: ToolRegistry) {
-	toolRegistry.register(textEditorTool, textEditorFunction)
 }

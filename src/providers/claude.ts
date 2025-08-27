@@ -217,10 +217,6 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 		if (enableTarsTools) {
 			const tarsTools = toolRegistry.getTools()
 			for (const tool of tarsTools) {
-				// 跳过与内置text editor工具重名的工具
-				if (tool.name === 'str_replace_based_edit_tool') {
-					continue
-				}
 				tools.push({
 					name: tool.name,
 					description: tool.description,
@@ -228,7 +224,7 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 				})
 			}
 		}
-
+		console.debug('Using tools:', tools)
 		const requestParams: Anthropic.MessageCreateParams = {
 			model,
 			max_tokens,

@@ -398,9 +398,10 @@ export const generate = async (
 		if (!vendor) {
 			throw new Error('No vendor found ' + provider.vendor)
 		}
-		const msgs = messages ?? (await buildMessages(env, endOffset))
+		const isContinuation = messages !== undefined
+		const msgs = isContinuation ? messages : await buildMessages(env, endOffset)
 		const round = msgs.filter((m) => m.role === 'assistant').length + 1
-		const capabilities = buildCapabilities(env, provider.options.enableTarsTools)
+		const capabilities = buildCapabilities(env, provider.vendor, provider.options.enableTarsTools)
 		const sendRequest = await createDecoratedSendRequest(env, vendor, provider)
 
 		const startTime = new Date()
@@ -410,12 +411,18 @@ export const generate = async (
 		const controller = requestController.getController()
 
 		let lastEditPos: EditorPosition | null = null
-		let startPos: EditorPosition | null = null
+		let textStartPos: EditorPosition | null = null
 		let toolsToExecute: ToolUse[] | null = null
-		for await (const streamItem of sendRequest(msgs, controller, capabilities)) {
-			if (startPos == null) startPos = editor.getCursor('to')
 
+		let needsProviderTag = isContinuation ? true : false
+		for await (const streamItem of sendRequest(msgs, controller, capabilities)) {
 			if (isTextOutput(streamItem)) {
+				if (needsProviderTag) {
+					lastEditPos = insertText(editor, `#${provider.tag} : `, editorStatus, lastEditPos)
+					needsProviderTag = false
+				}
+				if (textStartPos == null) textStartPos = editor.getCursor('to')
+
 				lastEditPos = insertText(editor, streamItem, editorStatus, lastEditPos)
 				textResponse += streamItem
 				statusBarManager.updateGeneratingProgress(textResponse.length)
@@ -446,13 +453,13 @@ export const generate = async (
 		}
 
 		console.debug('✨ ' + t('AI generate') + ' ✨ ', textResponse)
-		if (startPos) {
-			const endPos = editor.getCursor('to')
-			const insertedText = editor.getRange(startPos, endPos)
+		if (textStartPos && textResponse.length > 0) {
+			const textEndPos = editor.getCursor('to')
+			const insertedText = editor.getRange(textStartPos, textEndPos)
 			const formattedText = formatTextWithLeadingBreaks(textResponse)
 			if (insertedText !== formattedText) {
 				console.debug('format text with leading breaks')
-				editor.replaceRange(formattedText, startPos, endPos)
+				editor.replaceRange(formattedText, textStartPos, textEndPos)
 			}
 		}
 
@@ -464,11 +471,12 @@ export const generate = async (
 			const toolResults = await capabilities.toolRegistry.execute(env, toolsToExecute)
 			const toolExecution = await storeToolExecution(env, toolsToExecute, toolResults)
 			const toolTag = env.options.toolTags[0]
-			const text = `\n\n#${toolTag} : ${toolExecution.reference}  \n\n`
+			const lineBreaks = textResponse.length > 0 ? '\n\n' : ''
+			const text = `${lineBreaks}#${toolTag} : ${toolExecution.reference}  \n\n`
 			lastEditPos = insertText(editor, text, editorStatus, lastEditPos)
 
 			const nextEndOffset = editor.posToOffset(lastEditPos)
-			insertText(editor, `#${provider.tag} : `, editorStatus, lastEditPos)
+
 			if (textResponse.length > 0) {
 				msgs.push({
 					role: 'assistant',
