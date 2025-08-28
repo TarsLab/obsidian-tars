@@ -26,8 +26,10 @@ const readFileFunction: ToolFunction = async (
 ): Promise<ToolResponse> => {
 	const { app } = env
 	const { path } = parameters
+	const desc = `Reading file: ${path}`
 	if (typeof path !== 'string') {
 		return {
+			desc,
 			content: [{ type: 'text', text: 'Invalid path parameter' }],
 			isError: true
 		}
@@ -37,6 +39,7 @@ const readFileFunction: ToolFunction = async (
 		const file = app.vault.getAbstractFileByPath(path)
 		if (!file || !(file instanceof TFile)) {
 			return {
+				desc,
 				content: [{ type: 'text', text: `File not found: ${path}` }],
 				isError: true
 			}
@@ -44,10 +47,12 @@ const readFileFunction: ToolFunction = async (
 
 		const content = await app.vault.read(file)
 		return {
+			desc,
 			content: [{ type: 'text', text: `File contents of ${path}:\n\n${content}` }]
 		}
 	} catch (error) {
 		return {
+			desc,
 			content: [{ type: 'text', text: `Failed to read file: ${error.message}` }],
 			isError: true
 		}
@@ -85,9 +90,11 @@ const writeFileFunction: ToolFunction = async (
 ): Promise<ToolResponse> => {
 	const { app } = env
 	const { path, content, createIfNotExists = true } = parameters
+	const desc = `Writing to file: ${path}`
 
 	if (typeof path !== 'string' || typeof content !== 'string') {
 		return {
+			desc,
 			content: [{ type: 'text', text: 'Invalid path or content parameter' }],
 			isError: true
 		}
@@ -100,29 +107,32 @@ const writeFileFunction: ToolFunction = async (
 			// Create new file
 			await app.vault.create(path, content)
 			return {
+				desc,
 				content: [{ type: 'text', text: `File created successfully: ${path}` }]
 			}
 		} else if (file instanceof TFile) {
 			// Update existing file
 			await app.vault.modify(file, content)
 			return {
+				desc,
 				content: [{ type: 'text', text: `File updated successfully: ${path}` }]
 			}
 		} else {
 			return {
+				desc,
 				content: [{ type: 'text', text: `File not found and createIfNotExists is false: ${path}` }],
 				isError: true
 			}
 		}
 	} catch (error) {
 		return {
+			desc,
 			content: [{ type: 'text', text: `Failed to write file: ${error.message}` }],
 			isError: true
 		}
 	}
 }
 
-// 列出文件夹内容工具
 const listDirectoryTool: Tool = {
 	name: 'list_directory',
 	description: 'List the contents of a directory in the vault',
@@ -144,41 +154,62 @@ const listDirectoryFunction: ToolFunction = async (
 ): Promise<ToolResponse> => {
 	const { app } = env
 	const { path = '' } = parameters
+	const desc = `Listing directory: ${path || 'root'}`
 
 	if (typeof path !== 'string') {
 		return {
+			desc,
 			content: [{ type: 'text', text: 'Invalid path parameter' }],
 			isError: true
 		}
 	}
 
 	try {
-		const folder = path === '' ? app.vault.getRoot() : app.vault.getAbstractFileByPath(path)
+		const activeFile = app.workspace.getActiveFile()
+		if (!activeFile)
+			return {
+				desc,
+				content: [{ type: 'text', text: 'No active file' }],
+				isError: true
+			}
 
+		const rootPath = app.vault.getRoot().path
+		const parentPath = activeFile.parent?.path || rootPath
+
+		let folderPath = null
+		if (path === '') {
+			folderPath = rootPath
+		} else if (path === '.') {
+			folderPath = parentPath
+		} else {
+			folderPath = path
+		}
+
+		const folder = app.vault.getFolderByPath(folderPath)
 		if (!folder || !(folder instanceof TFolder)) {
 			console.error(`Directory not found: ${path || 'root'}`)
 			return {
+				desc,
 				content: [{ type: 'text', text: `Directory not found: ${path || 'root'}` }],
 				isError: true
 			}
 		}
 
-		const items = folder.children.map((child) => {
-			const type = child instanceof TFile ? 'file' : 'folder'
-			return `${type}: ${child.name}`
-		})
+		const items = folder.children.map((child) => child.path)
 
 		return {
+			desc,
 			content: [
 				{
 					type: 'text',
-					text: `Contents of ${path || 'root'}:\n${items.join('\n')}`
+					text: `Directory: ${folderPath}\n\n${items.join('\n')}`
 				}
 			]
 		}
 	} catch (error) {
 		console.error(error)
 		return {
+			desc,
 			content: [{ type: 'text', text: `Failed to list directory: ${error.message}` }],
 			isError: true
 		}
@@ -207,9 +238,11 @@ const deleteFileFunction: ToolFunction = async (
 ): Promise<ToolResponse> => {
 	const { app } = env
 	const { path } = parameters
+	const desc = `Deleting file: ${path}`
 
 	if (typeof path !== 'string') {
 		return {
+			desc,
 			content: [{ type: 'text', text: 'Invalid path parameter' }],
 			isError: true
 		}
@@ -219,6 +252,7 @@ const deleteFileFunction: ToolFunction = async (
 		const file = app.vault.getAbstractFileByPath(path)
 		if (!file) {
 			return {
+				desc,
 				content: [{ type: 'text', text: `File not found: ${path}` }],
 				isError: true
 			}
@@ -226,10 +260,12 @@ const deleteFileFunction: ToolFunction = async (
 
 		await app.vault.delete(file)
 		return {
+			desc,
 			content: [{ type: 'text', text: `File deleted successfully: ${path}` }]
 		}
 	} catch (error) {
 		return {
+			desc,
 			content: [{ type: 'text', text: `Failed to delete file: ${error.message}` }],
 			isError: true
 		}

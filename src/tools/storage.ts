@@ -3,16 +3,6 @@ import { RunEnv } from 'src/environment'
 import { ToolExecution, ToolResult, ToolUse } from '.'
 import { TOOLS_DIRECTORY } from '../settings'
 
-// 快速获取 JSONL 文件行数（内存友好）
-export const getJsonlLineCount = async (vault: Vault, filePath: string): Promise<number> => {
-	if (!(await vault.adapter.exists(filePath))) {
-		return 0
-	}
-
-	const content = await vault.adapter.read(filePath)
-	return getContentLineCount(content)
-}
-
 // 计算内容的行数
 const getContentLineCount = (content: string): number => {
 	if (content.length === 0) {
@@ -29,7 +19,7 @@ const getContentLineCount = (content: string): number => {
 
 export const ensureToolsDirectory = async (vault: Vault): Promise<void> => {
 	const tools_directory_path = normalizePath(TOOLS_DIRECTORY)
-	if (!(await vault.adapter.exists(tools_directory_path))) {
+	if (!vault.getFolderByPath(tools_directory_path)) {
 		await vault.createFolder(tools_directory_path)
 	}
 }
@@ -56,7 +46,9 @@ export const storeToolExecution = async (
 	// 确保目录存在
 	await ensureToolsDirectory(vault)
 
+	const desc = toolResults.map((r) => r.desc).join('; ')
 	const data = {
+		desc,
 		tool_uses: toolUses,
 		tool_results: toolResults
 	}
@@ -80,50 +72,101 @@ export const storeToolExecution = async (
 	return { type: 'tool_execution', reference, toolUses, toolResults }
 }
 
-export const readToolExecution = async (vault: Vault, reference: string): Promise<ToolExecution> => {
-	// 解析 reference: 前6位是日期(YYMMDD)，后3位是行号(001, 002, ...)
-	if (reference.length < 9) {
-		throw new Error(`Invalid reference format: ${reference}. Expected format: YYMMDDNNN`)
+// 按文件分组的引用信息
+interface FileReferences {
+	filePath: string
+	dateStr: string
+	lineNumbers: Array<{ reference: string; lineNumber: number }>
+}
+
+// 批量读取工具执行结果
+export const readToolExecutions = async (vault: Vault, references: string[]): Promise<Map<string, ToolExecution>> => {
+	if (references.length === 0) {
+		return new Map()
 	}
 
-	const dateStr = reference.slice(0, 6) // 前6位：日期
-	const lineNumberStr = reference.slice(6) // 行号
-	const lineNumber = parseInt(lineNumberStr, 10)
+	// 1. 解析和分组 references
+	const fileGroups = new Map<string, FileReferences>()
 
-	if (isNaN(lineNumber) || lineNumber < 1) {
-		throw new Error(`Invalid line number in reference: ${reference}`)
+	for (const reference of references) {
+		// 解析 reference: 前6位是日期(YYMMDD)，后3位是行号(001, 002, ...)
+		if (reference.length < 9) {
+			throw new Error(`Invalid reference format: ${reference}. Expected format: YYMMDDNNN`)
+		}
+
+		const dateStr = reference.slice(0, 6) // 前6位：日期
+		const lineNumberStr = reference.slice(6) // 行号
+		const lineNumber = parseInt(lineNumberStr, 10)
+
+		if (isNaN(lineNumber) || lineNumber < 1) {
+			throw new Error(`Invalid line number in reference: ${reference}`)
+		}
+
+		const jsonlFile = `${dateStr}.jsonl`
+		const filePath = normalizePath(`${TOOLS_DIRECTORY}/${jsonlFile}`)
+
+		if (!fileGroups.has(filePath)) {
+			fileGroups.set(filePath, {
+				filePath,
+				dateStr,
+				lineNumbers: []
+			})
+		}
+
+		fileGroups.get(filePath)!.lineNumbers.push({ reference, lineNumber })
 	}
 
-	const jsonlFile = `${dateStr}.jsonl`
-	const jsonlPath = normalizePath(`${TOOLS_DIRECTORY}/${jsonlFile}`)
+	const fileContents = new Map<string, string[]>()
+	const fileReads = Array.from(fileGroups.keys()).map(async (filePath) => {
+		// const content = await vault.adapter.read(filePath)
+		const file = vault.getFileByPath(filePath)
+		if (!file) {
+			throw new Error(`Tool execution file not found: ${filePath}`)
+		}
+		const content = await vault.cachedRead(file)
+		const lines = content.split('\n').filter((line) => line.trim().length > 0)
+		return { filePath, lines }
+	})
+	const fileResults = await Promise.all(fileReads)
 
-	// 检查文件是否存在
-	if (!(await vault.adapter.exists(jsonlPath))) {
-		throw new Error(`Tool execution file not found: ${jsonlPath}`)
+	for (const { filePath, lines } of fileResults) {
+		fileContents.set(filePath, lines)
 	}
 
-	// 读取文件内容
-	const content = await vault.adapter.read(jsonlPath)
-	const lines = content.split('\n').filter((line) => line.trim().length > 0)
+	// 批量解析数据
+	const results = new Map<string, ToolExecution>()
 
-	// 检查行号是否有效
-	if (lineNumber > lines.length) {
-		throw new Error(`Line number ${lineNumber} exceeds file length ${lines.length} in ${jsonlPath}`)
+	for (const { filePath, lineNumbers } of fileGroups.values()) {
+		const lines = fileContents.get(filePath)!
+
+		for (const { reference, lineNumber } of lineNumbers) {
+			// 检查行号是否有效
+			if (lineNumber > lines.length) {
+				throw new Error(`Line number ${lineNumber} exceeds file length ${lines.length} in ${filePath}`)
+			}
+
+			// 获取指定行的内容（行号从1开始，数组索引从0开始）
+			const targetLine = lines[lineNumber - 1]
+
+			try {
+				const data = JSON.parse(targetLine)
+
+				// 验证数据格式
+				if (!data.tool_uses || !data.tool_results) {
+					throw new Error(`Invalid data format in ${filePath} at line ${lineNumber}`)
+				}
+
+				results.set(reference, {
+					type: 'tool_execution',
+					reference,
+					toolUses: data.tool_uses,
+					toolResults: data.tool_results
+				})
+			} catch (parseError) {
+				throw new Error(`Failed to parse JSON in ${filePath} at line ${lineNumber}: ${parseError.message}`)
+			}
+		}
 	}
 
-	// 获取指定行的内容（行号从1开始，数组索引从0开始）
-	const targetLine = lines[lineNumber - 1]
-	const data = JSON.parse(targetLine)
-
-	// 验证数据格式
-	if (!data.tool_uses || !data.tool_results) {
-		throw new Error(`Invalid data format in ${jsonlPath} at line ${lineNumber}`)
-	}
-
-	return {
-		type: 'tool_execution',
-		reference,
-		toolUses: data.tool_uses,
-		toolResults: data.tool_results
-	}
+	return results
 }

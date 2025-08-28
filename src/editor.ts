@@ -6,8 +6,8 @@ import { withStreamLogging } from './providers/decorator'
 import { APP_FOLDER, EditorStatus, availableVendors } from './settings'
 import { GenerationStats, StatusBarManager } from './statusBarManager'
 import { TagRole } from './suggest'
-import { ToolUse } from './tools'
-import { readToolExecution, storeToolExecution } from './tools/storage'
+import { ToolExecution, ToolUse, formatToolExecution, parseReferenceFromFormattedExecution } from './tools'
+import { readToolExecutions, storeToolExecution } from './tools/storage'
 
 interface Tag extends Omit<Message, 'content'> {
 	readonly tag: TagRole
@@ -341,22 +341,41 @@ const createDecoratedSendRequest = async (env: RunEnv, vendor: Vendor, provider:
 
 export const buildMessages = async (env: RunEnv, endOffset: number) => {
 	const taggedMessages = await extractTaggedMessages(env, 0, endOffset)
-	const messages: Message[] = await Promise.all(
-		taggedMessages.map(async (c) => {
-			if (c.role === 'tool') {
-				// Handle tool messages - these should have toolUses and toolResults
-				const execution = await readToolExecution(env.vault, c.content)
-				return {
-					role: 'tool',
-					toolUses: execution.toolUses,
-					toolResults: execution.toolResults
-				} as ToolMessage
-			} else {
-				// Handle chat messages
-				return c.embeds ? { role: c.role, content: c.content, embeds: c.embeds } : { role: c.role, content: c.content }
-			}
+
+	// 1. 收集所有工具消息的 references
+	const toolReferences = taggedMessages
+		.filter((msg) => msg.role === 'tool')
+		.map((msg) => {
+			const reference = parseReferenceFromFormattedExecution(msg.content)
+			if (!reference)
+				throw new Error(
+					`Tool message missing or invalid reference ID in content (line ${msg.line[0]}-${msg.line[1]}): ` + msg.content
+				)
+			return reference
 		})
-	)
+
+	// 2. 批量读取所有工具执行结果
+	const toolExecutions =
+		toolReferences.length > 0 ? await readToolExecutions(env.vault, toolReferences) : new Map<string, ToolExecution>()
+
+	// 3. 构建消息数组
+	const messages: Message[] = taggedMessages.map((msg) => {
+		if (msg.role === 'tool') {
+			const reference = parseReferenceFromFormattedExecution(msg.content)!
+			const execution = toolExecutions.get(reference)!
+			return {
+				role: 'tool',
+				toolUses: execution.toolUses,
+				toolResults: execution.toolResults
+			} as ToolMessage
+		} else {
+			// Handle chat messages
+			return msg.embeds
+				? { role: msg.role, content: msg.content, embeds: msg.embeds }
+				: { role: msg.role, content: msg.content }
+		}
+	})
+
 	console.debug('messages', messages)
 
 	if (messages.length === 0) {
@@ -472,7 +491,7 @@ export const generate = async (
 			const toolExecution = await storeToolExecution(env, toolsToExecute, toolResults)
 			const toolTag = env.options.toolTags[0]
 			const lineBreaks = textResponse.length > 0 ? '\n\n' : ''
-			const text = `${lineBreaks}#${toolTag} : ${toolExecution.reference}  \n\n`
+			const text = `${lineBreaks}#${toolTag} : ${formatToolExecution(toolExecution)}  \n\n`
 			lastEditPos = insertText(editor, text, editorStatus, lastEditPos)
 
 			const nextEndOffset = editor.posToOffset(lastEditPos)

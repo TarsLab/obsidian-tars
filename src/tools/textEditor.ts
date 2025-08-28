@@ -70,9 +70,10 @@ export const viewFunction: ToolFunction = async (
 	const { path, view_range } = parameters
 
 	const { file, folder, error } = getFileFromPath(app, path as string)
-
+	const desc = `Viewing file: ${file?.path || folder?.path}`
 	if (error) {
 		return {
+			desc,
 			content: [{ type: 'text', text: error }],
 			isError: true
 		}
@@ -93,6 +94,7 @@ export const viewFunction: ToolFunction = async (
 				const numberedLines = selectedLines.map((line, index) => `${start + index + 1}: ${line}`)
 
 				return {
+					desc,
 					content: [
 						{
 							type: 'text',
@@ -113,6 +115,7 @@ export const viewFunction: ToolFunction = async (
 					: ''
 
 				return {
+					desc,
 					content: [
 						{
 							type: 'text',
@@ -127,6 +130,7 @@ export const viewFunction: ToolFunction = async (
 			console.debug('Directory contents:', items)
 
 			return {
+				desc,
 				content: [
 					{
 						type: 'text',
@@ -137,11 +141,13 @@ export const viewFunction: ToolFunction = async (
 		}
 
 		return {
+			desc,
 			content: [{ type: 'text', text: `Unknown error viewing: ${path}` }],
 			isError: true
 		}
 	} catch (error) {
 		return {
+			desc,
 			content: [{ type: 'text', text: `Failed to read: ${error.message}` }],
 			isError: true
 		}
@@ -156,8 +162,10 @@ const strReplaceFunction: ToolFunction = async (
 	const { app } = env
 	const { path, old_str, new_str } = parameters
 
+	const desc = `Replacing "${old_str}" with "${new_str}" in ${path}`
 	if (typeof old_str !== 'string' || typeof new_str !== 'string') {
 		return {
+			desc,
 			content: [{ type: 'text', text: 'old_str and new_str must be strings' }],
 			isError: true
 		}
@@ -167,6 +175,7 @@ const strReplaceFunction: ToolFunction = async (
 
 	if (error || !file) {
 		return {
+			desc,
 			content: [{ type: 'text', text: error || `File not found: ${path}` }],
 			isError: true
 		}
@@ -193,6 +202,7 @@ const strReplaceFunction: ToolFunction = async (
 		})
 
 		return {
+			desc,
 			content: [{ type: 'text', text: `Successfully replaced text in ${path}` }]
 		}
 	} catch (error) {
@@ -202,6 +212,7 @@ const strReplaceFunction: ToolFunction = async (
 		// 如果是我们预期的业务错误，返回错误响应
 		if (errorMessage.includes('String not found') || errorMessage.includes('Multiple matches found')) {
 			return {
+				desc,
 				content: [{ type: 'text', text: errorMessage }],
 				isError: true
 			}
@@ -209,6 +220,7 @@ const strReplaceFunction: ToolFunction = async (
 
 		// 其他未预期的错误
 		return {
+			desc,
 			content: [{ type: 'text', text: `Failed to replace text: ${errorMessage}` }],
 			isError: true
 		}
@@ -223,8 +235,10 @@ const createFunction: ToolFunction = async (
 	const { app } = env
 	const { path, file_text } = parameters
 
+	const desc = `Creating file: ${path}`
 	if (typeof file_text !== 'string') {
 		return {
+			desc,
 			content: [{ type: 'text', text: 'file_text must be a string' }],
 			isError: true
 		}
@@ -235,6 +249,7 @@ const createFunction: ToolFunction = async (
 		const existingFile = app.vault.getAbstractFileByPath(path as string)
 		if (existingFile) {
 			return {
+				desc,
 				content: [{ type: 'text', text: `File already exists: ${path}` }],
 				isError: true
 			}
@@ -244,10 +259,12 @@ const createFunction: ToolFunction = async (
 		await app.vault.create(path as string, file_text)
 
 		return {
+			desc,
 			content: [{ type: 'text', text: `Successfully created file: ${path}` }]
 		}
 	} catch (error) {
 		return {
+			desc,
 			content: [{ type: 'text', text: `Failed to create file: ${error.message}` }],
 			isError: true
 		}
@@ -262,8 +279,10 @@ const insertFunction: ToolFunction = async (
 	const { app } = env
 	const { path, insert_line, insert_text } = parameters
 
+	const desc = `Inserting text at line ${insert_line} in ${path}`
 	if (typeof insert_text !== 'string' || typeof insert_line !== 'number') {
 		return {
+			desc,
 			content: [{ type: 'text', text: 'insert_text must be a string and insert_line must be a number' }],
 			isError: true
 		}
@@ -273,6 +292,7 @@ const insertFunction: ToolFunction = async (
 
 	if (error || !file) {
 		return {
+			desc,
 			content: [{ type: 'text', text: error || `File not found: ${path}` }],
 			isError: true
 		}
@@ -294,6 +314,7 @@ const insertFunction: ToolFunction = async (
 		})
 
 		return {
+			desc,
 			content: [{ type: 'text', text: `Successfully inserted text at line ${insert_line} in ${path}` }]
 		}
 	} catch (error) {
@@ -303,6 +324,7 @@ const insertFunction: ToolFunction = async (
 		// 如果是我们预期的业务错误，返回错误响应
 		if (errorMessage.includes('Invalid line number')) {
 			return {
+				desc,
 				content: [{ type: 'text', text: errorMessage }],
 				isError: true
 			}
@@ -310,6 +332,7 @@ const insertFunction: ToolFunction = async (
 
 		// 其他未预期的错误
 		return {
+			desc,
 			content: [{ type: 'text', text: `Failed to insert text: ${errorMessage}` }],
 			isError: true
 		}
@@ -333,6 +356,7 @@ export const textEditorFunction: ToolFunction = async (
 			return insertFunction(env, parameters)
 		default:
 			return {
+				desc: `Unknown command: ${command}`,
 				content: [{ type: 'text', text: `Unknown command: ${command}` }],
 				isError: true
 			}

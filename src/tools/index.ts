@@ -14,6 +14,7 @@ export interface Tool {
 
 // 工具执行结果
 export interface ToolResponse {
+	desc: string
 	content: Array<{
 		type: 'text'
 		text: string
@@ -43,6 +44,7 @@ export interface ToolResult {
 
 	content: unknown
 	is_error?: boolean
+	desc: string
 	// error_message?: string
 	// timestamp: string。// 放到额外消息
 }
@@ -75,7 +77,7 @@ export class ToolRegistry {
 
 		for (const toolUse of toolUses) {
 			try {
-				let result = null
+				let result: ToolResponse | null = null
 				if (toolUse.name === 'str_replace_based_edit_tool') {
 					result = await textEditorFunction(env, toolUse.input)
 				} else {
@@ -86,18 +88,24 @@ export class ToolRegistry {
 					result = await toolInfo.execute(env, toolUse.input)
 				}
 
+				if (result.isError) {
+					console.error(`Tool ${toolUse.name} execution error:`, result.content)
+				}
 				results.push({
 					type: 'tool_result',
 					tool_use_id: toolUse.id,
 					content: result.content,
-					is_error: result.isError
+					is_error: result.isError,
+					desc: result.desc
 				})
 			} catch (error) {
+				console.error(`Tool ${toolUse.name} execution failed:`, error)
 				results.push({
 					type: 'tool_result',
 					tool_use_id: toolUse.id,
 					content: [{ type: 'text', text: `Tool execution failed: ${error.message}` }],
-					is_error: true
+					is_error: true,
+					desc: `Tool ${toolUse.name} execution failed: ${error.message}`
 				})
 			}
 		}
@@ -108,4 +116,19 @@ export class ToolRegistry {
 	has(name: string): boolean {
 		return this.tools.has(name)
 	}
+}
+
+export const formatToolExecution = (execution: ToolExecution): string => {
+	const { reference, toolResults } = execution
+	const descriptions = toolResults.map((result) => ` ${result.desc} `).join('; ')
+
+	const status = toolResults.every((result) => !result.is_error) ? '✔️' : '❌'
+	return `${status} ${descriptions}%%${reference}%%`
+}
+
+export const parseReferenceFromFormattedExecution = (formattedString: string): string | null => {
+	// 格式: "✔️ description1; description2%%reference%%"
+	// 使用正则表达式匹配最后一个 %%...%% 部分
+	const match = formattedString.match(/%%([^%]+)%%$/)
+	return match ? match[1] : null
 }
