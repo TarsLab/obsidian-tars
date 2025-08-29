@@ -1,11 +1,12 @@
 import { App, TFile, TFolder } from 'obsidian'
 import { RunEnv } from 'src/environment'
+import { t } from 'src/lang/helper'
 import { ToolFunction, ToolResponse } from './index'
 
-// Text Editor Tool - 符合 Anthropic text_editor_20250728 规范
-// 支持 view, str_replace, create, insert 命令
+// Text Editor Tool - Compliant with Anthropic text_editor_20250728 specification
+// Supports view, str_replace, create, insert commands
 
-// 获取文件对象的辅助函数
+// Helper function to get file object from path
 export const getFileFromPath = (app: App, path: string): { file?: TFile; folder?: TFolder; error?: string } => {
 	try {
 		const activeFile = app.workspace.getActiveFile()
@@ -14,37 +15,37 @@ export const getFileFromPath = (app: App, path: string): { file?: TFile; folder?
 		const isRoot = activeFile.parent?.isRoot()
 		const parentPath = activeFile.parent?.path || app.vault.getRoot().path
 
-		// 处理特殊路径
+		// Handle special paths
 		if (path === '.') {
 			const folder = app.vault.getAbstractFileByPath(parentPath)
 			return folder instanceof TFolder ? { folder } : { error: 'Parent is not a folder' }
 		}
 
-		// 处理相对路径, obsidian vault 不支持相对格式
+		// Handle relative paths, obsidian vault doesn't support relative format
 		if (path.startsWith('./')) {
 			path = `${path.slice(2)}`
 		}
 
-		// 构建候选路径（按优先级排序）
+		// Build candidate paths (sorted by priority)
 		const candidates = []
 		if (!path.includes('/') && !isRoot) {
-			// 纯文件名：优先父目录，后根目录
+			// Plain filename: prioritize parent directory, then root directory
 			candidates.push(`${parentPath}/${path}`, path)
 		} else {
-			// 带路径：直接使用
+			// With path: use directly
 			candidates.push(path)
 		}
 
-		// 对每个候选路径，先尝试原始名称，再尝试.md扩展名
+		// For each candidate path, try original name first, then try .md extension
 		for (const candidate of candidates) {
-			// 尝试原始路径
+			// Try original path
 			let found = app.vault.getAbstractFileByPath(candidate)
 			if (found) {
 				if (found instanceof TFile) return { file: found }
 				if (found instanceof TFolder) return { folder: found }
 			}
 
-			// 尝试添加.md（仅当没有扩展名时）
+			// Try adding .md (only when there's no extension)
 			if (!candidate.includes('.') || candidate.endsWith('.')) {
 				found = app.vault.getAbstractFileByPath(`${candidate}.md`)
 				if (found) {
@@ -61,7 +62,6 @@ export const getFileFromPath = (app: App, path: string): { file?: TFile; folder?
 	}
 }
 
-// view 命令功能实现
 export const viewFunction: ToolFunction = async (
 	env: RunEnv,
 	parameters: Record<string, unknown>
@@ -70,7 +70,11 @@ export const viewFunction: ToolFunction = async (
 	const { path, view_range } = parameters
 
 	const { file, folder, error } = getFileFromPath(app, path as string)
-	const desc = `Viewing file: ${file?.path || folder?.path}`
+	const desc =
+		`${t('Read')} \`${file?.path || folder?.path}\`` +
+		(view_range && Array.isArray(view_range) && view_range.length === 2
+			? ` ${t('lines')} ${view_range[0]} ${t('to')} ${view_range[1]}`
+			: '')
 	if (error) {
 		return {
 			desc,
@@ -81,13 +85,12 @@ export const viewFunction: ToolFunction = async (
 
 	try {
 		if (file) {
-			// 查看文件内容
 			const content = await app.vault.cachedRead(file)
 			const lines = content.split('\n')
 
 			if (view_range && Array.isArray(view_range) && view_range.length === 2) {
 				const [startLine, endLine] = view_range as [number, number]
-				const start = Math.max(1, startLine) - 1 // 转换为0索引
+				const start = Math.max(1, startLine) - 1 // Convert to 0-based index
 				const end = endLine === -1 ? lines.length : Math.min(lines.length, endLine)
 
 				const selectedLines = lines.slice(start, end)
@@ -103,12 +106,12 @@ export const viewFunction: ToolFunction = async (
 					]
 				}
 			} else {
-				// 使用默认行数限制
+				// Use default line limit
 				const defaultLines = env.options.textEditorDefaultViewLines
 				const shouldTruncate = lines.length > defaultLines
 				const displayLines = shouldTruncate ? lines.slice(0, defaultLines) : lines
 
-				// 显示文件，添加行号
+				// Display file with line numbers
 				const numberedLines = displayLines.map((line, index) => `${index + 1}: ${line}`)
 				const truncateMessage = shouldTruncate
 					? `\n\n[... ${lines.length - defaultLines} more lines. Use view_range to see specific sections.]`
@@ -125,7 +128,7 @@ export const viewFunction: ToolFunction = async (
 				}
 			}
 		} else if (folder) {
-			// 列出目录内容 - 只显示路径
+			// List directory contents - show paths only
 			const items = folder.children.map((child) => child.path)
 			console.debug('Directory contents:', items)
 
@@ -154,7 +157,6 @@ export const viewFunction: ToolFunction = async (
 	}
 }
 
-// str_replace 命令功能实现
 const strReplaceFunction: ToolFunction = async (
 	env: RunEnv,
 	parameters: Record<string, unknown>
@@ -162,7 +164,7 @@ const strReplaceFunction: ToolFunction = async (
 	const { app } = env
 	const { path, old_str, new_str } = parameters
 
-	const desc = `Replacing "${old_str}" with "${new_str}" in ${path}`
+	const desc = `${t('Edited')} \`${path}\``
 	if (typeof old_str !== 'string' || typeof new_str !== 'string') {
 		return {
 			desc,
@@ -182,14 +184,11 @@ const strReplaceFunction: ToolFunction = async (
 	}
 
 	try {
-		// 使用 vault.process 原子性地读取、修改和保存
 		await app.vault.process(file, (content) => {
-			// 检查 old_str 是否存在
 			if (!content.includes(old_str)) {
 				throw new Error(`String not found in file: ${old_str}`)
 			}
 
-			// 检查是否有多个匹配
 			const matches = content.split(old_str).length - 1
 			if (matches > 1) {
 				throw new Error(
@@ -197,7 +196,6 @@ const strReplaceFunction: ToolFunction = async (
 				)
 			}
 
-			// 执行替换并返回新内容
 			return content.replace(old_str, new_str)
 		})
 
@@ -206,10 +204,8 @@ const strReplaceFunction: ToolFunction = async (
 			content: [{ type: 'text', text: `Successfully replaced text in ${path}` }]
 		}
 	} catch (error) {
-		// 处理 vault.process 内部抛出的错误和其他错误
 		const errorMessage = error.message || 'Unknown error occurred'
 
-		// 如果是我们预期的业务错误，返回错误响应
 		if (errorMessage.includes('String not found') || errorMessage.includes('Multiple matches found')) {
 			return {
 				desc,
@@ -218,7 +214,6 @@ const strReplaceFunction: ToolFunction = async (
 			}
 		}
 
-		// 其他未预期的错误
 		return {
 			desc,
 			content: [{ type: 'text', text: `Failed to replace text: ${errorMessage}` }],
@@ -227,7 +222,6 @@ const strReplaceFunction: ToolFunction = async (
 	}
 }
 
-// create 命令功能实现
 const createFunction: ToolFunction = async (
 	env: RunEnv,
 	parameters: Record<string, unknown>
@@ -235,7 +229,7 @@ const createFunction: ToolFunction = async (
 	const { app } = env
 	const { path, file_text } = parameters
 
-	const desc = `Creating file: ${path}`
+	const desc = `${t('Created')} \`${path}\``
 	if (typeof file_text !== 'string') {
 		return {
 			desc,
@@ -245,7 +239,6 @@ const createFunction: ToolFunction = async (
 	}
 
 	try {
-		// 检查文件是否已存在
 		const existingFile = app.vault.getAbstractFileByPath(path as string)
 		if (existingFile) {
 			return {
@@ -255,7 +248,6 @@ const createFunction: ToolFunction = async (
 			}
 		}
 
-		// 创建新文件
 		await app.vault.create(path as string, file_text)
 
 		return {
@@ -271,7 +263,6 @@ const createFunction: ToolFunction = async (
 	}
 }
 
-// insert 命令功能实现
 const insertFunction: ToolFunction = async (
 	env: RunEnv,
 	parameters: Record<string, unknown>
@@ -279,7 +270,7 @@ const insertFunction: ToolFunction = async (
 	const { app } = env
 	const { path, insert_line, insert_text } = parameters
 
-	const desc = `Inserting text at line ${insert_line} in ${path}`
+	const desc = `${t('Inserted text at line')} ${insert_line} ${t('in')} \`${path}\``
 	if (typeof insert_text !== 'string' || typeof insert_line !== 'number') {
 		return {
 			desc,
@@ -299,16 +290,13 @@ const insertFunction: ToolFunction = async (
 	}
 
 	try {
-		// 使用 vault.process 原子性地读取、修改和保存
 		await app.vault.process(file, (content) => {
 			const lines = content.split('\n')
 
-			// 验证行号
 			if (insert_line < 0 || insert_line > lines.length) {
 				throw new Error(`Invalid line number: ${insert_line}. File has ${lines.length} lines.`)
 			}
 
-			// 插入文本
 			lines.splice(insert_line, 0, insert_text)
 			return lines.join('\n')
 		})
@@ -318,10 +306,8 @@ const insertFunction: ToolFunction = async (
 			content: [{ type: 'text', text: `Successfully inserted text at line ${insert_line} in ${path}` }]
 		}
 	} catch (error) {
-		// 处理 vault.process 内部抛出的错误和其他错误
 		const errorMessage = error.message || 'Unknown error occurred'
 
-		// 如果是我们预期的业务错误，返回错误响应
 		if (errorMessage.includes('Invalid line number')) {
 			return {
 				desc,
@@ -330,7 +316,6 @@ const insertFunction: ToolFunction = async (
 			}
 		}
 
-		// 其他未预期的错误
 		return {
 			desc,
 			content: [{ type: 'text', text: `Failed to insert text: ${errorMessage}` }],

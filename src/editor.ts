@@ -5,7 +5,7 @@ import { Message, ProviderSettings, ToolMessage, Vendor, isArrayOfToolUses, isTe
 import { withStreamLogging } from './providers/decorator'
 import { APP_FOLDER, EditorStatus, availableVendors } from './settings'
 import { GenerationStats, StatusBarManager } from './statusBarManager'
-import { TagRole } from './suggest'
+import { TagRole, toSpeakMark } from './suggest'
 import { ToolExecution, ToolUse, formatToolExecution, parseReferenceFromFormattedExecution } from './tools'
 import { readToolExecutions, storeToolExecution } from './tools/storage'
 
@@ -487,12 +487,30 @@ export const generate = async (
 		}
 
 		if (toolsToExecute) {
+			const toolTagMark = toSpeakMark(env.options.toolTags[0])
+			if (textResponse.length === 0) {
+				// replace provider tag with tool tag
+				const cursor = editor.getCursor('to')
+				editor.replaceRange(
+					toolTagMark,
+					{
+						line: cursor.line,
+						ch: 0
+					},
+					{
+						line: cursor.line,
+						ch: editor.getLine(cursor.line).length
+					}
+				)
+				editor.setCursor({ line: cursor.line, ch: toolTagMark.length })
+			} else {
+				// insert tool tag
+				lastEditPos = insertText(editor, '\n\n' + toolTagMark, editorStatus, lastEditPos)
+			}
 			const toolResults = await capabilities.toolRegistry.execute(env, toolsToExecute)
 			const toolExecution = await storeToolExecution(env, toolsToExecute, toolResults)
-			const toolTag = env.options.toolTags[0]
-			const lineBreaks = textResponse.length > 0 ? '\n\n' : ''
-			const text = `${lineBreaks}#${toolTag} : ${formatToolExecution(toolExecution)}  \n\n`
-			lastEditPos = insertText(editor, text, editorStatus, lastEditPos)
+
+			lastEditPos = insertText(editor, `${formatToolExecution(toolExecution)}  \n\n`, editorStatus, lastEditPos)
 
 			const nextEndOffset = editor.posToOffset(lastEditPos)
 
