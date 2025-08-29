@@ -56,12 +56,12 @@ export const loadTemplateFileCommand = (
 
 const createPromptFileIfNotExists = async (app: App) => {
 	let isCreated = false
-	if (!(await app.vault.adapter.exists(normalizePath(APP_FOLDER)))) {
+	if (!app.vault.getFolderByPath(normalizePath(APP_FOLDER))) {
 		await app.vault.createFolder(APP_FOLDER)
 	}
 
 	const promptFilePath = normalizePath(`${APP_FOLDER}/${t('promptFileName')}.md`)
-	if (!(await app.vault.adapter.exists(promptFilePath))) {
+	if (!app.vault.getFileByPath(promptFilePath)) {
 		await app.vault.create(promptFilePath, t('PRESET_PROMPT_TEMPLATES'))
 		new Notice(t('Create prompt template file') + ' ' + `${APP_FOLDER}/${t('promptFileName')}.md`)
 		isCreated = true
