@@ -1,66 +1,11 @@
-import { App, TFile, TFolder } from 'obsidian'
+import { TFolder } from 'obsidian'
 import { RunEnv } from 'src/environment'
 import { t } from 'src/lang/helper'
 import { ToolFunction, ToolResponse } from './index'
+import { findFile, findFileOrFolder, resolveAbstractPath, resolveFilePath } from './utils'
 
 // Text Editor Tool - Compliant with Anthropic text_editor_20250728 specification
 // Supports view, str_replace, create, insert commands
-
-// Helper function to get file object from path
-export const getFileFromPath = (app: App, path: string): { file?: TFile; folder?: TFolder; error?: string } => {
-	try {
-		const activeFile = app.workspace.getActiveFile()
-		if (!activeFile) return { error: 'No active file' }
-
-		const isRoot = activeFile.parent?.isRoot()
-		const parentPath = activeFile.parent?.path || app.vault.getRoot().path
-
-		// Handle special paths
-		if (path === '.') {
-			const folder = app.vault.getAbstractFileByPath(parentPath)
-			return folder instanceof TFolder ? { folder } : { error: 'Parent is not a folder' }
-		}
-
-		// Handle relative paths, obsidian vault doesn't support relative format
-		if (path.startsWith('./')) {
-			path = `${path.slice(2)}`
-		}
-
-		// Build candidate paths (sorted by priority)
-		const candidates = []
-		if (!path.includes('/') && !isRoot) {
-			// Plain filename: prioritize parent directory, then root directory
-			candidates.push(`${parentPath}/${path}`, path)
-		} else {
-			// With path: use directly
-			candidates.push(path)
-		}
-
-		// For each candidate path, try original name first, then try .md extension
-		for (const candidate of candidates) {
-			// Try original path
-			let found = app.vault.getAbstractFileByPath(candidate)
-			if (found) {
-				if (found instanceof TFile) return { file: found }
-				if (found instanceof TFolder) return { folder: found }
-			}
-
-			// Try adding .md (only when there's no extension)
-			if (!candidate.includes('.') || candidate.endsWith('.')) {
-				found = app.vault.getAbstractFileByPath(`${candidate}.md`)
-				if (found) {
-					console.debug(`Auto-resolved ${path} to ${candidate}.md`)
-					if (found instanceof TFile) return { file: found }
-					if (found instanceof TFolder) return { folder: found }
-				}
-			}
-		}
-
-		return { error: `File or directory not found: ${path}` }
-	} catch (error) {
-		return { error: `Failed to access path: ${error.message}` }
-	}
-}
 
 export const viewFunction: ToolFunction = async (
 	env: RunEnv,
@@ -69,7 +14,7 @@ export const viewFunction: ToolFunction = async (
 	const { app } = env
 	const { path, view_range } = parameters
 
-	const { file, folder, error } = getFileFromPath(app, path as string)
+	const { file, folder, error } = findFileOrFolder(app, path as string)
 	const desc =
 		`${t('Read')} \`${file?.path || folder?.path}\`` +
 		(view_range && Array.isArray(view_range) && view_range.length === 2
@@ -128,8 +73,10 @@ export const viewFunction: ToolFunction = async (
 				}
 			}
 		} else if (folder) {
-			// List directory contents - show paths only
-			const items = folder.children.map((child) => child.path)
+			// When viewing a directory, list all children with name-only format
+			// Folders are marked with trailing "/" for visual distinction
+			const items = folder.children.map((child) => (child instanceof TFolder ? `${child.name}/` : child.name))
+
 			console.debug('Directory contents:', items)
 
 			return {
@@ -137,7 +84,7 @@ export const viewFunction: ToolFunction = async (
 				content: [
 					{
 						type: 'text',
-						text: `Directory: ${path}\n\n${items.join('\n')}`
+						text: `Directory: ${folder.path}\n\n${items.join('\n')}`
 					}
 				]
 			}
@@ -164,7 +111,7 @@ const strReplaceFunction: ToolFunction = async (
 	const { app } = env
 	const { path, old_str, new_str } = parameters
 
-	const desc = `${t('Edited')} \`${path}\``
+	let desc = `${t('Edited')} \`${path}\``
 	if (typeof old_str !== 'string' || typeof new_str !== 'string') {
 		return {
 			desc,
@@ -173,7 +120,7 @@ const strReplaceFunction: ToolFunction = async (
 		}
 	}
 
-	const { file, error } = getFileFromPath(app, path as string)
+	const { file, finalPath, error } = findFile(app, path as string)
 
 	if (error || !file) {
 		return {
@@ -182,6 +129,7 @@ const strReplaceFunction: ToolFunction = async (
 			isError: true
 		}
 	}
+	desc = `${t('Edited')} \`${finalPath}\``
 
 	try {
 		await app.vault.process(file, (content) => {
@@ -229,7 +177,22 @@ const createFunction: ToolFunction = async (
 	const { app } = env
 	const { path, file_text } = parameters
 
-	const desc = `${t('Created')} \`${path}\``
+	const basePath = resolveAbstractPath(app, path as string)
+	const finalPath = resolveFilePath(basePath)
+
+	// Check if finalPath has a file extension
+	const lastSlashIndex = finalPath.lastIndexOf('/')
+	const filename = lastSlashIndex === -1 ? finalPath : finalPath.substring(lastSlashIndex + 1)
+
+	const desc = `${t('Created')} \`${finalPath}\``
+	if (!filename.includes('.')) {
+		return {
+			desc,
+			content: [{ type: 'text', text: `Invalid file path: ${finalPath} has no file extension` }],
+			isError: true
+		}
+	}
+
 	if (typeof file_text !== 'string') {
 		return {
 			desc,
@@ -239,20 +202,20 @@ const createFunction: ToolFunction = async (
 	}
 
 	try {
-		const existingFile = app.vault.getAbstractFileByPath(path as string)
+		const existingFile = app.vault.getAbstractFileByPath(finalPath)
 		if (existingFile) {
 			return {
 				desc,
-				content: [{ type: 'text', text: `File already exists: ${path}` }],
+				content: [{ type: 'text', text: `File already exists: ${finalPath}` }],
 				isError: true
 			}
 		}
 
-		await app.vault.create(path as string, file_text)
+		await app.vault.create(finalPath, file_text)
 
 		return {
 			desc,
-			content: [{ type: 'text', text: `Successfully created file: ${path}` }]
+			content: [{ type: 'text', text: `Successfully created file: ${finalPath}` }]
 		}
 	} catch (error) {
 		return {
@@ -270,7 +233,8 @@ const insertFunction: ToolFunction = async (
 	const { app } = env
 	const { path, insert_line, insert_text } = parameters
 
-	const desc = `${t('Inserted text at line')} ${insert_line} ${t('in')} \`${path}\``
+	let desc = `${t('Inserted text at line')} ${insert_line} ${t('in')} \`${path}\``
+
 	if (typeof insert_text !== 'string' || typeof insert_line !== 'number') {
 		return {
 			desc,
@@ -278,8 +242,7 @@ const insertFunction: ToolFunction = async (
 			isError: true
 		}
 	}
-
-	const { file, error } = getFileFromPath(app, path as string)
+	const { file, finalPath, error } = findFile(app, path as string)
 
 	if (error || !file) {
 		return {
@@ -288,6 +251,7 @@ const insertFunction: ToolFunction = async (
 			isError: true
 		}
 	}
+	desc = `${t('Inserted text at line')} ${insert_line} ${t('in')} \`${finalPath}\``
 
 	try {
 		await app.vault.process(file, (content) => {
