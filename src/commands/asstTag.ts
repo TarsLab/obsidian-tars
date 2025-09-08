@@ -1,6 +1,7 @@
 import { App, Command, Editor, EditorRange, MarkdownView, Modal, Notice, Platform, Setting } from 'obsidian'
 import { buildRunEnv, generate, RequestController } from 'src/editor'
 import { t } from 'src/lang/helper'
+import { TagToolMapper } from 'src/mcp'
 import { ProviderSettings } from 'src/providers'
 import { PluginSettings } from 'src/settings'
 import { StatusBarManager } from 'src/statusBarManager'
@@ -20,7 +21,8 @@ export const asstTagCmd = (
 	app: App,
 	settings: PluginSettings,
 	statusBarManager: StatusBarManager,
-	requestController: RequestController
+	requestController: RequestController,
+	tagToolMapper?: TagToolMapper | null
 ): Command => ({
 	id,
 	name,
@@ -51,7 +53,8 @@ export const asstTagCmd = (
 					messagesEndOffset,
 					statusBarManager,
 					settings.editorStatus,
-					requestController
+					requestController,
+					tagToolMapper
 				)
 				return
 			}
@@ -76,17 +79,18 @@ export const asstTagCmd = (
 					messagesEndOffset,
 					statusBarManager,
 					settings.editorStatus,
-					requestController
+					requestController,
+					tagToolMapper
 				)
 			} else if (role === 'assistant') {
 				// If it's an asstTag, prompt the user whether to regenerate
 				if (settings.confirmRegenerate) {
 					const onConfirm = async () => {
-						await regenerate(app, settings, statusBarManager, requestController, editor, provider, range, mark)
+						await regenerate(app, settings, statusBarManager, requestController, editor, provider, range, mark, tagToolMapper)
 					}
 					new ConfirmModal(app, onConfirm).open()
 				} else {
-					await regenerate(app, settings, statusBarManager, requestController, editor, provider, range, mark)
+					await regenerate(app, settings, statusBarManager, requestController, editor, provider, range, mark, tagToolMapper)
 				}
 			} else {
 				// If it's a userTag, systemTag (warn later), newChat mixed, etc., add a new line, insert assistant tag. Let subsequent code handle the judgment
@@ -105,7 +109,8 @@ export const asstTagCmd = (
 					messagesEndOffset,
 					statusBarManager,
 					settings.editorStatus,
-					requestController
+					requestController,
+					tagToolMapper
 				)
 				new Notice(t('Text generated successfully'))
 			}
@@ -131,7 +136,8 @@ const regenerate = async (
 	editor: Editor,
 	provider: ProviderSettings,
 	range: EditorRange,
-	mark: string
+	mark: string,
+	tagToolMapper?: TagToolMapper | null
 ) => {
 	editor.replaceRange(mark, range.from, range.to)
 	editor.setCursor({
@@ -144,7 +150,7 @@ const regenerate = async (
 		ch: 0
 	})
 	const env = await buildRunEnv(app, settings)
-	await generate(env, editor, provider, messagesEndOffset, statusBarManager, settings.editorStatus, requestController)
+	await generate(env, editor, provider, messagesEndOffset, statusBarManager, settings.editorStatus, requestController, tagToolMapper)
 }
 
 class ConfirmModal extends Modal {

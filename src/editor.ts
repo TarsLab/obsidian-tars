@@ -15,6 +15,7 @@ import {
 	resolveSubpath
 } from 'obsidian'
 import { t } from 'src/lang/helper'
+import { TagToolMapper, ToolResult } from './mcp'
 import { CreatePlainText, Message, ProviderSettings, ResolveEmbedAsBinary, SaveAttachment, Vendor } from './providers'
 import { withStreamLogging } from './providers/decorator'
 import { APP_FOLDER, EditorStatus, PluginSettings, availableVendors } from './settings'
@@ -451,7 +452,8 @@ export const generate = async (
 	endOffset: number,
 	statusBarManager: StatusBarManager,
 	editorStatus: EditorStatus,
-	requestController: RequestController
+	requestController: RequestController,
+	tagToolMapper?: TagToolMapper | null
 ) => {
 	try {
 		const vendor = availableVendors.find((v) => v.name === provider.vendor)
@@ -477,6 +479,28 @@ export const generate = async (
 				content: env.options.defaultSystemMsg
 			})
 			console.debug('Default system message added:', env.options.defaultSystemMsg)
+		}
+
+		// MCP Tool Integration: Extract tags and invoke relevant tools
+		if (tagToolMapper) {
+			const toolResults = await invokeMCPTools(env, tagToolMapper, statusBarManager)
+			if (toolResults.length > 0) {
+				// Add tool results as context to the conversation
+				const toolContext = formatToolResults(toolResults)
+				if (toolContext) {
+					// Add tool results as a system message or append to existing system message
+					const systemMsgIndex = messages.findIndex(m => m.role === 'system')
+					if (systemMsgIndex >= 0) {
+						messages[systemMsgIndex].content += '\n\n' + toolContext
+					} else {
+						messages.unshift({
+							role: 'system',
+							content: toolContext
+						})
+					}
+					console.debug('MCP tool results added to context:', toolResults.length, 'tools')
+				}
+			}
 		}
 
 		const round = messages.filter((m) => m.role === 'assistant').length + 1
@@ -548,4 +572,63 @@ const formatTextWithLeadingBreaks = (text: string) => {
 		return ' \n\n' + text
 	}
 	return text
+}
+
+// MCP Tool Integration Helper Functions
+const invokeMCPTools = async (
+	env: RunEnv,
+	tagToolMapper: TagToolMapper,
+	statusBarManager: StatusBarManager
+): Promise<ToolResult[]> => {
+	try {
+		// Extract tags from the current file
+		const tags = env.tags.map(tag => tag.tag.replace('#', ''))
+		
+		if (tags.length === 0) {
+			return []
+		}
+
+		console.debug('Invoking MCP tools for tags:', tags)
+		statusBarManager.setStatus('Fetching external data...')
+
+		// Invoke tools based on tags
+		const toolResults = await tagToolMapper.invokeToolsForTags(tags)
+		
+		// Filter out failed tool results for now (could be made configurable)
+		const successfulResults = toolResults.filter(result => !result.error)
+		
+		console.debug('MCP tool results:', successfulResults.length, 'successful,', toolResults.length - successfulResults.length, 'failed')
+		
+		return successfulResults
+	} catch (error) {
+		console.warn('Failed to invoke MCP tools:', error)
+		return []
+	}
+}
+
+const formatToolResults = (toolResults: ToolResult[]): string | null => {
+	if (toolResults.length === 0) {
+		return null
+	}
+
+	const formattedResults = toolResults.map(result => {
+		const resultText = typeof result.result === 'string' 
+			? result.result 
+			: JSON.stringify(result.result, null, 2)
+		
+		return `## Tool: ${result.toolName} (${result.serverId})
+Execution time: ${result.executionTime}ms
+
+${resultText}
+
+---`
+	}).join('\n\n')
+
+	return `# External Data Context
+
+The following information was retrieved from external sources based on the tags in this note:
+
+${formattedResults}
+
+Please use this context to provide more accurate and up-to-date information in your response.`
 }

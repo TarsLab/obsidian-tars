@@ -12,6 +12,7 @@ import {
 } from './commands'
 import { RequestController } from './editor'
 import { t } from './lang/helper'
+import { MCPManager, TagToolMapper } from './mcp'
 import { getTitleFromCmdId, loadTemplateFileCommand, promptTemplateCmd, templateToCmdId } from './prompt'
 import { TarsSettingTab } from './settingTab'
 import { DEFAULT_SETTINGS, PluginSettings } from './settings'
@@ -25,6 +26,8 @@ export default class TarsPlugin extends Plugin {
 	promptCmdIds: string[] = []
 	tagLowerCaseMap: Map<string, Omit<TagEntry, 'replacement'>> = new Map()
 	aborterInstance: AbortController | null = null
+	mcpManager: MCPManager | null = null
+	tagToolMapper: TagToolMapper | null = null
 
 	async onload() {
 		await this.loadSettings()
@@ -33,6 +36,11 @@ export default class TarsPlugin extends Plugin {
 
 		const statusBarItem = this.addStatusBarItem()
 		this.statusBarManager = new StatusBarManager(this.app, statusBarItem)
+
+		// Initialize MCP integration if enabled
+		if (this.settings.enableMCPIntegration) {
+			await this.initializeMCPIntegration()
+		}
 
 		this.buildTagCommands(true)
 		this.buildPromptCommands(true)
@@ -85,8 +93,13 @@ export default class TarsPlugin extends Plugin {
 		this.addSettingTab(new TarsSettingTab(this.app, this))
 	}
 
-	onunload() {
+	async onunload() {
 		this.statusBarManager?.dispose()
+		
+		// Cleanup MCP connections
+		if (this.mcpManager) {
+			await this.mcpManager.disconnectAll()
+		}
 	}
 
 	addTagCommand(cmdId: string) {
@@ -103,7 +116,7 @@ export default class TarsPlugin extends Plugin {
 				break
 			case 'assistant':
 				this.addCommand(
-					asstTagCmd(tagCmdMeta, this.app, this.settings, this.statusBarManager, this.getRequestController())
+					asstTagCmd(tagCmdMeta, this.app, this.settings, this.statusBarManager, this.getRequestController(), this.tagToolMapper)
 				)
 				break
 			default:
@@ -194,5 +207,83 @@ export default class TarsPlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings)
+	}
+
+	async initializeMCPIntegration() {
+		try {
+			console.log('Initializing MCP integration...')
+			
+			this.mcpManager = new MCPManager()
+			this.tagToolMapper = new TagToolMapper(this.mcpManager)
+
+			let connectedServers = 0
+			let totalServers = this.settings.mcpServers.filter(s => s.enabled).length
+
+			if (totalServers === 0) {
+				console.log('No MCP servers configured or enabled')
+				return
+			}
+
+			// Connect to configured MCP servers
+			for (const serverConfig of this.settings.mcpServers) {
+				if (serverConfig.enabled) {
+					try {
+						await this.mcpManager.connectToServer(serverConfig)
+						connectedServers++
+						console.log(`Connected to MCP server: ${serverConfig.name}`)
+					} catch (error) {
+						console.warn(`Failed to connect to MCP server ${serverConfig.name}:`, error)
+						new Notice(`Failed to connect to MCP server "${serverConfig.name}": ${error.message}`, 5000)
+					}
+				}
+			}
+
+			// Load custom tag-tool mappings
+			let loadedMappings = 0
+			for (const mapping of this.settings.tagToolMappings) {
+				try {
+					this.tagToolMapper.addMapping(mapping)
+					loadedMappings++
+				} catch (error) {
+					console.warn(`Failed to load tag-tool mapping for pattern "${mapping.tagPattern}":`, error)
+				}
+			}
+
+			if (connectedServers > 0) {
+				console.log(`MCP integration initialized: ${connectedServers}/${totalServers} servers connected, ${loadedMappings} mappings loaded`)
+				new Notice(`MCP integration ready: ${connectedServers} server(s) connected`, 3000)
+			} else {
+				console.warn('MCP integration initialized but no servers connected')
+				new Notice('MCP integration enabled but no servers are connected. Check your server configurations.', 5000)
+			}
+		} catch (error) {
+			console.error('Failed to initialize MCP integration:', error)
+			new Notice(`Failed to initialize MCP integration: ${error.message}`, 5000)
+			
+			// Clean up partial initialization
+			if (this.mcpManager) {
+				await this.mcpManager.disconnectAll()
+				this.mcpManager = null
+			}
+			this.tagToolMapper = null
+		}
+	}
+
+	async toggleMCPIntegration(enabled: boolean) {
+		if (enabled && !this.mcpManager) {
+			await this.initializeMCPIntegration()
+		} else if (!enabled && this.mcpManager) {
+			await this.mcpManager.disconnectAll()
+			this.mcpManager = null
+			this.tagToolMapper = null
+		}
+	}
+
+	getMCPManager(): MCPManager | null {
+		return this.mcpManager
+	}
+
+	getTagToolMapper(): TagToolMapper | null {
+		return this.tagToolMapper
 	}
 }
