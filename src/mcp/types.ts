@@ -1,18 +1,22 @@
 export interface MCPServerConfig {
 	id: string
 	name: string
-	url: string
+	dockerImage: string
 	port: number
-	enabled: boolean
+	enabled?: boolean
+	protocol: 'STDIO' | 'SSE'
+	command?: string
+	endpoint?: string // For SSE protocol
 	credentials?: Record<string, string>
-	dockerImage?: string
 	environment?: Record<string, string>
-	retryConfig?: {
-		maxRetries: number
-		initialDelay: number
-		maxDelay: number
-		backoffMultiplier: number
-	}
+	retryConfig?: RetryConfig
+}
+
+export interface RetryConfig {
+	maxRetries: number
+	initialDelay: number
+	maxDelay: number
+	backoffMultiplier: number
 }
 
 export interface MCPTool {
@@ -43,13 +47,6 @@ export interface ConnectionState {
 	lastError?: string
 	retryCount: number
 	nextRetryAt?: Date
-}
-
-export interface RetryConfig {
-	maxRetries: number
-	initialDelay: number
-	maxDelay: number
-	backoffMultiplier: number
 }
 
 export interface MCPClient {

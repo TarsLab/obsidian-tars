@@ -1,249 +1,288 @@
-# MCP (Model Context Protocol) Integration
+# MCP Integration Guide for Obsidian TARS
 
-The Obsidian TARS plugin now supports MCP (Model Context Protocol) integration, allowing you to enhance AI text generation with external data sources and tools triggered by tags.
+This guide explains how to set up and use Model Context Protocol (MCP) servers with the Obsidian TARS plugin to enhance AI text generation with external data sources.
 
 ## Overview
 
-MCP integration enables the plugin to:
-- Connect to external MCP servers running in Docker containers
-- Automatically invoke tools based on tags in your notes
-- Include external data in AI generation context
-- Enhance responses with real-time information
+The MCP integration allows TARS to connect to external tools and data sources through Docker-containerized MCP servers. When you use specific tags in your notes, TARS automatically invokes relevant tools and includes their results in the AI generation context.
 
-## Setup
+## Architecture
 
-### 1. Enable MCP Integration
-
-1. Open Obsidian Settings
-2. Navigate to TARS plugin settings
-3. Enable "MCP Integration"
-4. Configure your MCP servers
-
-### 2. Configure MCP Servers
-
-Add MCP servers in the plugin settings:
-
-```json
-{
-  "id": "weather-server",
-  "name": "Weather Data Server",
-  "enabled": true,
-  "transport": {
-    "type": "http",
-    "host": "localhost",
-    "port": 3001
-  },
-  "credentials": {
-    "apiKey": "your-api-key"
-  }
-}
+```
+User Note with Tags → Tag Analysis → MCP Tool Selection → Docker MCP Server → External APIs/Data → Enhanced AI Generation
 ```
 
-### 3. Set Up Tag-Tool Mappings
+## Prerequisites
 
-Configure which tools should be triggered by specific tags:
+- Docker installed and running
+- Obsidian TARS plugin v3.4.3+
+- Basic understanding of Docker containers
 
-```json
-{
-  "tagPattern": "weather*",
-  "serverIds": ["weather-server"],
-  "toolNames": ["get_current_weather", "get_forecast"],
-  "parameters": {
-    "location": "${tag}",
-    "units": "metric"
-  }
-}
-```
+## Quick Start with Simple MCP Servers
 
-## Usage
+We'll demonstrate two common MCP server setups using the simplest available servers for testing:
 
-### Basic Usage
+### 1. STDIO Protocol Server (Memory Server)
 
-1. Add tags to your notes (e.g., `#weather-london`, `#stock-AAPL`)
-2. Use an assistant tag to trigger AI generation
-3. The plugin will automatically:
-   - Detect relevant tags
-   - Invoke corresponding MCP tools
-   - Include tool results in the AI context
-   - Generate enhanced responses
+The memory server is the simplest MCP server for testing - it provides basic memory/note-taking functionality.
 
-### Example
+#### Setup Memory Server
+
+1. **Test the server locally first**:
+   ```bash
+   # Install and test the memory server
+   npx -y @modelcontextprotocol/server-memory
+   ```
+
+2. **Configure in TARS Settings**:
+   - Open Obsidian Settings → TARS → MCP Integration
+   - Add MCP Server:
+     - Server ID: `memory-server`
+     - Name: `Memory Server`
+     - Docker Image: `node:18-alpine`
+     - Port: `3001`
+     - Command: `npx -y @modelcontextprotocol/server-memory`
+     - Protocol: `STDIO`
+
+3. **Add Tag Mapping**:
+   - Tag Pattern: `memory|note|remember`
+   - Tool Names: `["create_memory", "search_memories", "list_memories"]`
+   - Server ID: `memory-server`
+
+#### Usage Example
 
 ```markdown
-# Weather Report
+# Meeting Notes #memory #project
 
-#weather-london #forecast
+Remember the key decisions from today's meeting:
+- Budget approved for Q2
+- New hire starting next month
+- Migration scheduled for March
 
-#Claude: What's the current weather and forecast for London?
+<!-- TARS will use memory tools to store and retrieve information -->
 ```
 
-When you trigger the Claude assistant tag, the plugin will:
-1. Detect the `weather-london` and `forecast` tags
-2. Call the weather MCP server's tools
-3. Include current weather data in the AI context
-4. Generate a response with real-time weather information
+### 2. SSE Protocol Server (Filesystem Server)
 
-## MCP Server Examples
+The filesystem server provides file operations and is commonly used for testing SSE connections.
 
-### Weather Server
+#### Setup Filesystem Server with SSE
 
-A simple MCP server that provides weather data:
+1. **Run filesystem server with SSE using Supergateway**:
+   ```bash
+   # Using Docker with Supergateway to convert STDIO to SSE
+   docker run -it --rm -p 8000:8000 supergateway \
+     --stdio "npx -y @modelcontextprotocol/server-filesystem /tmp"
+   ```
 
-```python
-# weather_server.py
-from mcp import Server
-import requests
+2. **Configure in TARS Settings**:
+   - Add MCP Server:
+     - Server ID: `filesystem-server`
+     - Name: `Filesystem Server`
+     - Docker Image: `supergateway:latest`
+     - Port: `8000`
+     - Command: `--stdio "npx -y @modelcontextprotocol/server-filesystem /tmp"`
+     - Protocol: `SSE`
+     - Endpoint: `http://localhost:8000/sse`
 
-server = Server("weather-server")
+3. **Add Tag Mapping**:
+   - Tag Pattern: `file|filesystem|read|write`
+   - Tool Names: `["read_file", "write_file", "list_directory"]`
+   - Server ID: `filesystem-server`
 
-@server.tool("get_current_weather")
-def get_current_weather(location: str) -> dict:
-    # Call weather API
-    response = requests.get(f"https://api.weather.com/current/{location}")
-    return response.json()
+#### Usage Example
 
-@server.tool("get_forecast")
-def get_forecast(location: str, days: int = 5) -> dict:
-    # Call forecast API
-    response = requests.get(f"https://api.weather.com/forecast/{location}?days={days}")
-    return response.json()
+```markdown
+# Code Review Notes #file #development
 
-if __name__ == "__main__":
-    server.run(port=3001)
+Analyze the configuration files in the project:
+- Check database settings
+- Review API endpoints
+- Validate environment variables
+
+<!-- TARS will use filesystem tools to read and analyze files -->
 ```
 
-### Docker Setup
+## Step-by-Step Setup Guide
 
-Run MCP servers in Docker containers:
+### Step 1: Start Docker
 
-```dockerfile
-# Dockerfile
-FROM python:3.9-slim
-
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-
-COPY weather_server.py .
-EXPOSE 3001
-
-CMD ["python", "weather_server.py"]
-```
+Ensure Docker is running on your system:
 
 ```bash
-# Build and run
-docker build -t weather-mcp-server .
-docker run -p 3001:3001 weather-mcp-server
+# Check Docker status
+docker --version
+docker ps
+
+# If Docker isn't running, start it
+sudo systemctl start docker  # Linux
+# or use Docker Desktop on Windows/Mac
 ```
 
-## Configuration Options
+### Step 2: Test MCP Servers Manually
 
-### Server Configuration
+Before configuring in TARS, test the servers work:
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | string | Unique server identifier |
-| `name` | string | Human-readable server name |
-| `enabled` | boolean | Whether the server is active |
-| `transport.type` | string | Connection type (`http`, `websocket`) |
-| `transport.host` | string | Server hostname |
-| `transport.port` | number | Server port |
-| `credentials` | object | Authentication credentials |
+#### Test Memory Server (STDIO)
+```bash
+# Run memory server directly
+npx -y @modelcontextprotocol/server-memory
 
-### Tag-Tool Mapping
+# Test with MCP inspector (optional)
+npx @modelcontextprotocol/inspector npx @modelcontextprotocol/server-memory
+```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `tagPattern` | string | Tag pattern to match (supports wildcards) |
-| `serverIds` | string[] | List of server IDs to use |
-| `toolNames` | string[] | List of tool names to invoke |
-| `parameters` | object | Default parameters for tools |
+#### Test Filesystem Server (SSE)
+```bash
+# Run filesystem server with SSE gateway
+docker run -it --rm -p 8000:8000 supergateway \
+  --stdio "npx -y @modelcontextprotocol/server-filesystem /tmp"
 
-### Parameter Substitution
+# Test SSE endpoint
+curl http://localhost:8000/sse
+```
 
-Use placeholders in parameters:
-- `${tag}` - The matched tag name
-- `${content}` - Current note content
-- `${selection}` - Selected text
+### Step 3: Configure TARS Plugin
 
-## Advanced Features
+1. Open Obsidian Settings
+2. Navigate to TARS → MCP Integration
+3. Add the servers using configurations above
+4. Create tag mappings for your use cases
+5. Test with a simple note
 
-### Health Monitoring
+### Step 4: Create Test Notes
 
-The plugin automatically monitors MCP server health and provides feedback:
-- Connection status indicators
-- Automatic reconnection attempts
-- Error notifications
+Create notes with the configured tags and generate content to verify the integration works.
 
-### Error Handling
+## Alternative Simple Servers for Testing
 
-Robust error handling ensures the plugin continues working even when MCP servers are unavailable:
-- Graceful fallback when servers are down
-- Detailed error messages
-- Partial results when some tools fail
+### Database Server (SQLite)
 
-### Performance Optimization
+Simple database operations for testing:
 
-- Parallel tool execution
-- Connection pooling
-- Caching of tool results
-- Timeout management
+```bash
+# Run a simple SQLite MCP server
+docker run -p 3003:3003 example-mcp-server-sse
+```
 
-## Troubleshooting
+Configuration:
+- Server ID: `database-server`
+- Tools: `["query_database", "list_tables", "get_schema"]`
+- Tag Pattern: `database|sql|query`
 
-### Common Issues
+### Web Scraper Server
 
-1. **Connection Failed**
-   - Check if MCP server is running
-   - Verify host and port configuration
-   - Check firewall settings
+For testing web content extraction:
 
-2. **Tool Not Found**
-   - Verify tool names in mapping configuration
-   - Check MCP server tool registration
-   - Review server logs
+```bash
+# Using a simple web scraper MCP server
+docker run -p 3004:3004 -e MAX_REQUESTS=5 simple-web-scraper-mcp
+```
 
-3. **Authentication Errors**
-   - Verify API keys and credentials
-   - Check credential format
-   - Ensure proper permissions
+Configuration:
+- Server ID: `web-scraper`
+- Tools: `["scrape_url", "extract_text"]`
+- Tag Pattern: `web|scrape|url`
 
-### Debug Mode
+## Verification Steps
 
-Enable debug logging in plugin settings to see detailed MCP operation logs:
-- Connection attempts
-- Tool invocations
-- Response processing
-- Error details
+### 1. Check Server Connection
 
-## Security Considerations
+In TARS settings, verify:
+- ✅ Server status shows "Connected"
+- ✅ Available tools are listed
+- ✅ No connection errors in logs
 
-- Store sensitive credentials securely
-- Use HTTPS for production MCP servers
-- Validate tool parameters
-- Implement proper authentication
-- Monitor server access logs
+### 2. Test Tool Discovery
 
-## Examples and Templates
+Create a test note:
+```markdown
+# Test MCP Integration #memory
 
-See the `/examples` directory for:
-- Sample MCP server implementations
-- Docker compose configurations
-- Common tag-tool mapping patterns
-- Integration examples
+Generate a simple note to test MCP integration.
+```
 
-## Contributing
+Verify:
+- ✅ Tag is recognized
+- ✅ Tools are invoked during generation
+- ✅ Results are included in generated content
 
-To contribute MCP server examples or improvements:
-1. Fork the repository
-2. Create your feature branch
-3. Add tests and documentation
-4. Submit a pull request
+### 3. Monitor Logs
+
+Check for successful tool calls:
+- TARS plugin logs show MCP tool invocations
+- Docker container logs show successful requests
+- No error messages in Obsidian console
+
+## Troubleshooting Common Issues
+
+### Server Won't Start
+
+1. **Check Docker image availability**:
+   ```bash
+   docker pull node:18-alpine
+   docker images
+   ```
+
+2. **Verify port availability**:
+   ```bash
+   netstat -an | grep :3001
+   lsof -i :3001
+   ```
+
+3. **Check container logs**:
+   ```bash
+   docker ps
+   docker logs <container-id>
+   ```
+
+### Tools Not Available
+
+1. **Verify server is fully started** (wait 10-15 seconds)
+2. **Check tag patterns match exactly**
+3. **Ensure tool names are correct** (case-sensitive)
+4. **Review MCP server documentation** for available tools
+
+### Connection Timeouts
+
+1. **Increase retry configuration**:
+   ```json
+   {
+     "retryConfig": {
+       "maxRetries": 5,
+       "initialDelay": 2000,
+       "maxDelay": 15000,
+       "backoffMultiplier": 2
+     }
+   }
+   ```
+
+2. **Check network connectivity**:
+   ```bash
+   curl http://localhost:3001/health
+   telnet localhost 3001
+   ```
+
+## Next Steps
+
+Once you have the basic servers working:
+
+1. **Explore More Servers**: Try GitHub, Jira, or database connectors
+2. **Create Custom Mappings**: Design tag patterns for your workflow
+3. **Build Custom Servers**: Develop MCP servers for your specific needs
+4. **Share Configurations**: Document successful setups for your team
+
+## Resources
+
+- [MCP Official Examples](https://modelcontextprotocol.io/examples)
+- [MCP Server Registry](https://mcp-get.com/)
+- [Supergateway for Protocol Conversion](https://github.com/supercorp-ai/supergateway)
+- [MCP Inspector for Testing](https://github.com/modelcontextprotocol/inspector)
 
 ## Support
 
-For MCP integration support:
-- Check the troubleshooting guide
-- Review server logs
-- Open an issue with detailed error information
-- Join the community discussions
+For issues and questions:
+1. Check the [troubleshooting section](#troubleshooting-common-issues)
+2. Review Docker and MCP server logs
+3. Test servers independently before TARS integration
+4. Open an issue on the [TARS GitHub repository](https://github.com/TarsLab/obsidian-tars/issues)
