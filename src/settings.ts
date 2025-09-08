@@ -52,6 +52,12 @@ export interface PluginSettings {
 	tagToolMappings: TagToolMapping[]
 	mcpToolTimeout: number
 	enableMCPToolCaching: boolean
+	mcpRetryConfig: {
+		maxRetries: number
+		initialDelay: number
+		maxDelay: number
+		backoffMultiplier: number
+	}
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -83,7 +89,13 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	mcpServers: [],
 	tagToolMappings: [],
 	mcpToolTimeout: 10000, // 10 seconds
-	enableMCPToolCaching: true
+	enableMCPToolCaching: true,
+	mcpRetryConfig: {
+		maxRetries: 3,
+		initialDelay: 1000, // 1 second
+		maxDelay: 10000, // 10 seconds
+		backoffMultiplier: 2
+	}
 }
 
 export const availableVendors: Vendor[] = [

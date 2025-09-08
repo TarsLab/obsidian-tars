@@ -44,6 +44,48 @@ export class TagToolMapper {
 		this.mappings.push(mapping)
 	}
 
+	/**
+	 * Verify and attempt to recover connections for all servers that have tools for the given tags
+	 */
+	async verifyConnectionsForTags(tags: string[]): Promise<{ verified: number; failed: string[] }> {
+		const tools = await this.getToolsForTags(tags)
+		const serverIds = new Set(tools.map(tool => tool.serverId))
+		
+		let verified = 0
+		const failed: string[] = []
+		
+		for (const serverId of serverIds) {
+			const client = this.mcpManager['clients'].get(serverId)
+			
+			if (!client) {
+				failed.push(serverId)
+				continue
+			}
+			
+			try {
+				// Perform health check
+				const isHealthy = await client.healthCheck()
+				
+				if (!isHealthy && !client.isConnected) {
+					// Attempt reconnection
+					console.log(`Attempting to reconnect to MCP server ${serverId} before prompt generation...`)
+					await client.reconnect()
+				}
+				
+				if (client.isConnected) {
+					verified++
+				} else {
+					failed.push(serverId)
+				}
+			} catch (error) {
+				console.warn(`Failed to verify/reconnect to MCP server ${serverId}:`, error.message)
+				failed.push(serverId)
+			}
+		}
+		
+		return { verified, failed }
+	}
+
 	removeMapping(tagPattern: string): void {
 		this.mappings = this.mappings.filter(m => m.tagPattern !== tagPattern)
 	}
@@ -114,16 +156,24 @@ export class TagToolMapper {
 					continue
 				}
 				
+				// Verify connection and attempt recovery if needed
 				if (!client.isConnected) {
-					console.warn(`MCP client for server ${tool.serverId} is not connected`)
-					results.push({
-						toolName: tool.name,
-						serverId: tool.serverId,
-						result: null,
-						executionTime: 0,
-						error: `MCP server "${tool.serverId}" is not connected`
-					})
-					continue
+					console.log(`MCP client for server ${tool.serverId} is not connected. Attempting to reconnect...`)
+					
+					try {
+						await client.reconnect()
+						console.log(`Successfully reconnected to MCP server ${tool.serverId}`)
+					} catch (reconnectError) {
+						console.warn(`Failed to reconnect to MCP server ${tool.serverId}: ${reconnectError.message}`)
+						results.push({
+							toolName: tool.name,
+							serverId: tool.serverId,
+							result: null,
+							executionTime: 0,
+							error: `MCP server "${tool.serverId}" is not connected and reconnection failed: ${reconnectError.message}`
+						})
+						continue
+					}
 				}
 				
 				console.debug(`Invoking tool "${tool.name}" with parameters:`, parameters)

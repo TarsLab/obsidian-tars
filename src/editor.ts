@@ -589,7 +589,23 @@ const invokeMCPTools = async (
 		}
 
 		console.debug('Invoking MCP tools for tags:', tags)
-		statusBarManager.setStatus('Fetching external data...')
+		statusBarManager.setStatus('Verifying MCP connections...')
+
+		// Verify and recover connections before tool invocation
+		const connectionStatus = await tagToolMapper.verifyConnectionsForTags(tags)
+		
+		if (connectionStatus.failed.length > 0) {
+			console.warn(`Failed to connect to MCP servers: ${connectionStatus.failed.join(', ')}`)
+		}
+		
+		if (connectionStatus.verified > 0) {
+			console.log(`Verified ${connectionStatus.verified} MCP server connections`)
+			statusBarManager.setStatus('Fetching external data...')
+		} else {
+			console.warn('No MCP servers available for the current tags')
+			statusBarManager.setStatus('No MCP servers available')
+			return []
+		}
 
 		// Invoke tools based on tags
 		const toolResults = await tagToolMapper.invokeToolsForTags(tags)
@@ -598,6 +614,10 @@ const invokeMCPTools = async (
 		const successfulResults = toolResults.filter(result => !result.error)
 		
 		console.debug('MCP tool results:', successfulResults.length, 'successful,', toolResults.length - successfulResults.length, 'failed')
+		
+		if (successfulResults.length > 0) {
+			statusBarManager.setStatus(`Retrieved data from ${successfulResults.length} tools`)
+		}
 		
 		return successfulResults
 	} catch (error) {

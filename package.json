@@ -8,7 +8,10 @@
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
 		"lint": "eslint .",
-		"format": "prettier --write src/"
+		"format": "prettier --write src/",
+		"test": "vitest",
+		"test:run": "vitest run",
+		"test:coverage": "vitest run --coverage"
 	},
 	"keywords": [],
 	"author": "C Jack<https://github.com/ae86jack>",
@@ -18,7 +21,7 @@
 		"@eslint/js": "^9.19.0",
 		"@google/generative-ai": "^0.21.0",
 		"@modelcontextprotocol/sdk": "^1.0.0",
-		"@types/node": "^16.18.101",
+		"@types/node": "^18.19.0",
 		"axios": "^1.8.3",
 		"builtin-modules": "3.3.0",
 		"dockerode": "^3.3.4",
@@ -34,6 +37,8 @@
 		"prettier": "^3.3.3",
 		"tslib": "^2.4.0",
 		"typescript": "^5.5.2",
-		"typescript-eslint": "^8.23.0"
+		"typescript-eslint": "^8.23.0",
+		"vitest": "^1.6.0",
+		"@vitest/coverage-v8": "^1.6.0"
 	}
 }
