@@ -9,6 +9,16 @@
 
 Tars is an Obsidian plugin that supports text generation based on tag suggestions, using services like Claude, OpenAI, Gemini, 🔥DeepSeek, 🔥SiliconFlow, 🔥OpenRouter, Ollama, Kimi, Doubao, Qwen, Zhipu, QianFan & more. The name Tars comes from the robot Tars in the movie "Interstellar". The plugin supports both desktop and mobile devices.
 
+## 🚀 New: MCP Integration
+
+**Model Context Protocol (MCP) Integration** - Enhance your AI generation with external data sources:
+- Connect to MCP servers running in Docker containers
+- Automatically invoke tools based on tags in your notes
+- Include real-time data (weather, stocks, news, etc.) in AI responses
+- Extensible architecture for custom integrations
+
+[📖 MCP Integration Guide](docs/MCP_INTEGRATION.md)
+
 ## 🌟 3.1 Multimodal
 
 ### 🎨 Image Generation

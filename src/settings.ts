@@ -1,3 +1,4 @@
+import { MCPServerConfig, TagToolMapping } from './mcp'
 import { PromptTemplate } from './prompt'
 import { ProviderSettings, Vendor } from './providers'
 import { azureVendor } from './providers/azure'
@@ -45,6 +46,18 @@ export interface PluginSettings {
 	enableDefaultSystemMsg: boolean
 	defaultSystemMsg: string
 	enableStreamLog: boolean
+	// MCP Integration Settings
+	enableMCPIntegration: boolean
+	mcpServers: MCPServerConfig[]
+	tagToolMappings: TagToolMapping[]
+	mcpToolTimeout: number
+	enableMCPToolCaching: boolean
+	mcpRetryConfig: {
+		maxRetries: number
+		initialDelay: number
+		maxDelay: number
+		backoffMultiplier: number
+	}
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -70,7 +83,19 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	enableReplaceTag: false,
 	enableDefaultSystemMsg: false,
 	defaultSystemMsg: '',
-	enableStreamLog: false
+	enableStreamLog: false,
+	// MCP Integration Default Settings
+	enableMCPIntegration: false,
+	mcpServers: [],
+	tagToolMappings: [],
+	mcpToolTimeout: 10000, // 10 seconds
+	enableMCPToolCaching: true,
+	mcpRetryConfig: {
+		maxRetries: 3,
+		initialDelay: 1000, // 1 second
+		maxDelay: 10000, // 10 seconds
+		backoffMultiplier: 2
+	}
 }
 
 export const availableVendors: Vendor[] = [
