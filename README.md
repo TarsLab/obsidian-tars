@@ -138,6 +138,14 @@ We recommend using the [colored tags plugin](https://github.com/pfrankov/obsidia
 
 ## FAQ
 
+### How to trigger?
+
+There are several ways:
+
+- Select tags from the command palette
+- Type `#` + tag + space
+- Directly type the complete tag (without #)
+
 ### Can't find the model you want in the settings?
 
 You can configure it in the "Override input parameters" section in the settings by entering JSON format, such as `{"model":"your-desired-model"}`.
