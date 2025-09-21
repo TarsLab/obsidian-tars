@@ -105,7 +105,7 @@ export default {
 	'Obtain key from ': 'Obtain key from ',
 	'Web search': 'Web search',
 	'Enable web search for AI': 'Enable web search for AI',
-	'Enter your key': 'Enter your key',
+	'API key (required)': 'API key (required)',
 	'Default:': 'Default:',
 	'Refer to the technical documentation': 'Refer to the technical documentation',
 	'Keyword for tag must not contain #': 'Keyword for tag must not contain #',

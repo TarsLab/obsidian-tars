@@ -481,7 +481,7 @@ export class TarsSettingTab extends PluginSettingTab {
 			.setDesc(desc)
 			.addText((text) =>
 				text
-					.setPlaceholder(t('Enter your key'))
+					.setPlaceholder(t('API key (required)'))
 					.setValue(options.apiKey)
 					.onChange(async (value) => {
 						options.apiKey = value
