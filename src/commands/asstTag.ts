@@ -107,7 +107,6 @@ export const asstTagCmd = (
 					settings.editorStatus,
 					requestController
 				)
-				new Notice(t('Text generated successfully'))
 			}
 		} catch (error) {
 			console.error(error)

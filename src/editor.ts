@@ -5,6 +5,7 @@ import {
 	EmbedCache,
 	LinkCache,
 	MetadataCache,
+	Notice,
 	ReferenceCache,
 	SectionCache,
 	TagCache,
@@ -532,6 +533,7 @@ export const generate = async (
 		if (controller.signal.aborted) {
 			throw new DOMException('Operation was aborted', 'AbortError')
 		}
+		new Notice(t('Text generated successfully'))
 	} finally {
 		requestController.cleanup()
 	}

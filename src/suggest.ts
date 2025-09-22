@@ -203,7 +203,6 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 				this.settings.editorStatus,
 				this.requestController
 			)
-			new Notice(t('Text generated successfully'))
 		} catch (error) {
 			console.error('error', error)
 			if (error.name === 'AbortError') {
