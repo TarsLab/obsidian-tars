@@ -469,7 +469,7 @@ export class TarsSettingTab extends PluginSettingTab {
 			.addText((text) => {
 				textInput = text.inputEl
 				text.setValue(options.baseURL).onChange(async (value) => {
-					options.baseURL = value
+					options.baseURL = value.trim()
 					await this.plugin.saveSettings()
 				})
 			})
@@ -484,7 +484,7 @@ export class TarsSettingTab extends PluginSettingTab {
 					.setPlaceholder(t('API key (required)'))
 					.setValue(options.apiKey)
 					.onChange(async (value) => {
-						options.apiKey = value
+						options.apiKey = value.trim()
 						await this.plugin.saveSettings()
 					})
 			)
@@ -502,7 +502,7 @@ export class TarsSettingTab extends PluginSettingTab {
 					.setPlaceholder('')
 					.setValue(options.apiSecret)
 					.onChange(async (value) => {
-						options.apiSecret = value
+						options.apiSecret = value.trim()
 						await this.plugin.saveSettings()
 					})
 			)
@@ -535,7 +535,7 @@ export class TarsSettingTab extends PluginSettingTab {
 					.setPlaceholder('')
 					.setValue(options.model)
 					.onChange(async (value) => {
-						options.model = value
+						options.model = value.trim()
 						await this.plugin.saveSettings()
 					})
 			)
@@ -629,7 +629,7 @@ export class TarsSettingTab extends PluginSettingTab {
 					.setPlaceholder('')
 					.setValue(options.apiVersion)
 					.onChange(async (value) => {
-						options.apiVersion = value
+						options.apiVersion = value.trim()
 						await this.plugin.saveSettings()
 					})
 			)
@@ -648,13 +648,14 @@ export class TarsSettingTab extends PluginSettingTab {
 					.setValue(JSON.stringify(options.parameters))
 					.onChange(async (value) => {
 						try {
-							if (value.trim() === '') {
+							const trimmed = value.trim()
+							if (trimmed === '') {
 								// Empty string is valid, clearing parameters
 								options.parameters = {}
 								await this.plugin.saveSettings()
 								return
 							}
-							options.parameters = JSON.parse(value)
+							options.parameters = JSON.parse(trimmed)
 							await this.plugin.saveSettings()
 						} catch {
 							// This is difficult to handle properly - onChange triggers quickly, and users might receive frequent error messages before they finish typing, which is annoying
