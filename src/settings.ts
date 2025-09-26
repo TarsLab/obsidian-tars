@@ -6,6 +6,7 @@ import { deepSeekVendor } from './providers/deepSeek'
 import { doubaoVendor } from './providers/doubao'
 import { geminiVendor } from './providers/gemini'
 import { gptImageVendor } from './providers/gptImage'
+import { grokVendor } from './providers/grok'
 import { kimiVendor } from './providers/kimi'
 import { ollamaVendor } from './providers/ollama'
 import { openAIVendor } from './providers/openAI'
@@ -82,6 +83,7 @@ export const availableVendors: Vendor[] = [
 	doubaoVendor,
 	geminiVendor,
 	gptImageVendor,
+	grokVendor,
 	kimiVendor,
 	ollamaVendor,
 	openRouterVendor,

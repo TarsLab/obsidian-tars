@@ -7,6 +7,7 @@ import { SelectModelModal, SelectVendorModal } from './modal'
 import { BaseOptions, Optional, ProviderSettings, Vendor } from './providers'
 import { ClaudeOptions, claudeVendor } from './providers/claude'
 import { GptImageOptions, gptImageVendor } from './providers/gptImage'
+import { grokVendor } from './providers/grok'
 import { kimiVendor } from './providers/kimi'
 import { ollamaVendor } from './providers/ollama'
 import { openRouterVendor } from './providers/openRouter'
@@ -826,6 +827,10 @@ const MODEL_FETCH_CONFIGS = {
 	},
 	[kimiVendor.name]: {
 		url: 'https://api.moonshot.cn/v1/models',
+		requiresApiKey: true
+	},
+	[grokVendor.name]: {
+		url: 'https://api.x.ai/v1/models',
 		requiresApiKey: true
 	}
 } as const
