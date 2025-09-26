@@ -62,6 +62,7 @@ Tars is an Obsidian plugin that supports text generation based on tag suggestion
 - [Qianfan](https://qianfan.cloud.baidu.com)
 - [Qwen](https://dashscope.console.aliyun.com)
 - [SiliconFlow](https://siliconflow.cn)
+- [X.ai Grok](https://x.ai)
 - [Zhipu](https://open.bigmodel.cn/)
 
 If the AI provider you want is not in the list above, you can propose a specific plan in the issue.

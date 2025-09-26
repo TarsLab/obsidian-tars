@@ -62,6 +62,7 @@ Tars 是一个 Obsidian 插件，基于标签建议进行文本生成，支持 C
 - [Qianfan 百度千帆](https://qianfan.cloud.baidu.com)
 - [Qwen 阿里千问](https://dashscope.console.aliyun.com)
 - [SiliconFlow 硅基流动](https://siliconflow.cn)
+- [X.ai Grok](https://x.ai)
 - [Zhipu 智谱](https://open.bigmodel.cn/)
 
 如果上面列表没有你想要的 AI 服务提供商，可以在 issue 中提出具体方案。
