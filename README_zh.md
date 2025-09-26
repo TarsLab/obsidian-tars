@@ -183,3 +183,9 @@ LLM的协议是有区别的，openAI，claude，gemini 差别很大，注意要�
 - 尝试使用“源码模式”进行对话交互。当你觉得要输出长文本的时候，把编辑模式从“实时阅览”改为“源码模式”，这样obsidian不用去渲染，等输出完成后，再把编辑模式改回“实时阅览”。
 
 [相关的issue](https://github.com/TarsLab/obsidian-tars/issues/78)
+
+## 赞赏
+
+如果你觉得这个插件对你有帮助，可以请作者喝杯咖啡☕️，支持一下后续的开发和维护工作。
+
+<img src="docs/images/zh/赞赏码.jpg" alt="赞赏" width="300">
