@@ -17,7 +17,7 @@
 		"@anthropic-ai/sdk": "^0.56.0",
 		"@eslint/js": "^9.19.0",
 		"@google/generative-ai": "^0.21.0",
-		"@types/node": "^16.18.101",
+		"@types/node": "^22.0.0",
 		"axios": "^1.8.3",
 		"builtin-modules": "3.3.0",
 		"esbuild": "^0.25.8",
@@ -31,6 +31,7 @@
 		"prettier": "^3.3.3",
 		"tslib": "^2.4.0",
 		"typescript": "^5.5.2",
-		"typescript-eslint": "^8.23.0"
+		"typescript-eslint": "^8.23.0",
+		"vitest": "^3.2.4"
 	}
 }
