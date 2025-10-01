@@ -117,3 +117,55 @@ summary.tars-setting-h4 {
 .error-modal-buttons button:active {
 	background-color: var(--interactive-active);
 }
+
+/* MCP Settings Styles */
+.mcp-server-section {
+	margin: var(--size-4-2) 0;
+	padding: var(--size-4-2);
+	background-color: var(--background-secondary);
+	border-radius: var(--radius-m);
+	border: 1px solid var(--background-modifier-border);
+}
+
+.mcp-server-section summary {
+	cursor: pointer;
+	font-weight: var(--font-semibold);
+	padding: var(--size-2-2);
+	margin: calc(var(--size-4-2) * -1);
+	margin-bottom: var(--size-4-2);
+	background-color: var(--background-secondary-alt);
+	border-radius: var(--radius-m);
+}
+
+.mcp-textarea-container {
+	margin-top: var(--size-2-2);
+	margin-bottom: var(--size-4-2);
+}
+
+.mcp-execution-textarea {
+	width: 100%;
+	min-height: 150px;
+	padding: var(--size-4-2);
+	font-family: var(--font-monospace);
+	font-size: var(--font-ui-small);
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	color: var(--text-normal);
+	resize: vertical;
+}
+
+.mcp-execution-textarea:focus {
+	outline: none;
+	border-color: var(--interactive-accent);
+}
+
+/* Control buttons - uniform sizing */
+.mcp-control-button {
+	min-width: 80px !important;
+	height: 32px !important;
+	padding: var(--size-2-1) var(--size-4-2) !important;
+	display: inline-flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+}

@@ -39,20 +39,10 @@ export interface MCPServerConfig {
 
   // Connection
   transport: TransportProtocol;
-  deploymentType: DeploymentType;
-
-  // Docker-specific (managed only)
-  dockerConfig?: {
-    image: string;
-    containerName: string;
-    command?: string[];
-    ports?: { [key: string]: number };
-  };
-
-  // SSE-specific (external only)
-  sseConfig?: {
-    url: string;
-  };
+  
+  // Execution command (bash/cmd command to start the MCP server)
+  // Examples: "docker run...", "uvx mcp-server", "npx @modelcontextprotocol/server"
+  executionCommand: string;
 
   // State
   enabled: boolean;
@@ -64,6 +54,18 @@ export interface MCPServerConfig {
 
   // Section associations
   sectionBindings: SectionBinding[];
+
+  // Legacy fields (for backward compatibility - will be migrated)
+  deploymentType?: DeploymentType;
+  dockerConfig?: {
+    image: string;
+    containerName: string;
+    command?: string[];
+    ports?: { [key: string]: number };
+  };
+  sseConfig?: {
+    url: string;
+  };
 }
 
 export interface SectionBinding {

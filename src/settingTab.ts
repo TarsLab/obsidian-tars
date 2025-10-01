@@ -14,7 +14,7 @@ import { openRouterVendor } from './providers/openRouter'
 import { siliconFlowVendor } from './providers/siliconflow'
 import { getCapabilityEmoji } from './providers/utils'
 import { availableVendors, DEFAULT_SETTINGS } from './settings'
-import { TransportProtocol, DeploymentType } from './mcp/types'
+import { TransportProtocol, DeploymentType, MCPServerConfig } from './mcp/types'
 
 export class TarsSettingTab extends PluginSettingTab {
 	plugin: TarsPlugin
@@ -308,11 +308,13 @@ export class TarsSettingTab extends PluginSettingTab {
 
 		// MCP Server Integration Settings
 		containerEl.createEl('br')
-		new Setting(containerEl).setName('MCP Servers').setHeading()
-		new Setting(containerEl).setDesc('Configure Model Context Protocol servers to extend AI capabilities with external tools')
+		
+		// MCP Servers collapsible section
+		const mcpSection = containerEl.createEl('details')
+		mcpSection.createEl('summary', { text: 'MCP Servers', cls: 'tars-setting-h4' })
 
 		// Global MCP settings
-		new Setting(containerEl)
+		new Setting(mcpSection)
 			.setName('Global timeout (ms)')
 			.setDesc('Maximum time to wait for tool execution (default: 30000ms)')
 			.addText((text) =>
@@ -328,7 +330,7 @@ export class TarsSettingTab extends PluginSettingTab {
 					})
 			)
 
-		new Setting(containerEl)
+		new Setting(mcpSection)
 			.setName('Concurrent limit')
 			.setDesc('Maximum number of tools executing simultaneously (default: 25)')
 			.addText((text) =>
@@ -344,7 +346,7 @@ export class TarsSettingTab extends PluginSettingTab {
 					})
 			)
 
-		new Setting(containerEl)
+		new Setting(mcpSection)
 			.setName('Session limit')
 			.setDesc('Maximum total tool executions per session, -1 for unlimited (default: 25)')
 			.addText((text) =>
@@ -363,38 +365,85 @@ export class TarsSettingTab extends PluginSettingTab {
 		// MCP Server list
 		if (this.plugin.settings.mcpServers && this.plugin.settings.mcpServers.length > 0) {
 			for (const [index, server] of this.plugin.settings.mcpServers.entries()) {
-				const serverSection = containerEl.createEl('details', { cls: 'mcp-server-section' })
-				serverSection.createEl('summary', {
+				const serverSection = mcpSection.createEl('details', { cls: 'mcp-server-section' })
+				const serverSummary = serverSection.createEl('summary', {
 					text: `${server.name} (${server.enabled ? '✓ Enabled' : '✗ Disabled'})`,
 					cls: 'mcp-server-summary'
 				})
 
+				// First row: Enable/Disable | Test | Delete
+				const controlRow = new Setting(serverSection)
+					.setName('Controls')
+					.addButton((btn) => {
+						const buttonEl = btn
+							.setButtonText(server.enabled ? 'Disable' : 'Enable')
+							.setClass('mcp-control-button')
+							.setTooltip(server.enabled ? 'Disable server' : 'Enable server')
+							.onClick(async () => {
+								server.enabled = !server.enabled
+								await this.plugin.saveSettings()
+								
+								// Update button text and tooltip
+								btn.setButtonText(server.enabled ? 'Disable' : 'Enable')
+								btn.setTooltip(server.enabled ? 'Disable server' : 'Enable server')
+								
+								// Update summary text
+								serverSummary.setText(`${server.name} (${server.enabled ? '✓ Enabled' : '✗ Disabled'})`)
+								
+								// Reinitialize MCP manager
+								if (this.plugin.mcpManager) {
+									await this.plugin.mcpManager.shutdown()
+									await this.plugin.mcpManager.initialize(this.plugin.settings.mcpServers)
+								}
+							})
+						return buttonEl
+					})
+					.addButton((btn) =>
+						btn
+							.setButtonText('Test')
+							.setClass('mcp-control-button')
+							.setTooltip('Test server connection')
+							.onClick(async () => {
+								// TODO: Implement test functionality
+								new Notice(`Testing ${server.name}...`)
+							})
+					)
+					.addButton((btn) =>
+						btn
+							.setButtonText('Delete')
+							.setClass('mcp-control-button')
+							.setWarning()
+							.setTooltip('Delete this server')
+							.onClick(async () => {
+								this.plugin.settings.mcpServers.splice(index, 1)
+								await this.plugin.saveSettings()
+								if (this.plugin.mcpManager) {
+									await this.plugin.mcpManager.shutdown()
+									await this.plugin.mcpManager.initialize(this.plugin.settings.mcpServers)
+								}
+								this.display()
+							})
+					)
+
+				// Server name
 				new Setting(serverSection)
 					.setName('Server name')
 					.addText((text) =>
-						text.setValue(server.name).onChange(async (value) => {
-							server.name = value
-							await this.plugin.saveSettings()
-						})
+						text
+							.setPlaceholder('my-mcp-server')
+							.setValue(server.name)
+							.onChange(async (value) => {
+								server.name = value
+								await this.plugin.saveSettings()
+								// Update summary text without re-rendering
+								serverSummary.setText(`${server.name} (${server.enabled ? '✓ Enabled' : '✗ Disabled'})`)
+							})
 					)
 
-				new Setting(serverSection)
-					.setName('Enabled')
-					.addToggle((toggle) =>
-						toggle.setValue(server.enabled).onChange(async (value) => {
-							server.enabled = value
-							await this.plugin.saveSettings()
-							// Reinitialize MCP manager
-							if (this.plugin.mcpManager) {
-								await this.plugin.mcpManager.shutdown()
-								await this.plugin.mcpManager.initialize(this.plugin.settings.mcpServers)
-							}
-							this.display()
-						})
-					)
-
+				// Transport
 				new Setting(serverSection)
 					.setName('Transport')
+					.setDesc('Communication protocol (stdio for local, sse for remote)')
 					.addDropdown((dropdown) =>
 						dropdown
 							.addOptions({ stdio: 'stdio', sse: 'SSE' })
@@ -405,86 +454,54 @@ export class TarsSettingTab extends PluginSettingTab {
 							})
 					)
 
-				new Setting(serverSection)
-					.setName('Deployment type')
-					.addDropdown((dropdown) =>
-						dropdown
-							.addOptions({ managed: 'Managed (Docker)', external: 'External' })
-							.setValue(server.deploymentType)
-							.onChange(async (value) => {
-								server.deploymentType = value as DeploymentType
-								await this.plugin.saveSettings()
-							})
-					)
+				// Execution command, JSON, or URL
+				const execSetting = new Setting(serverSection)
+					.setName('Execution Command, JSON Or URL')
+					.setDesc('Provide one of: 1) Shell command (e.g., "docker run..."), 2) VS Code MCP JSON config, or 3) URL for remote server (e.g., "http://localhost:3000/sse")')
+				
+				// Create textarea in a separate container for full-width layout
+				const textareaContainer = serverSection.createDiv({ cls: 'mcp-textarea-container' })
+				const textarea = textareaContainer.createEl('textarea', {
+					placeholder: `Examples:
 
-				// Docker configuration (for managed servers)
-				if (server.deploymentType === 'managed' && server.dockerConfig) {
-					new Setting(serverSection)
-						.setName('Docker image')
-						.addText((text) =>
-							text.setValue(server.dockerConfig?.image || '').onChange(async (value) => {
-								if (!server.dockerConfig) server.dockerConfig = { image: '', containerName: '' }
-								server.dockerConfig.image = value
-								await this.plugin.saveSettings()
-							})
-						)
+1. Command: docker run -it --rm mcp-server:latest
 
-					new Setting(serverSection)
-						.setName('Container name')
-						.addText((text) =>
-							text.setValue(server.dockerConfig?.containerName || '').onChange(async (value) => {
-								if (!server.dockerConfig) server.dockerConfig = { image: '', containerName: '' }
-								server.dockerConfig.containerName = value
-								await this.plugin.saveSettings()
-							})
-						)
-				}
+2. JSON (VS Code format):
+{
+  "command": "docker",
+  "args": ["run", "--name", "mcp-server", "-it", "--rm", "mcp-server:latest"],
+  "env": {
+    "API_KEY": "secret123",
+    "DEBUG": "mcp:*"
+  }
+}
 
-				// SSE configuration (for external servers)
-				if (server.deploymentType === 'external' && server.transport === 'sse') {
-					new Setting(serverSection)
-						.setName('SSE URL')
-						.addText((text) =>
-							text.setValue(server.sseConfig?.url || '').onChange(async (value) => {
-								if (!server.sseConfig) server.sseConfig = { url: '' }
-								server.sseConfig.url = value
-								await this.plugin.saveSettings()
-							})
-						)
-				}
-
-				// Delete server button
-				new Setting(serverSection).addButton((btn) =>
-					btn
-						.setButtonText('Delete Server')
-						.setWarning()
-						.onClick(async () => {
-							this.plugin.settings.mcpServers.splice(index, 1)
-							await this.plugin.saveSettings()
-							if (this.plugin.mcpManager) {
-								await this.plugin.mcpManager.shutdown()
-								await this.plugin.mcpManager.initialize(this.plugin.settings.mcpServers)
-							}
-							this.display()
-						})
-				)
+3. URL: http://localhost:8080/sse`,
+					cls: 'mcp-execution-textarea'
+				})
+				textarea.value = server.executionCommand || ''
+				textarea.rows = 8
+				textarea.style.width = '100%'
+				textarea.style.fontFamily = 'monospace'
+				textarea.style.fontSize = '13px'
+				textarea.addEventListener('input', async (e) => {
+					const target = e.target as HTMLTextAreaElement
+					server.executionCommand = target.value
+					await this.plugin.saveSettings()
+				})
 			}
 		} else {
-			new Setting(containerEl).setDesc('No MCP servers configured. Add a server to get started.')
+			new Setting(mcpSection).setDesc('No MCP servers configured. Add a server to get started.')
 		}
 
 		// Add new server button
-		new Setting(containerEl).addButton((btn) =>
+		new Setting(mcpSection).addButton((btn) =>
 			btn.setButtonText('Add MCP Server').onClick(async () => {
-				const newServer = {
+				const newServer: MCPServerConfig = {
 					id: `mcp-server-${Date.now()}`,
 					name: 'new-server',
 					transport: TransportProtocol.STDIO,
-					deploymentType: DeploymentType.MANAGED,
-					dockerConfig: {
-						image: '',
-						containerName: 'tars-mcp-new'
-					},
+					executionCommand: '',
 					enabled: false,
 					failureCount: 0,
 					autoDisabled: false,
