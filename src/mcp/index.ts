@@ -16,6 +16,14 @@ export { CodeBlockProcessor } from './codeBlockProcessor';
 export { DockerClient } from './docker';
 export { HealthMonitor } from './healthMonitor';
 
+// Provider integration
+export {
+  buildAIToolContext,
+  formatToolsForSystemMessage,
+  parseToolCallFromResponse,
+  formatToolResultForAI
+} from './providerIntegration';
+
 // Import types for function signatures
 import { MCPServerManager } from './manager';
 import { ToolExecutor } from './executor';

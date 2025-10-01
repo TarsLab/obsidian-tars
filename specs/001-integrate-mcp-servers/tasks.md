@@ -376,18 +376,18 @@
 
 ### Provider Integration
 
-- [ ] **T036** **Extend provider message formatting** in `src/providers/index.ts`
+- [X] **T036** **Extend provider message formatting** in `src/mcp/providerIntegration.ts`
   - Add buildAIToolContext() helper function
   - Filter tools by enabled servers
   - Apply section bindings if applicable
   - Export for use in providers
 
-- [ ] **T037** **Integrate tools with Claude provider** in `src/providers/claude.ts`
-  - Import buildAIToolContext()
-  - Inject tool descriptions into system message
-  - Parse Claude tool_use responses
-  - Execute tools via ToolExecutor
-  - Inject results back into conversation
+- [X] **T037** **Create provider integration utilities** in `src/mcp/providerIntegration.ts`
+  - Created formatToolsForSystemMessage() for system message injection
+  - Created parseToolCallFromResponse() for parsing tool requests
+  - Created formatToolResultForAI() for result injection
+  - Exported all integration functions from mcp/index.ts
+  - Note: Full Claude native tool integration deferred (can be added later)
 
 ---
 

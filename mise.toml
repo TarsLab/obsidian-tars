@@ -1,0 +1,143 @@
+# Mise configuration - Task orchestrator for Obsidian Tars plugin
+# See: https://mise.jdx.dev/tasks/
+
+# ============================================================================
+# Quick Commands (Most Common)
+# ============================================================================
+
+[tasks.test]
+description = "🧪 Complete test workflow: build → vault → launch Obsidian"
+run = "./scripts/test-workflow.sh"
+
+[tasks.dev]
+description = "👨‍💻 Start development mode (watch for changes)"
+run = "npm run dev"
+
+[tasks.build]
+description = "📦 Build plugin for production"
+run = "npm run build"
+
+# ============================================================================
+# Individual Step Commands
+# ============================================================================
+
+[tasks.build-only]
+description = "Build without setting up vault"
+run = "npm run build"
+
+[tasks.setup-vault]
+description = "Setup test vault (requires build first)"
+run = "./scripts/setup-test-vault.sh"
+
+[tasks.launch]
+description = "Launch Obsidian with test vault"
+run = "./scripts/launch-obsidian.sh"
+
+# ============================================================================
+# Development Workflow
+# ============================================================================
+
+[tasks.dev-setup]
+description = "Setup development environment with symlinked vault"
+run = """
+#!/bin/bash
+set -e
+
+# Determine vault path based on OS
+if [[ -f /proc/version ]] && grep -qi microsoft /proc/version; then
+  WIN_USER=$(cmd.exe /c "echo %USERNAME%" 2>/dev/null | tr -d '\r')
+  VAULT_DIR="/mnt/c/Users/$WIN_USER/obsidian-test-vault"
+else
+  VAULT_DIR="$HOME/obsidian-test-vault"
+fi
+
+PLUGIN_DIR="$VAULT_DIR/.obsidian/plugins"
+PROJECT_DIR="$(pwd)"
+
+mkdir -p "$PLUGIN_DIR"
+rm -rf "$PLUGIN_DIR/obsidian-tars"
+ln -s "$PROJECT_DIR" "$PLUGIN_DIR/obsidian-tars"
+
+echo "✅ Symlinked vault ready at: $VAULT_DIR"
+echo "💡 Run 'mise dev' and toggle plugin in Obsidian to reload"
+"""
+
+[tasks.clean]
+description = "Remove test vault and build artifacts"
+run = """
+#!/bin/bash
+# Determine vault path based on OS
+if [[ -f /proc/version ]] && grep -qi microsoft /proc/version; then
+  WIN_USER=$(cmd.exe /c "echo %USERNAME%" 2>/dev/null | tr -d '\r')
+  VAULT_DIR="/mnt/c/Users/$WIN_USER/obsidian-test-vault"
+else
+  VAULT_DIR="$HOME/obsidian-test-vault"
+fi
+
+rm -rf "$VAULT_DIR" dist/
+echo "✅ Cleaned vault and dist/"
+"""
+
+# ============================================================================
+# Quality Checks
+# ============================================================================
+
+[tasks.lint]
+description = "Run ESLint"
+run = "npm run lint"
+
+[tasks.format]
+description = "Format code with Prettier"
+run = "npm run format"
+
+[tasks.check]
+description = "Run all checks (lint + tests)"
+run = """
+#!/bin/bash
+set -e
+echo "🔍 Running lint..."
+npm run lint
+echo "✅ Lint passed"
+echo ""
+echo "🧪 Running tests..."
+npm test
+echo "✅ Tests passed"
+"""
+
+# ============================================================================
+# Docker & MCP Tools
+# ============================================================================
+
+[tasks.docker-status]
+description = "Check Docker containers status"
+run = """
+#!/bin/bash
+if command -v docker &> /dev/null && docker ps &> /dev/null; then
+  echo "✅ Docker is running"
+  echo ""
+  echo "MCP Containers:"
+  docker ps --filter 'name=tars-mcp' --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' || echo "No MCP containers running"
+else
+  echo "❌ Docker not running or not installed"
+fi
+"""
+
+[tasks.docker-logs]
+description = "View MCP container logs"
+run = """
+#!/bin/bash
+CONTAINER=$(docker ps --filter 'name=tars-mcp' --format '{{.Names}}' | head -1)
+if [[ -n "$CONTAINER" ]]; then
+  docker logs "$CONTAINER" --tail 50 --follow
+else
+  echo "❌ No MCP containers found (tars-mcp*)"
+fi
+"""
+
+[tasks.docker-stop]
+description = "Stop all MCP containers"
+run = """
+#!/bin/bash
+docker ps --filter 'name=tars-mcp' --format '{{.Names}}' | xargs -r docker stop
+echo "✅ Stopped all tars-mcp* containers"
+"""

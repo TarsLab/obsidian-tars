@@ -30,14 +30,30 @@ const context = await esbuild.context({
 		'@lezer/common',
 		'@lezer/highlight',
 		'@lezer/lr',
-		...builtins
+		...builtins,
+		// Node built-ins with node: prefix (for MCP SDK)
+		'node:process',
+		'node:stream',
+		'node:events',
+		'node:buffer',
+		'node:util',
+		'node:fs',
+		'node:path',
+		'node:http',
+		'node:https',
+		'node:net',
+		'node:tls',
+		'node:crypto',
+		'node:os',
+		'node:child_process'
 	],
 	format: 'cjs',
+	platform: 'node', // Obsidian runs on Electron (Node.js environment)
 	target: 'es2018',
 	logLevel: 'info',
 	sourcemap: prod ? false : 'inline',
 	treeShaking: true,
-	outfile: 'main.js',
+	outfile: 'dist/main.js',
 	minify: prod
 })
 
