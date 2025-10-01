@@ -4,7 +4,7 @@
  */
 
 import { ToolExecutionResult, ExecutionTracker, ExecutionHistoryEntry } from './types';
-import { MCPServerManager } from './manager';
+import { MCPServerManager } from './managerMCPUse';
 import { ExecutionLimitError } from './errors';
 
 export interface ToolExecutionRequest {

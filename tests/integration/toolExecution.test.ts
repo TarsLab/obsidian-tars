@@ -127,7 +127,7 @@ timestamp: true`;
         activeExecutions: 0,
         totalExecuted: 0,
         sessionLimit: 25,
-        concurrentLimit: 25,
+        concurrentLimit: 3, // Updated from 25 to 3 per factory defaults
         stopped: false
       });
     });

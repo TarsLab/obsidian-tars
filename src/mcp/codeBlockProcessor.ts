@@ -3,9 +3,9 @@
  * Handles parsing and rendering of MCP tool invocation code blocks
  */
 
-import { ToolExecutionResult, ErrorInfo, MCPServerConfig } from './types';
-import { ToolInvocation } from './types'; // Re-export for convenience
+import { ToolExecutionResult, ErrorInfo, MCPServerConfig, ToolInvocation } from './types';
 import { YAMLParseError } from './errors';
+import { logError } from './utils';
 
 export class CodeBlockProcessor {
   private serverConfigs: MCPServerConfig[] = [];
@@ -57,7 +57,7 @@ export class CodeBlockProcessor {
       };
 
     } catch (error) {
-      console.error('Failed to parse tool invocation:', error);
+      logError('Failed to parse tool invocation', error);
       return null;
     }
   }

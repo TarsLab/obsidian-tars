@@ -441,10 +441,11 @@
   - Provided example code blocks
   - Listed supported transports (stdio, SSE)
 
-- [ ] **T044** **Remove code duplication**
-  - Extract common patterns from client.ts
-  - Consolidate error handling
-  - Refactor repeated validation logic
+- [X] **T044** **Remove code duplication**
+  - Created utils.ts with common error handling functions
+  - Extracted getErrorMessage(), logError(), logWarning() utilities
+  - Refactored client.ts, manager.ts, codeBlockProcessor.ts to use utilities
+  - Reduced duplicate error formatting patterns across modules
 
 - [ ] **T045** **Performance validation**
   - Measure tool execution latency (<30s timeout)

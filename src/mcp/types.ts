@@ -62,6 +62,7 @@ export interface MCPServerConfig {
     containerName: string;
     command?: string[];
     ports?: { [key: string]: number };
+    env?: Record<string, string>;
   };
   sseConfig?: {
     url: string;

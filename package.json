@@ -9,7 +9,10 @@
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
 		"lint": "eslint .",
 		"format": "prettier --write src/",
-		"test": "vitest"
+		"test": "vitest",
+		"test:e2e": "vitest run tests/e2e",
+		"test:integration": "vitest run tests/integration",
+		"test:unit": "vitest run tests/mcp tests/providers"
 	},
 	"keywords": [],
 	"author": "C Jack<https://github.com/ae86jack>",
@@ -34,9 +37,11 @@
 		"tslib": "^2.4.0",
 		"typescript": "^5.9.3",
 		"typescript-eslint": "^8.45.0",
-		"vitest": "^3.2.4"
+		"vitest": "^3.2.4",
+		"testcontainers": "^11.7.0"
 	},
 	"dependencies": {
-		"@modelcontextprotocol/sdk": "^1.18.2"
+		"@modelcontextprotocol/sdk": "^1.18.2",
+		"mcp-use": "^0.1.0"
 	}
 }

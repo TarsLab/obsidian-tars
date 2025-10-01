@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { MCPClientImpl } from '../../src/mcp/client';
-import { TransportProtocol, DeploymentType } from '../../src/mcp/types';
+import { TransportProtocol, DeploymentType, MCPServerConfig } from '../../src/mcp/types';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 
@@ -44,11 +44,11 @@ describe('MCPClient stdio transport contract tests', () => {
   });
 
   describe('stdio transport connection', () => {
-    it('should establish stdio connection to MCP server', async () => {
-      // GIVEN: Docker container with MCP server running
-      const serverConfig = {
-        id: 'test-server',
-        name: 'test-server',
+    it('should connect to managed stdio MCP server via docker run', async () => {
+      // GIVEN: Managed Docker-based MCP server configuration
+      const serverConfig: MCPServerConfig = {
+        id: 'test-stdio',
+        name: 'Test Stdio Server',
         transport: TransportProtocol.STDIO,
         deploymentType: DeploymentType.MANAGED,
         dockerConfig: {
@@ -72,10 +72,10 @@ describe('MCPClient stdio transport contract tests', () => {
       // THEN: Connection established
       expect(Client).toHaveBeenCalled();
 
-      // AND: StdioClientTransport configured correctly
+      // AND: StdioClientTransport spawns container with docker run
       expect(StdioClientTransport).toHaveBeenCalledWith({
         command: 'docker',
-        args: ['exec', '-i', 'tars-mcp-test', 'mcp-server']
+        args: ['run', '-i', '--rm', '--name', 'tars-mcp-test', 'mcp-test/echo-server:latest']
       });
       
       expect(mockClient.connect).toHaveBeenCalledWith(mockTransport);
@@ -92,6 +92,9 @@ describe('MCPClient stdio transport contract tests', () => {
         contentType: 'json' as const,
         executionDuration: 150
       };
+
+      // AND: MCP client instance
+      const client = new MCPClientImpl();
 
       // WHEN: callTool() invoked with valid parameters
       mockClient.callTool.mockResolvedValue(expectedResult);

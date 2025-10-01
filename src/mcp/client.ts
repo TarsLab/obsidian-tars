@@ -19,6 +19,7 @@ import {
   ValidationError,
   TimeoutError
 } from './errors';
+import { getErrorMessage, logWarning } from './utils';
 
 // Re-export the interface
 export type { MCPClient } from './types';
@@ -43,10 +44,28 @@ export class MCPClientImpl implements MCPClient {
         if (!config.dockerConfig) {
           throw new ConnectionError('Stdio transport requires dockerConfig');
         }
-        this.transport = new StdioClientTransport({
-          command: 'docker',
-          args: ['exec', '-i', config.dockerConfig.containerName, 'mcp-server']
-        });
+        
+        // For managed servers, spawn the container via 'docker run -i'
+        // For external servers, exec into existing container
+        if (config.deploymentType === 'managed') {
+          // Spawn container in interactive mode - it will be removed when transport closes
+          this.transport = new StdioClientTransport({
+            command: 'docker',
+            args: [
+              'run',
+              '-i',
+              '--rm',  // Auto-remove when done
+              '--name', config.dockerConfig.containerName,
+              config.dockerConfig.image
+            ].concat(config.dockerConfig.command || [])
+          });
+        } else {
+          // External server - exec into existing container
+          this.transport = new StdioClientTransport({
+            command: 'docker',
+            args: ['exec', '-i', config.dockerConfig.containerName].concat(config.dockerConfig.command || ['mcp-server'])
+          });
+        }
       } else if (config.transport === 'sse') {
         if (!config.sseConfig) {
           throw new ConnectionError('SSE transport requires sseConfig');
@@ -63,7 +82,7 @@ export class MCPClientImpl implements MCPClient {
     } catch (error) {
       this.connected = false;
       throw new ConnectionError(
-        `Failed to connect to MCP server '${config.name}': ${error instanceof Error ? error.message : String(error)}`,
+        `Failed to connect to MCP server '${config.name}': ${getErrorMessage(error)}`,
         error
       );
     }
@@ -78,7 +97,7 @@ export class MCPClientImpl implements MCPClient {
         }
       } catch (error) {
         // Log but don't throw on disconnect
-        console.warn('Error during MCP client disconnect:', error);
+        logWarning('Error during MCP client disconnect', error);
       }
     }
     this.client = null;
@@ -100,7 +119,7 @@ export class MCPClientImpl implements MCPClient {
       }));
     } catch (error) {
       throw new ConnectionError(
-        `Failed to list tools: ${error instanceof Error ? error.message : String(error)}`,
+        `Failed to list tools: ${getErrorMessage(error)}`,
         error
       );
     }

@@ -4,7 +4,7 @@
  */
 
 import { AIToolContext } from './types';
-import { MCPServerManager } from './manager';
+import { MCPServerManager } from './managerMCPUse';
 import { ToolExecutor } from './executor';
 
 /**

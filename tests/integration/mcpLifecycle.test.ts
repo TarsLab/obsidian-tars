@@ -1,49 +1,37 @@
 /**
  * Integration tests for MCP lifecycle
- * End-to-end testing of MCP server management and tool execution
+ * Tests lifecycle management with mocked mcp-use
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { MCPServerManager, ToolExecutor, CodeBlockProcessor, createMCPManager, createToolExecutor, createCodeBlockProcessor } from '../../src/mcp';
 
-// Mock the Docker client and MCP SDK
-vi.mock('../../src/mcp/docker.ts', () => ({
-  DockerClient: vi.fn().mockImplementation(() => ({
-    buildContainerConfig: vi.fn().mockReturnValue({
-      Image: 'mcp-test/echo:latest',
-      name: 'test-container',
-      Cmd: ['mcp-server']
-    }),
-    createContainer: vi.fn().mockResolvedValue('test-container-id'),
-    startContainer: vi.fn().mockResolvedValue(undefined),
-    stopContainer: vi.fn().mockResolvedValue(undefined),
-    removeContainer: vi.fn().mockResolvedValue(undefined),
-    getContainerStatus: vi.fn().mockResolvedValue({ State: { Status: 'running' } }),
-    ping: vi.fn().mockResolvedValue(true),
-    listContainers: vi.fn().mockResolvedValue([])
-  }))
-}));
-
-vi.mock('@modelcontextprotocol/sdk/client/index.js', () => ({
-  Client: vi.fn().mockImplementation(() => ({
+// Mock mcp-use library with silent implementation
+vi.mock('mcp-use', () => {
+  const mockSession = {
+    isConnected: true,
+    connector: {
+      tools: [],
+      callTool: vi.fn().mockResolvedValue({ content: [] })
+    },
     connect: vi.fn().mockResolvedValue(undefined),
     disconnect: vi.fn().mockResolvedValue(undefined),
-    listTools: vi.fn().mockResolvedValue({ tools: [] }),
-    callTool: vi.fn().mockResolvedValue({ content: {} })
-  }))
-}));
+    initialize: vi.fn().mockResolvedValue(undefined)
+  };
 
-vi.mock('@modelcontextprotocol/sdk/client/stdio.js', () => ({
-  StdioClientTransport: vi.fn().mockImplementation(() => ({
-    close: vi.fn().mockResolvedValue(undefined)
-  }))
-}));
-
-vi.mock('@modelcontextprotocol/sdk/client/sse.js', () => ({
-  SSEClientTransport: vi.fn().mockImplementation(() => ({
-    close: vi.fn().mockResolvedValue(undefined)
-  }))
-}));
+  return {
+    MCPClient: {
+      fromDict: vi.fn(() => ({
+        createSession: vi.fn().mockResolvedValue(mockSession),
+        createAllSessions: vi.fn().mockResolvedValue({ 'test-server': mockSession }),
+        getSession: vi.fn().mockReturnValue(mockSession),
+        closeSession: vi.fn().mockResolvedValue(undefined),
+        closeAllSessions: vi.fn().mockResolvedValue(undefined)
+      }))
+    },
+    MCPSession: vi.fn(() => mockSession)
+  };
+});
 
 describe('MCP Lifecycle Integration', () => {
   let manager: MCPServerManager;
