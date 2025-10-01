@@ -14,6 +14,7 @@ import { openRouterVendor } from './providers/openRouter'
 import { siliconFlowVendor } from './providers/siliconflow'
 import { getCapabilityEmoji } from './providers/utils'
 import { availableVendors, DEFAULT_SETTINGS } from './settings'
+import { TransportProtocol, DeploymentType } from './mcp/types'
 
 export class TarsSettingTab extends PluginSettingTab {
 	plugin: TarsPlugin
@@ -304,6 +305,196 @@ export class TarsSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings()
 				})
 			)
+
+		// MCP Server Integration Settings
+		containerEl.createEl('br')
+		new Setting(containerEl).setName('MCP Servers').setHeading()
+		new Setting(containerEl).setDesc('Configure Model Context Protocol servers to extend AI capabilities with external tools')
+
+		// Global MCP settings
+		new Setting(containerEl)
+			.setName('Global timeout (ms)')
+			.setDesc('Maximum time to wait for tool execution (default: 30000ms)')
+			.addText((text) =>
+				text
+					.setPlaceholder('30000')
+					.setValue(this.plugin.settings.mcpGlobalTimeout?.toString() || '30000')
+					.onChange(async (value) => {
+						const timeout = parseInt(value)
+						if (!isNaN(timeout) && timeout > 0) {
+							this.plugin.settings.mcpGlobalTimeout = timeout
+							await this.plugin.saveSettings()
+						}
+					})
+			)
+
+		new Setting(containerEl)
+			.setName('Concurrent limit')
+			.setDesc('Maximum number of tools executing simultaneously (default: 25)')
+			.addText((text) =>
+				text
+					.setPlaceholder('25')
+					.setValue(this.plugin.settings.mcpConcurrentLimit?.toString() || '25')
+					.onChange(async (value) => {
+						const limit = parseInt(value)
+						if (!isNaN(limit) && limit > 0) {
+							this.plugin.settings.mcpConcurrentLimit = limit
+							await this.plugin.saveSettings()
+						}
+					})
+			)
+
+		new Setting(containerEl)
+			.setName('Session limit')
+			.setDesc('Maximum total tool executions per session, -1 for unlimited (default: 25)')
+			.addText((text) =>
+				text
+					.setPlaceholder('25')
+					.setValue(this.plugin.settings.mcpSessionLimit?.toString() || '25')
+					.onChange(async (value) => {
+						const limit = parseInt(value)
+						if (!isNaN(limit) && limit >= -1) {
+							this.plugin.settings.mcpSessionLimit = limit
+							await this.plugin.saveSettings()
+						}
+					})
+			)
+
+		// MCP Server list
+		if (this.plugin.settings.mcpServers && this.plugin.settings.mcpServers.length > 0) {
+			for (const [index, server] of this.plugin.settings.mcpServers.entries()) {
+				const serverSection = containerEl.createEl('details', { cls: 'mcp-server-section' })
+				serverSection.createEl('summary', {
+					text: `${server.name} (${server.enabled ? '✓ Enabled' : '✗ Disabled'})`,
+					cls: 'mcp-server-summary'
+				})
+
+				new Setting(serverSection)
+					.setName('Server name')
+					.addText((text) =>
+						text.setValue(server.name).onChange(async (value) => {
+							server.name = value
+							await this.plugin.saveSettings()
+						})
+					)
+
+				new Setting(serverSection)
+					.setName('Enabled')
+					.addToggle((toggle) =>
+						toggle.setValue(server.enabled).onChange(async (value) => {
+							server.enabled = value
+							await this.plugin.saveSettings()
+							// Reinitialize MCP manager
+							if (this.plugin.mcpManager) {
+								await this.plugin.mcpManager.shutdown()
+								await this.plugin.mcpManager.initialize(this.plugin.settings.mcpServers)
+							}
+							this.display()
+						})
+					)
+
+				new Setting(serverSection)
+					.setName('Transport')
+					.addDropdown((dropdown) =>
+						dropdown
+							.addOptions({ stdio: 'stdio', sse: 'SSE' })
+							.setValue(server.transport)
+							.onChange(async (value) => {
+								server.transport = value as TransportProtocol
+								await this.plugin.saveSettings()
+							})
+					)
+
+				new Setting(serverSection)
+					.setName('Deployment type')
+					.addDropdown((dropdown) =>
+						dropdown
+							.addOptions({ managed: 'Managed (Docker)', external: 'External' })
+							.setValue(server.deploymentType)
+							.onChange(async (value) => {
+								server.deploymentType = value as DeploymentType
+								await this.plugin.saveSettings()
+							})
+					)
+
+				// Docker configuration (for managed servers)
+				if (server.deploymentType === 'managed' && server.dockerConfig) {
+					new Setting(serverSection)
+						.setName('Docker image')
+						.addText((text) =>
+							text.setValue(server.dockerConfig?.image || '').onChange(async (value) => {
+								if (!server.dockerConfig) server.dockerConfig = { image: '', containerName: '' }
+								server.dockerConfig.image = value
+								await this.plugin.saveSettings()
+							})
+						)
+
+					new Setting(serverSection)
+						.setName('Container name')
+						.addText((text) =>
+							text.setValue(server.dockerConfig?.containerName || '').onChange(async (value) => {
+								if (!server.dockerConfig) server.dockerConfig = { image: '', containerName: '' }
+								server.dockerConfig.containerName = value
+								await this.plugin.saveSettings()
+							})
+						)
+				}
+
+				// SSE configuration (for external servers)
+				if (server.deploymentType === 'external' && server.transport === 'sse') {
+					new Setting(serverSection)
+						.setName('SSE URL')
+						.addText((text) =>
+							text.setValue(server.sseConfig?.url || '').onChange(async (value) => {
+								if (!server.sseConfig) server.sseConfig = { url: '' }
+								server.sseConfig.url = value
+								await this.plugin.saveSettings()
+							})
+						)
+				}
+
+				// Delete server button
+				new Setting(serverSection).addButton((btn) =>
+					btn
+						.setButtonText('Delete Server')
+						.setWarning()
+						.onClick(async () => {
+							this.plugin.settings.mcpServers.splice(index, 1)
+							await this.plugin.saveSettings()
+							if (this.plugin.mcpManager) {
+								await this.plugin.mcpManager.shutdown()
+								await this.plugin.mcpManager.initialize(this.plugin.settings.mcpServers)
+							}
+							this.display()
+						})
+				)
+			}
+		} else {
+			new Setting(containerEl).setDesc('No MCP servers configured. Add a server to get started.')
+		}
+
+		// Add new server button
+		new Setting(containerEl).addButton((btn) =>
+			btn.setButtonText('Add MCP Server').onClick(async () => {
+				const newServer = {
+					id: `mcp-server-${Date.now()}`,
+					name: 'new-server',
+					transport: TransportProtocol.STDIO,
+					deploymentType: DeploymentType.MANAGED,
+					dockerConfig: {
+						image: '',
+						containerName: 'tars-mcp-new'
+					},
+					enabled: false,
+					failureCount: 0,
+					autoDisabled: false,
+					sectionBindings: []
+				}
+				this.plugin.settings.mcpServers.push(newServer)
+				await this.plugin.saveSettings()
+				this.display()
+			})
+		)
 	}
 
 	createProviderSetting = (index: number, settings: ProviderSettings, isOpen: boolean = false) => {

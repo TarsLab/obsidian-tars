@@ -333,7 +333,7 @@
   - Add `mcpSessionLimit: number` (default 25)
   - Update DEFAULT_SETTINGS object
 
-- [ ] **T030** **Add MCP settings UI** in `src/settingTab.ts`
+- [X] **T030** **Add MCP settings UI** in `src/settingTab.ts`
   - Add "MCP Servers" section header
   - Add global settings inputs (timeout, concurrent limit, session limit)
   - Add server list display with enable/disable toggles
