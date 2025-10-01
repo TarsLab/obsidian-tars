@@ -4,6 +4,8 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { MCPClientImpl } from '../../src/mcp/client';
+import { TransportProtocol, DeploymentType } from '../../src/mcp/types';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 
@@ -47,8 +49,8 @@ describe('MCPClient stdio transport contract tests', () => {
       const serverConfig = {
         id: 'test-server',
         name: 'test-server',
-        transport: 'stdio' as const,
-        deploymentType: 'managed' as const,
+        transport: TransportProtocol.STDIO,
+        deploymentType: DeploymentType.MANAGED,
         dockerConfig: {
           image: 'mcp-test/echo-server:latest',
           containerName: 'tars-mcp-test'
@@ -56,24 +58,27 @@ describe('MCPClient stdio transport contract tests', () => {
         enabled: true,
         failureCount: 0,
         autoDisabled: false,
-        sectionBindings: []
+        sectionBindings: [],
+        executionCommand: ''
       };
 
       // AND: MCP client instance
-      // Note: This would be the actual implementation, but we're testing the contract
-
-      // WHEN: Client connects using stdio transport
+      const client = new MCPClientImpl();
       mockClient.connect.mockResolvedValue(undefined);
 
-      // THEN: Connection established and tools can be listed
-      await mockClient.connect(mockTransport);
-      expect(mockClient.connect).toHaveBeenCalledWith(mockTransport);
+      // WHEN: Client connects using stdio transport
+      await client.connect(serverConfig);
+
+      // THEN: Connection established
+      expect(Client).toHaveBeenCalled();
 
       // AND: StdioClientTransport configured correctly
       expect(StdioClientTransport).toHaveBeenCalledWith({
         command: 'docker',
         args: ['exec', '-i', 'tars-mcp-test', 'mcp-server']
       });
+      
+      expect(mockClient.connect).toHaveBeenCalledWith(mockTransport);
     });
 
     it('should execute tool via stdio transport', async () => {

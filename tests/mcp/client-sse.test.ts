@@ -4,6 +4,8 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { MCPClientImpl } from '../../src/mcp/client';
+import { TransportProtocol, DeploymentType } from '../../src/mcp/types';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 
@@ -45,36 +47,39 @@ describe('MCPClient SSE transport contract tests', () => {
     it('should establish SSE connection to remote MCP server', async () => {
       // GIVEN: Remote SSE server URL
       const serverConfig = {
-        id: 'remote-sse-server',
-        name: 'remote-sse-server',
-        transport: 'sse' as const,
-        deploymentType: 'external' as const,
+        id: 'remote-server',
+        name: 'remote-server',
+        transport: TransportProtocol.SSE,
+        deploymentType: DeploymentType.EXTERNAL,
         sseConfig: {
           url: 'http://localhost:8080/sse'
         },
         enabled: true,
         failureCount: 0,
         autoDisabled: false,
-        sectionBindings: []
+        sectionBindings: [],
+        executionCommand: ''
       };
 
-      // WHEN: Client connects using SSE transport
+      // AND: MCP client instance
+      const client = new MCPClientImpl();
       mockClient.connect.mockResolvedValue(undefined);
 
-      // THEN: Connection established via EventSource
-      await mockClient.connect(mockTransport);
-      expect(mockClient.connect).toHaveBeenCalledWith(mockTransport);
+      // WHEN: Client connects using SSE transport
+      await client.connect(serverConfig);
 
-      // AND: SSEClientTransport configured correctly
-      expect(SSEClientTransport).toHaveBeenCalledWith({
-        url: 'http://localhost:8080/sse'
-      });
+      // THEN: Connection established
+      expect(Client).toHaveBeenCalled();
+
+      // AND: SSEClientTransport configured correctly with URL object
+      expect(SSEClientTransport).toHaveBeenCalledWith(new URL('http://localhost:8080/sse'));
+      
+      expect(mockClient.connect).toHaveBeenCalledWith(mockTransport);
     });
 
     it('should execute tool via SSE transport', async () => {
       // GIVEN: Connected SSE client
       mockClient.isConnected = vi.fn().mockReturnValue(true);
-
       const toolName = 'weather';
       const parameters = { location: 'New York', format: 'json' };
       const expectedResult = {

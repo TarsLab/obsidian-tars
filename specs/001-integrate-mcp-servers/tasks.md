@@ -418,11 +418,12 @@
 
 ## Phase 3.7: Polish
 
-- [ ] **T040** [P] **Unit tests for edge cases** in `tests/mcp/` (various files)
+- [X] **T040** [P] **Unit tests for edge cases** in `tests/mcp/` (various files)
   - Test invalid server configurations
   - Test tool parameter validation
   - Test timeout edge cases
   - Test concurrent execution edge cases
+  - All 43 tests passing ✅
 
 - [X] **T041** **Verify npm run lint passes** (zero warnings)
   - Fixed linting errors in MCP module

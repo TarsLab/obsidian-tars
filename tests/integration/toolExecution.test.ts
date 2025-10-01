@@ -133,39 +133,46 @@ timestamp: true`;
     });
 
     it('should enforce session limits', async () => {
-      // GIVEN: Executor with low session limit
-      toolExecutor = createToolExecutor(manager);
-      // Mock stats to simulate limit reached
-      toolExecutor.getStats = vi.fn().mockReturnValue({
-        activeExecutions: 0,
-        totalExecuted: 25,
-        sessionLimit: 25,
+      // GIVEN: Executor with session limit reached
+      // Simulate 25 executions by directly modifying tracker
+      const tracker = {
         concurrentLimit: 25,
-        stopped: false
-      });
+        sessionLimit: 25,
+        activeExecutions: new Set<string>(),
+        totalExecuted: 25, // Already at limit
+        stopped: false,
+        executionHistory: []
+      };
+      toolExecutor = new (await import('../../src/mcp')).ToolExecutor(manager, tracker);
 
       // WHEN: Checking execution capability
       const canExecute = toolExecutor.canExecute();
 
       // THEN: Execution is blocked by session limit
       expect(canExecute).toBe(false);
+      expect(toolExecutor.getStats().totalExecuted).toBe(25);
     });
 
-    it('should reset execution tracking', () => {
+    it('should reset execution tracking', async () => {
       // GIVEN: Executor with some history
-      toolExecutor.getStats = vi.fn().mockReturnValue({
-        activeExecutions: 0,
-        totalExecuted: 10,
-        sessionLimit: 25,
+      const { ToolExecutor } = await import('../../src/mcp');
+      const tracker = {
         concurrentLimit: 25,
-        stopped: false
-      });
+        sessionLimit: 25,
+        activeExecutions: new Set<string>(),
+        totalExecuted: 10,
+        stopped: false,
+        executionHistory: []
+      };
+      const executor = new ToolExecutor(manager, tracker);
 
       // WHEN: Reset is called
-      toolExecutor.reset();
+      executor.reset();
 
-      // THEN: Stats are reset (simulated)
-      expect(toolExecutor.reset).toHaveBeenCalled();
+      // THEN: Stats are reset
+      const stats = executor.getStats();
+      expect(stats.totalExecuted).toBe(0);
+      expect(stats.stopped).toBe(false);
     });
   });
 });
