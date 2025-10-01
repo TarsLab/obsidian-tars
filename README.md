@@ -59,26 +59,33 @@ Tars supports **Model Context Protocol (MCP)** servers, allowing AI assistants t
 - Automatic health monitoring with exponential backoff retry
 - Configurable execution limits (concurrent and session)
 
-**Quick Example:**
+**Quick Start:**
 
 1. Add an MCP server in settings (MCP Servers section)
 2. Execute tools in your notes using code blocks:
 
 ````markdown
-```your-server-name
-tool: weather
-city: London
-units: metric
+```Memory Server
+tool: create_entities
+entities:
+  - name: "my-project"
+    entityType: "project"
+    observations: ["Building Obsidian plugin"]
 ```
 ````
 
 3. AI assistants can autonomously execute tools during conversations
 
+**Documentation:**
+- 🚀 [Quick Start Guide](docs/MCP_QUICK_START.md) - Get started in 5 minutes
+- 📖 [Complete User Guide](docs/MCP_USER_GUIDE.md) - Detailed usage examples
+- 🏗️ [Architecture Guide](docs/MCP_ARCHITECTURE.md) - Technical details
+
 **Supported Transports:**
-- **stdio**: Docker containers via stdin/stdout
+- **stdio**: Docker containers via stdin/stdout (primary use case)
 - **SSE**: Remote servers via Server-Sent Events
 
-For detailed configuration, see the MCP Servers section in plugin settings.
+**Example Server:** `docker pull mcp/memory:latest` - Knowledge graph for AI memory
 
 ## AI providers
 

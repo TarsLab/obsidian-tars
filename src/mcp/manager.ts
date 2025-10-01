@@ -10,7 +10,7 @@ import { MCPClientImpl } from "./client";
 import { DockerClient } from "./docker";
 import { HealthMonitor } from "./healthMonitor";
 import { DockerError, ServerNotAvailableError } from "./errors";
-import { logError, logWarning } from "./utils";
+import { logError, logWarning, parseExecutionCommand } from "./utils";
 
 export interface MCPServerManagerEvents {
 	"server-started": [serverId: string];
@@ -77,6 +77,8 @@ export class MCPServerManager extends EventEmitter<MCPServerManagerEvents> {
 		}
 
 		try {
+			// Parse executionCommand to populate dockerConfig/sseConfig if needed
+			parseExecutionCommand(config);
 			// For managed servers, handle based on transport type
 			if (config.deploymentType === "managed") {
 				// For stdio transport, the container is spawned by StdioClientTransport

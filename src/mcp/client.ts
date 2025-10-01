@@ -19,7 +19,7 @@ import {
   ValidationError,
   TimeoutError
 } from './errors';
-import { getErrorMessage, logWarning } from './utils';
+import { getErrorMessage, logWarning, parseExecutionCommand } from './utils';
 
 // Re-export the interface
 export type { MCPClient } from './types';
@@ -31,6 +31,9 @@ export class MCPClientImpl implements MCPClient {
 
   async connect(config: MCPServerConfig): Promise<void> {
     try {
+      // Parse executionCommand to populate dockerConfig/sseConfig if needed
+      parseExecutionCommand(config);
+
       // Create client instance
       this.client = new Client({
         name: 'tars-obsidian',
@@ -42,7 +45,7 @@ export class MCPClientImpl implements MCPClient {
       // Create appropriate transport
       if (config.transport === 'stdio') {
         if (!config.dockerConfig) {
-          throw new ConnectionError('Stdio transport requires dockerConfig');
+          throw new ConnectionError('Stdio transport requires dockerConfig. Please ensure executionCommand is properly configured.');
         }
         
         // For managed servers, spawn the container via 'docker run -i'

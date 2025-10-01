@@ -404,8 +404,42 @@ export class TarsSettingTab extends PluginSettingTab {
 							.setClass('mcp-control-button')
 							.setTooltip('Test server connection')
 							.onClick(async () => {
-								// TODO: Implement test functionality
 								new Notice(`Testing ${server.name}...`)
+								
+								try {
+									if (!this.plugin.mcpManager) {
+										new Notice('❌ MCP Manager not initialized', 5000)
+										return
+									}
+
+									// Try to start the server if not already started
+									try {
+										await this.plugin.mcpManager.startServer(server.id)
+									} catch (startError) {
+										// Server might already be running, that's ok
+										console.debug('Server start attempt:', startError)
+									}
+
+									// Wait a moment for connection to establish
+									await new Promise(resolve => setTimeout(resolve, 1000))
+
+									const client = this.plugin.mcpManager.getClient(server.id)
+									
+									if (client && client.isConnected()) {
+										const tools = await client.listTools()
+										const toolCount = tools.length
+										const toolNames = tools.slice(0, 3).map((t: { name: string }) => t.name).join(', ')
+										const more = toolCount > 3 ? ` and ${toolCount - 3} more` : ''
+										new Notice(`✅ ${server.name}: Connected!\n${toolCount} tools available: ${toolNames}${more}`, 8000)
+									} else {
+										const health = this.plugin.mcpManager.getHealthStatus(server.id)
+										const stateStr = health?.connectionState || 'unknown'
+										new Notice(`❌ ${server.name}: Not connected\nState: ${stateStr}\n\nCheck Docker is running and image is available:\ndocker pull mcp/memory:latest`, 10000)
+									}
+								} catch (error) {
+									const msg = error instanceof Error ? error.message : String(error)
+									new Notice(`❌ Test failed: ${msg}`, 8000)
+								}
 							})
 					)
 					.addButton((btn) =>
