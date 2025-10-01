@@ -14,7 +14,7 @@ import { openRouterVendor } from './providers/openRouter'
 import { siliconFlowVendor } from './providers/siliconflow'
 import { getCapabilityEmoji } from './providers/utils'
 import { availableVendors, DEFAULT_SETTINGS } from './settings'
-import { TransportProtocol, DeploymentType, MCPServerConfig } from './mcp/types'
+import { TransportProtocol, MCPServerConfig } from './mcp/types'
 
 export class TarsSettingTab extends PluginSettingTab {
 	plugin: TarsPlugin
@@ -372,7 +372,7 @@ export class TarsSettingTab extends PluginSettingTab {
 				})
 
 				// First row: Enable/Disable | Test | Delete
-				const controlRow = new Setting(serverSection)
+				new Setting(serverSection)
 					.setName('Controls')
 					.addButton((btn) => {
 						const buttonEl = btn
@@ -455,7 +455,7 @@ export class TarsSettingTab extends PluginSettingTab {
 					)
 
 				// Execution command, JSON, or URL
-				const execSetting = new Setting(serverSection)
+				new Setting(serverSection)
 					.setName('Execution Command, JSON Or URL')
 					.setDesc('Provide one of: 1) Shell command (e.g., "docker run..."), 2) VS Code MCP JSON config, or 3) URL for remote server (e.g., "http://localhost:3000/sse")')
 				

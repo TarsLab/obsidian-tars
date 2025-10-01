@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { MCPServerManager, createMCPManager, createToolExecutor, createCodeBlockProcessor } from '../src/mcp';
+import { MCPServerManager, ToolExecutor, CodeBlockProcessor, createMCPManager, createToolExecutor, createCodeBlockProcessor } from '../../src/mcp';
 
 // Mock the Docker client and MCP SDK
 vi.mock('../src/mcp/docker.ts', () => ({
@@ -24,13 +24,13 @@ vi.mock('@modelcontextprotocol/sdk/client/index.js', () => ({
 
 describe('MCP Lifecycle Integration', () => {
   let manager: MCPServerManager;
-  let toolExecutor: any;
-  let codeBlockProcessor: any;
+  let toolExecutor: ToolExecutor;
+  let _codeBlockProcessor: CodeBlockProcessor
 
   beforeEach(() => {
     manager = createMCPManager();
     toolExecutor = createToolExecutor(manager);
-    codeBlockProcessor = createCodeBlockProcessor();
+    _codeBlockProcessor = createCodeBlockProcessor();
 
     // Reset mocks
     vi.clearAllMocks();

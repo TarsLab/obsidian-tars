@@ -132,7 +132,7 @@ export class HealthMonitor {
           await client.connect(server);
           await client.disconnect();
           isHealthy = true;
-        } catch (error) {
+        } catch (_error) {
           isHealthy = false;
         }
       }
@@ -143,7 +143,7 @@ export class HealthMonitor {
         throw new Error('Server not responding');
       }
 
-    } catch (error) {
+    } catch (_error) {
       this.handleHealthCheckFailure(server, healthStatus);
     }
   }

@@ -186,7 +186,7 @@ export class DockerClient {
         default:
           return ConnectionState.ERROR;
       }
-    } catch (error) {
+    } catch (_error) {
       return ConnectionState.ERROR;
     }
   }
@@ -216,7 +216,7 @@ export class DockerClient {
     try {
       const response = await this.request('/_ping');
       return response.ok;
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }

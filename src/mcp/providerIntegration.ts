@@ -3,7 +3,7 @@
  * Helper functions to integrate MCP tools with AI providers
  */
 
-import { MCPServerConfig, AIToolContext, ToolDefinition } from './types';
+import { AIToolContext } from './types';
 import { MCPServerManager } from './manager';
 import { ToolExecutor } from './executor';
 
