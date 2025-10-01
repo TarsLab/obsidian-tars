@@ -8,13 +8,15 @@
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
 		"lint": "eslint .",
-		"format": "prettier --write src/"
+		"format": "prettier --write src/",
+		"test": "vitest"
 	},
 	"keywords": [],
 	"author": "C Jack<https://github.com/ae86jack>",
 	"license": "MIT",
 	"devDependencies": {
 		"@anthropic-ai/sdk": "^0.65.0",
+		"@biomejs/biome": "2.2.4",
 		"@eslint/js": "^9.36.0",
 		"@google/generative-ai": "^0.24.1",
 		"@types/node": "^24.6.1",

@@ -48,7 +48,6 @@ export class CodeBlockProcessor {
 
       // Parse remaining lines as YAML parameters
       const yamlLines = lines.filter(line => !line.trim().startsWith('tool:'));
-      const yamlContent = yamlLines.join('\n');
       const parameters = this.parseYAMLParameters(yamlLines);
 
       return {

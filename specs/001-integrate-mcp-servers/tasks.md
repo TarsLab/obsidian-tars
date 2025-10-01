@@ -14,8 +14,8 @@
 
 ## Phase 3.1: Setup
 
-- [ ] **T001** Create `src/mcp/` directory structure with subdirectories for module organization
-- [ ] **T002** [P] Verify `@modelcontextprotocol/sdk` dependency in package.json (already present in node_modules)
+- [X] **T001** Create `src/mcp/` directory structure with subdirectories for module organization
+- [X] **T002** [P] Verify `@modelcontextprotocol/sdk` dependency in package.json (already present in node_modules)
 - [ ] **T003** [P] Configure vitest for MCP tests if not already configured (check for vitest.config.ts)
 
 ---
@@ -26,7 +26,7 @@
 
 ### Contract Tests [P] - All can run in parallel
 
-- [ ] **T004** [P] **Contract test: MCPClient stdio transport** in `tests/mcp/client-stdio.test.ts`
+- [X] **T004** [P] **Contract test: MCPClient stdio transport** in `tests/mcp/client-stdio.test.ts`
   ```typescript
   // TEST: MCPClient connects via stdio transport
   // GIVEN: Docker container with MCP server running
@@ -44,7 +44,7 @@
   // THEN: ConnectionError thrown with descriptive message
   ```
 
-- [ ] **T005** [P] **Contract test: MCPClient SSE transport** in `tests/mcp/client-sse.test.ts`
+- [X] **T005** [P] **Contract test: MCPClient SSE transport** in `tests/mcp/client-sse.test.ts`
   ```typescript
   // TEST: MCPClient connects via SSE transport
   // GIVEN: Remote SSE server URL
@@ -62,7 +62,7 @@
   // THEN: TimeoutError thrown after specified duration
   ```
 
-- [ ] **T006** [P] **Contract test: MCPServerManager lifecycle** in `tests/mcp/manager.test.ts`
+- [X] **T006** [P] **Contract test: MCPServerManager lifecycle** in `tests/mcp/manager.test.ts`
   ```typescript
   // TEST: Manager initializes with multiple server configs
   // GIVEN: Array of MCPServerConfig (Docker + remote)
@@ -85,7 +85,7 @@
   // THEN: Failure count reset, retry state cleared, server started
   ```
 
-- [ ] **T007** [P] **Contract test: ToolExecutor limits** in `tests/mcp/executor.test.ts`
+- [X] **T007** [P] **Contract test: ToolExecutor limits** in `tests/mcp/executor.test.ts`
   ```typescript
   // TEST: Executor enforces concurrent execution limit
   // GIVEN: Concurrent limit set to 2
@@ -108,7 +108,7 @@
   // THEN: All executions logged with timestamps and status
   ```
 
-- [ ] **T008** [P] **Contract test: Docker integration** in `tests/mcp/docker.test.ts`
+- [X] **T008** [P] **Contract test: Docker integration** in `tests/mcp/docker.test.ts`
   ```typescript
   // TEST: Docker client creates container
   // GIVEN: Docker image name and configuration
@@ -131,7 +131,7 @@
   // THEN: Health status returned (running/exited/unhealthy)
   ```
 
-- [ ] **T009** [P] **Contract test: HealthMonitor retry logic** in `tests/mcp/healthMonitor.test.ts`
+- [X] **T009** [P] **Contract test: HealthMonitor retry logic** in `tests/mcp/healthMonitor.test.ts`
   ```typescript
   // TEST: Health monitor performs periodic checks
   // GIVEN: Connected servers
@@ -154,7 +154,7 @@
   // THEN: Failure count reset to 0, retry state cleared
   ```
 
-- [ ] **T010** [P] **Contract test: CodeBlockProcessor parsing** in `tests/mcp/codeBlockProcessor.test.ts`
+- [X] **T010** [P] **Contract test: CodeBlockProcessor parsing** in `tests/mcp/codeBlockProcessor.test.ts`
   ```typescript
   // TEST: Processor parses tool invocation from code block
   // GIVEN: Code block with "tool: echo" and YAML parameters
@@ -179,7 +179,7 @@
 
 ### Provider Integration Tests [P]
 
-- [ ] **T011** [P] **Provider tool context test** in `tests/providers/toolContext.test.ts`
+- [X] **T011** [P] **Provider tool context test** in `tests/providers/toolContext.test.ts`
   ```typescript
   // TEST: Tool context includes enabled server tools
   // GIVEN: 2 enabled MCP servers with 3 tools each
@@ -201,12 +201,12 @@
 
 ## Phase 3.3: Type Definitions (ONLY after tests are failing)
 
-- [ ] **T012** [P] **Define core types** in `src/mcp/types.ts`
+- [X] **T012** [P] **Define core types** in `src/mcp/types.ts`
   - Export interfaces: MCPServerConfig, SectionBinding, ToolInvocationRequest, ToolExecutionResult, ServerHealthStatus, ExecutionTracker, AIToolContext
   - Add type guards for validation (e.g., `isMCPServerConfig()`)
   - Export enums: ConnectionState, ExecutionStatus, DeploymentType, TransportProtocol
 
-- [ ] **T013** [P] **Define error types** in `src/mcp/errors.ts`
+- [X] **T013** [P] **Define error types** in `src/mcp/errors.ts`
   - Export custom errors: ConnectionError, ToolNotFoundError, ValidationError, TimeoutError, ExecutionLimitError, DockerError, ServerNotAvailableError, ToolExecutionError
   - Each error includes message, cause, and relevant context
 
@@ -216,26 +216,26 @@
 
 ### MCP Client Layer
 
-- [ ] **T014** **Implement MCPClient base** in `src/mcp/client.ts`
+- [X] **T014** **Implement MCPClient base** in `src/mcp/client.ts`
   - Implement connect(), disconnect(), isConnected()
   - Handle transport abstraction (stdio vs SSE)
   - Implement listTools() using MCP SDK
   - Implement callTool() with timeout enforcement
   - Add connection state tracking
 
-- [ ] **T015** **Implement stdio transport** in `src/mcp/client.ts` (continued)
+- [X] **T015** **Implement stdio transport** in `src/mcp/client.ts` (continued)
   - Use StdioClientTransport from @modelcontextprotocol/sdk
   - Configure Docker exec command for stdio communication
   - Handle stdin/stdout piping
 
-- [ ] **T016** **Implement SSE transport** in `src/mcp/client.ts` (continued)
+- [X] **T016** **Implement SSE transport** in `src/mcp/client.ts` (continued)
   - Use SSEClientTransport from @modelcontextprotocol/sdk
   - Configure EventSource for remote servers
   - Handle SSE connection lifecycle
 
 ### Docker Integration Layer
 
-- [ ] **T017** [P] **Implement Docker API client** in `src/mcp/docker.ts`
+- [X] **T017** [P] **Implement Docker API client** in `src/mcp/docker.ts`
   - Implement createContainer() using Docker HTTP API
   - Implement startContainer(), stopContainer(), removeContainer()
   - Implement getContainerStatus() for health checks
@@ -244,12 +244,12 @@
 
 ### Health Monitoring Layer
 
-- [ ] **T018** **Implement retry strategy** in `src/mcp/healthMonitor.ts`
+- [X] **T018** **Implement retry strategy** in `src/mcp/healthMonitor.ts`
   - Implement RetryStrategy class with exponential backoff (1s, 5s, 15s)
   - Add jitter (±1s) to prevent thundering herd
   - Track retry attempt count per server
 
-- [ ] **T019** **Implement health monitoring** in `src/mcp/healthMonitor.ts` (continued)
+- [X] **T019** **Implement health monitoring** in `src/mcp/healthMonitor.ts` (continued)
   - Start 30s interval health check loop
   - Ping each connected server
   - On failure: increment failure count, schedule retry
@@ -258,32 +258,32 @@
 
 ### Server Manager Layer
 
-- [ ] **T020** **Implement MCPServerManager** in `src/mcp/manager.ts`
+- [X] **T020** **Implement MCPServerManager** in `src/mcp/manager.ts`
   - Implement initialize() to start enabled servers
   - Implement startServer() with Docker/remote branching logic
   - Implement stopServer() with cleanup
   - Implement getClient() to return connected MCPClient
   - Maintain map of serverId → MCPClient
 
-- [ ] **T021** **Integrate health monitor** in `src/mcp/manager.ts` (continued)
+- [X] **T021** **Integrate health monitor** in `src/mcp/manager.ts` (continued)
   - Initialize HealthMonitor for all servers
   - Subscribe to health events (failure, auto-disable)
   - Update server state based on health events
   - Implement reenableServer() to reset health state
 
-- [ ] **T022** **Add event emitter** in `src/mcp/manager.ts` (continued)
+- [X] **T022** **Add event emitter** in `src/mcp/manager.ts` (continued)
   - Emit events: 'server-started', 'server-stopped', 'server-failed', 'server-auto-disabled'
   - Allow subscribers via on() method
 
 ### Tool Executor Layer
 
-- [ ] **T023** **Implement ExecutionTracker** in `src/mcp/executor.ts`
+- [X] **T023** **Implement ExecutionTracker** in `src/mcp/executor.ts`
   - Track active executions Set<requestId>
   - Implement canExecute() checking stopped, concurrent limit, session limit
   - Implement increment(), stop(), reset()
   - Maintain execution history array
 
-- [ ] **T024** **Implement ToolExecutor** in `src/mcp/executor.ts` (continued)
+- [X] **T024** **Implement ToolExecutor** in `src/mcp/executor.ts` (continued)
   - Implement executeTool() main flow:
     1. Check canExecute()
     2. Get MCPClient from manager
@@ -296,18 +296,18 @@
 
 ### Code Block Processor Layer
 
-- [ ] **T025** **Implement YAML parsing** in `src/mcp/codeBlockProcessor.ts`
+- [X] **T025** **Implement YAML parsing** in `src/mcp/codeBlockProcessor.ts`
   - Implement parseYAMLParameters() using yaml library
   - Handle parse errors gracefully
   - Validate parameter structure
 
-- [ ] **T026** **Implement tool invocation parsing** in `src/mcp/codeBlockProcessor.ts` (continued)
+- [X] **T026** **Implement tool invocation parsing** in `src/mcp/codeBlockProcessor.ts` (continued)
   - Implement parseToolInvocation()
   - Extract "tool: name" line
   - Parse remaining lines as YAML
   - Resolve server name to serverId
 
-- [ ] **T027** **Implement result rendering** in `src/mcp/codeBlockProcessor.ts` (continued)
+- [X] **T027** **Implement result rendering** in `src/mcp/codeBlockProcessor.ts` (continued)
   - Implement renderResult() for success
   - Implement renderError() for failures
   - Implement renderStatus() for pending/executing
@@ -315,7 +315,7 @@
 
 ### Module Exports
 
-- [ ] **T028** [P] **Create public API** in `src/mcp/index.ts`
+- [X] **T028** [P] **Create public API** in `src/mcp/index.ts`
   - Export MCPClient, MCPServerManager, ToolExecutor, CodeBlockProcessor
   - Export all types from types.ts
   - Export utility functions if any
@@ -326,7 +326,7 @@
 
 ### Settings Integration
 
-- [ ] **T029** **Extend PluginSettings** in `src/settings.ts`
+- [X] **T029** **Extend PluginSettings** in `src/settings.ts`
   - Add `mcpServers: MCPServerConfig[]`
   - Add `mcpGlobalTimeout: number` (default 30000)
   - Add `mcpConcurrentLimit: number` (default 25)
@@ -345,32 +345,32 @@
 
 ### Plugin Lifecycle Integration
 
-- [ ] **T031** **Initialize MCP in plugin** in `src/main.ts`
+- [X] **T031** **Initialize MCP in plugin** in `src/main.ts`
   - Import MCPServerManager, ToolExecutor, CodeBlockProcessor
   - Create manager instance in onload()
   - Initialize manager with settings.mcpServers
   - Store manager in plugin class property
 
-- [ ] **T032** **Register code block processor** in `src/main.ts` (continued)
+- [X] **T032** **Register code block processor** in `src/main.ts` (continued)
   - Use registerMarkdownCodeBlockProcessor() for each server name
   - Hook to CodeBlockProcessor.parseToolInvocation()
   - Execute tool via ToolExecutor
   - Render result via CodeBlockProcessor
 
-- [ ] **T033** **Add shutdown cleanup** in `src/main.ts` (continued)
+- [X] **T033** **Add shutdown cleanup** in `src/main.ts` (continued)
   - Call manager.shutdown() in onunload()
   - Stop all active tool executions
   - Cleanup Docker containers if managed
 
 ### Command Integration
 
-- [ ] **T034** [P] **Add MCP commands** in `src/commands/mcpCommands.ts`
+- [X] **T034** [P] **Add MCP commands** in `src/commands/mcpCommands.ts`
   - Command: "MCP: Stop Executions" → call executor.stop()
   - Command: "MCP: Show Execution History" → display history in modal
   - Command: "MCP: Reset Session Limits" → call executor.reset()
   - Export command definitions
 
-- [ ] **T035** **Register MCP commands** in `src/main.ts` (continued)
+- [X] **T035** **Register MCP commands** in `src/main.ts` (continued)
   - Import MCP commands from mcpCommands.ts
   - Register each command in onload()
 

@@ -96,7 +96,7 @@ export class MCPClientImpl implements MCPClient {
       return response.tools.map(tool => ({
         name: tool.name,
         description: tool.description,
-        inputSchema: tool.inputSchema as any // JSON Schema type
+        inputSchema: tool.inputSchema as Record<string, unknown> // JSON Schema type
       }));
     } catch (error) {
       throw new ConnectionError(

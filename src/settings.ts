@@ -15,6 +15,7 @@ import { qianFanVendor } from './providers/qianFan'
 import { qwenVendor } from './providers/qwen'
 import { siliconFlowVendor } from './providers/siliconflow'
 import { zhipuVendor } from './providers/zhipu'
+import type { MCPServerConfig } from './mcp/types'
 
 export const APP_FOLDER = 'Tars'
 
@@ -46,6 +47,11 @@ export interface PluginSettings {
 	enableDefaultSystemMsg: boolean
 	defaultSystemMsg: string
 	enableStreamLog: boolean
+	// MCP Server Integration
+	mcpServers: MCPServerConfig[]
+	mcpGlobalTimeout: number
+	mcpConcurrentLimit: number
+	mcpSessionLimit: number
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -71,7 +77,12 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	enableReplaceTag: false,
 	enableDefaultSystemMsg: false,
 	defaultSystemMsg: '',
-	enableStreamLog: false
+	enableStreamLog: false,
+	// MCP Server Integration defaults
+	mcpServers: [],
+	mcpGlobalTimeout: 30000,
+	mcpConcurrentLimit: 25,
+	mcpSessionLimit: 25
 }
 
 export const availableVendors: Vendor[] = [

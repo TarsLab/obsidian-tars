@@ -35,7 +35,7 @@ export interface DockerContainerConfig {
   name?: string;
   Cmd?: string[];
   Env?: string[];
-  ExposedPorts?: { [key: string]: {} };
+  ExposedPorts?: { [key: string]: Record<string, never> };
   HostConfig?: {
     PortBindings?: { [key: string]: Array<{ HostPort: string }> };
     Binds?: string[];
@@ -53,28 +53,41 @@ export class DockerClient {
     // Determine Docker socket location based on platform
     this.baseUrl = process.platform === 'win32'
       ? 'http://localhost:2375'  // Windows: Named pipe or TCP
-      : 'http://unix:/var/run/docker.sock'; // Unix: Unix socket
+      : 'http://unix:/var/run/docker.sock';  // Unix/macOS
   }
 
   /**
    * Create a new Docker container
    */
   async createContainer(config: DockerContainerConfig): Promise<string> {
-    const response = await this.request('/containers/create', {
-      method: 'POST',
-      body: JSON.stringify(config)
-    });
+    try {
+      const response = await fetch(`${this.baseUrl}/containers/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config)
+      });
 
-    if (!response.ok) {
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new DockerError(
+          `Failed to create container: ${response.status} ${response.statusText}`,
+          undefined,
+          errorText
+        );
+      }
+
+      const data: { Id: string; Warnings?: string[] | null } = await response.json();
+      return data.Id;
+    } catch (error) {
+      if (error instanceof DockerError) {
+        throw error;
+      }
       throw new DockerError(
-        `Failed to create container: ${response.status} ${response.statusText}`,
+        `Failed to create container: ${error instanceof Error ? error.message : String(error)}`,
         undefined,
-        await response.text()
+        error
       );
     }
-
-    const data = await response.json();
-    return data.Id;
   }
 
   /**
