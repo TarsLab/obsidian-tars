@@ -27,11 +27,6 @@ export class MCPServerManager extends EventEmitter<MCPServerManagerEvents> {
     super();
     this.dockerClient = new DockerClient();
     this.healthMonitor = new HealthMonitor();
-
-    // Forward health monitor events
-    this.healthMonitor.on('server-auto-disabled', (serverId) => {
-      this.emit('server-auto-disabled', serverId);
-    });
   }
 
   /**
@@ -66,11 +61,11 @@ export class MCPServerManager extends EventEmitter<MCPServerManagerEvents> {
   async startServer(serverId: string): Promise<void> {
     const config = this.servers.get(serverId);
     if (!config) {
-      throw new ServerNotAvailableError(`Unknown server: ${serverId}`);
+      throw new ServerNotAvailableError(`Unknown server: ${serverId}`, 'Server configuration not found');
     }
 
     if (!config.enabled) {
-      throw new ServerNotAvailableError(`Server ${config.name} is disabled`);
+      throw new ServerNotAvailableError(`Server ${config.name}`, 'Server is disabled');
     }
 
     try {
@@ -157,7 +152,7 @@ export class MCPServerManager extends EventEmitter<MCPServerManagerEvents> {
   async stopServer(serverId: string): Promise<void> {
     const config = this.servers.get(serverId);
     if (!config) {
-      throw new ServerNotAvailableError(`Unknown server: ${serverId}`);
+      throw new ServerNotAvailableError(`Unknown server: ${serverId}`, 'Server configuration not found');
     }
 
     try {

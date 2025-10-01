@@ -11,18 +11,17 @@ import {
   MCPServerConfig,
   ToolDefinition,
   ServerCapabilities,
-  ToolExecutionResult,
+  ToolExecutionResult
+} from './types';
+import {
   ConnectionError,
   ToolNotFoundError,
   ValidationError,
   TimeoutError
-} from './types';
-import {
-  ConnectionError as ConnError,
-  ToolNotFoundError as TnfError,
-  ValidationError as ValError,
-  TimeoutError as TmoError
 } from './errors';
+
+// Re-export the interface
+export type { MCPClient } from './types';
 
 export class MCPClientImpl implements MCPClient {
   private client: Client | null = null;
@@ -42,7 +41,7 @@ export class MCPClientImpl implements MCPClient {
       // Create appropriate transport
       if (config.transport === 'stdio') {
         if (!config.dockerConfig) {
-          throw new ConnError('Stdio transport requires dockerConfig');
+          throw new ConnectionError('Stdio transport requires dockerConfig');
         }
         this.transport = new StdioClientTransport({
           command: 'docker',
@@ -50,13 +49,11 @@ export class MCPClientImpl implements MCPClient {
         });
       } else if (config.transport === 'sse') {
         if (!config.sseConfig) {
-          throw new ConnError('SSE transport requires sseConfig');
+          throw new ConnectionError('SSE transport requires sseConfig');
         }
-        this.transport = new SSEClientTransport({
-          url: config.sseConfig.url
-        });
+        this.transport = new SSEClientTransport(new URL(config.sseConfig.url));
       } else {
-        throw new ConnError(`Unsupported transport: ${config.transport}`);
+        throw new ConnectionError(`Unsupported transport: ${config.transport}`);
       }
 
       // Connect to server
@@ -65,7 +62,7 @@ export class MCPClientImpl implements MCPClient {
 
     } catch (error) {
       this.connected = false;
-      throw new ConnError(
+      throw new ConnectionError(
         `Failed to connect to MCP server '${config.name}': ${error instanceof Error ? error.message : String(error)}`,
         error
       );
@@ -75,7 +72,10 @@ export class MCPClientImpl implements MCPClient {
   async disconnect(): Promise<void> {
     if (this.client && this.connected) {
       try {
-        await this.client.disconnect();
+        // Close transport instead of calling disconnect (which doesn't exist)
+        if (this.transport) {
+          await this.transport.close();
+        }
       } catch (error) {
         // Log but don't throw on disconnect
         console.warn('Error during MCP client disconnect:', error);
@@ -88,7 +88,7 @@ export class MCPClientImpl implements MCPClient {
 
   async listTools(): Promise<ToolDefinition[]> {
     if (!this.client || !this.connected) {
-      throw new ConnError('MCP client is not connected');
+      throw new ConnectionError('MCP client is not connected');
     }
 
     try {
@@ -99,7 +99,7 @@ export class MCPClientImpl implements MCPClient {
         inputSchema: tool.inputSchema as any // JSON Schema type
       }));
     } catch (error) {
-      throw new ConnError(
+      throw new ConnectionError(
         `Failed to list tools: ${error instanceof Error ? error.message : String(error)}`,
         error
       );
@@ -112,7 +112,7 @@ export class MCPClientImpl implements MCPClient {
     timeout?: number
   ): Promise<ToolExecutionResult> {
     if (!this.client || !this.connected) {
-      throw new ConnError('MCP client is not connected');
+      throw new ConnectionError('MCP client is not connected');
     }
 
     const startTime = Date.now();
@@ -123,7 +123,7 @@ export class MCPClientImpl implements MCPClient {
       const timeoutPromise = new Promise<never>((_, reject) => {
         if (timeout) {
           timeoutId = setTimeout(() => {
-            reject(new TmoError(timeout, `tool execution: ${toolName}`));
+            reject(new TimeoutError(timeout, `tool execution: ${toolName}`));
           }, timeout);
         }
       });
@@ -153,7 +153,7 @@ export class MCPClientImpl implements MCPClient {
       };
 
     } catch (error) {
-      if (error instanceof TmoError) {
+      if (error instanceof TimeoutError) {
         throw error;
       }
 
@@ -161,14 +161,14 @@ export class MCPClientImpl implements MCPClient {
       const errorMessage = error instanceof Error ? error.message : String(error);
 
       if (errorMessage.includes('tool not found') || errorMessage.includes('Tool not found')) {
-        throw new TnfError(toolName, 'connected server');
+        throw new ToolNotFoundError(toolName, 'connected server');
       }
 
       if (errorMessage.includes('invalid') || errorMessage.includes('validation')) {
-        throw new ValError(`Tool '${toolName}' parameter validation failed: ${errorMessage}`, error);
+        throw new ValidationError(`Tool '${toolName}' parameter validation failed: ${errorMessage}`, error);
       }
 
-      throw new ConnError(
+      throw new ConnectionError(
         `Tool execution failed: ${errorMessage}`,
         error
       );

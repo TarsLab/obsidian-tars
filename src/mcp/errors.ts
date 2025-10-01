@@ -49,7 +49,10 @@ export class ExecutionLimitError extends MCPError {
 
 export class DockerError extends MCPError {
   constructor(message: string, containerId?: string, details?: unknown) {
-    super(message, 'DOCKER_ERROR', { containerId, ...details });
+    super(message, 'DOCKER_ERROR', {
+      containerId,
+      ...(typeof details === 'object' && details !== null ? details : { details })
+    });
   }
 }
 
@@ -72,7 +75,10 @@ export class ToolExecutionError extends MCPError {
 export class YAMLParseError extends MCPError {
   constructor(lineNumber?: number, details?: unknown) {
     const message = lineNumber ? `YAML parsing failed at line ${lineNumber}` : 'YAML parsing failed';
-    super(message, 'YAML_PARSE_ERROR', { lineNumber, ...details });
+    super(message, 'YAML_PARSE_ERROR', {
+      lineNumber,
+      ...(typeof details === 'object' && details !== null ? details : { details })
+    });
   }
 }
 

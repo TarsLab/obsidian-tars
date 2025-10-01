@@ -8,12 +8,18 @@ export * from './types';
 export * from './errors';
 
 // Core classes
-export { MCPClientImpl as MCPClient } from './client';
+export { MCPClientImpl } from './client';
+export type { MCPClient } from './client';
 export { MCPServerManager } from './manager';
 export { ToolExecutor } from './executor';
 export { CodeBlockProcessor } from './codeBlockProcessor';
 export { DockerClient } from './docker';
 export { HealthMonitor } from './healthMonitor';
+
+// Import types for function signatures
+import { MCPServerManager } from './manager';
+import { ToolExecutor } from './executor';
+import { CodeBlockProcessor } from './codeBlockProcessor';
 
 // Factory functions for common usage patterns
 export function createMCPManager(): MCPServerManager {

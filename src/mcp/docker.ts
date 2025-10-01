@@ -162,19 +162,19 @@ export class DockerClient {
 
       switch (info.State.Status) {
         case 'running':
-          return 'connected';
+          return ConnectionState.CONNECTED;
         case 'exited':
         case 'dead':
-          return 'error';
+          return ConnectionState.ERROR;
         case 'created':
         case 'paused':
         case 'restarting':
-          return 'connecting';
+          return ConnectionState.CONNECTING;
         default:
-          return 'error';
+          return ConnectionState.ERROR;
       }
     } catch (error) {
-      return 'error';
+      return ConnectionState.ERROR;
     }
   }
 

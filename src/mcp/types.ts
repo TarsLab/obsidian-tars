@@ -143,7 +143,7 @@ export interface ExecutionHistoryEntry {
   toolName: string;
   timestamp: number;
   duration: number;
-  status: 'success' | 'error' | 'timeout' | 'cancelled';
+  status: 'pending' | 'success' | 'error' | 'timeout' | 'cancelled';
   errorMessage?: string;
 }
 
@@ -200,6 +200,37 @@ export function isToolExecutionResult(obj: unknown): obj is ToolExecutionResult 
          'content' in obj &&
          'contentType' in obj && ['text', 'json', 'markdown', 'image'].includes(obj.contentType as string) &&
          'executionDuration' in obj && typeof obj.executionDuration === 'number';
+}
+
+// MCP Client Interface
+export interface MCPClient {
+  connect(config: MCPServerConfig): Promise<void>;
+  disconnect(): Promise<void>;
+  listTools(): Promise<ToolDefinition[]>;
+  callTool(toolName: string, parameters: Record<string, unknown>, timeout?: number): Promise<ToolExecutionResult>;
+  isConnected(): boolean;
+  getCapabilities(): ServerCapabilities;
+}
+
+// Tool Definition
+export interface ToolDefinition {
+  name: string;
+  description?: string;
+  inputSchema: JSONSchema;
+}
+
+// Server Capabilities
+export interface ServerCapabilities {
+  tools: boolean;
+  prompts: boolean;
+  resources: boolean;
+}
+
+// Tool Invocation (for code block processor)
+export interface ToolInvocation {
+  serverId: string;
+  toolName: string;
+  parameters: Record<string, unknown>;
 }
 
 // Type aliases for external types

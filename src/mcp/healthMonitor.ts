@@ -82,7 +82,7 @@ export class HealthMonitor {
   private initializeHealthStatus(server: MCPServerConfig): void {
     this.healthStatus.set(server.id, {
       serverId: server.id,
-      connectionState: 'disconnected',
+      connectionState: ConnectionState.DISCONNECTED,
       consecutiveFailures: server.failureCount,
       retryState: {
         isRetrying: false,
@@ -106,7 +106,7 @@ export class HealthMonitor {
       return;
     }
 
-    healthStatus.connectionState = 'connecting';
+    healthStatus.connectionState = ConnectionState.CONNECTING;
 
     try {
       let isHealthy = false;
@@ -155,7 +155,7 @@ export class HealthMonitor {
     server: MCPServerConfig,
     healthStatus: ServerHealthStatus
   ): void {
-    healthStatus.connectionState = 'connected';
+    healthStatus.connectionState = ConnectionState.CONNECTED;
     healthStatus.lastPingAt = Date.now();
     healthStatus.consecutiveFailures = 0;
     healthStatus.retryState.isRetrying = false;
@@ -179,7 +179,7 @@ export class HealthMonitor {
   ): void {
     if (!healthStatus) return;
 
-    healthStatus.connectionState = 'error';
+    healthStatus.connectionState = ConnectionState.ERROR;
     healthStatus.consecutiveFailures++;
 
     const maxRetries = healthStatus.retryState.backoffIntervals.length;
@@ -247,6 +247,6 @@ export class HealthMonitor {
    */
   isServerHealthy(serverId: string): boolean {
     const healthStatus = this.healthStatus.get(serverId);
-    return healthStatus?.connectionState === 'connected' && !healthStatus.autoDisabledAt;
+    return healthStatus?.connectionState === ConnectionState.CONNECTED && !healthStatus.autoDisabledAt;
   }
 }
