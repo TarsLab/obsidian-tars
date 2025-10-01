@@ -51,8 +51,8 @@ export class MCPServerManager extends EventEmitter<MCPServerManagerEvents> {
 		// Warn about unsupported configs (skip in test environment)
 		if (process.env.NODE_ENV !== 'test' && process.env.VITEST !== 'true') {
 			for (const config of customConfigs) {
-				logWarning(
-					`Server ${config.id} uses unsupported transport/deployment. ` +
+				console.warn(
+					`[MCP Manager] Server ${config.id} uses unsupported transport/deployment. ` +
 					`Supported: stdio transport only. Config: ${config.transport}/${config.deploymentType}`
 				);
 			}
@@ -281,7 +281,7 @@ class MCPClientWrapper {
 		toolName: string,
 		parameters: Record<string, unknown>,
 		_timeout?: number
-	): Promise<{ content: unknown; contentType: string; executionDuration: number }> {
+	): Promise<{ content: unknown; contentType: 'text' | 'json' | 'image' | 'markdown'; executionDuration: number }> {
 		if (!this.session.isConnected) {
 			throw new Error(`Session for ${this.serverId} not connected`);
 		}
@@ -295,7 +295,7 @@ class MCPClientWrapper {
 
 		return {
 			content: result.content,
-			contentType: 'json' as const,
+			contentType: 'json',
 			executionDuration: duration
 		};
 	}
