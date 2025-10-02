@@ -5,12 +5,56 @@ import { convertEmbedToImageUrl } from './utils'
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, resolveEmbedAsBinary: ResolveEmbedAsBinary) {
-		const { parameters, mcpManager, mcpExecutor, ...optionsExcludingParams } = settings
+		const { parameters, mcpManager, mcpExecutor, documentPath, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, baseURL, model, ...remains } = options
 		if (!apiKey) throw new Error(t('API key is required'))
-		
-		// Inject MCP tools if available
+
+		// Tool-aware path: Use coordinator for autonomous tool calling
+		if (mcpManager && mcpExecutor) {
+			try {
+				const { ToolCallingCoordinator, OpenAIProviderAdapter } = await import('../mcp/index.js')
+				// biome-ignore lint/suspicious/noExplicitAny: MCP types are optional dependencies
+				const mcpMgr = mcpManager as any
+				// biome-ignore lint/suspicious/noExplicitAny: MCP types are optional dependencies
+				const mcpExec = mcpExecutor as any
+
+				const client = new OpenAI({
+					apiKey,
+					baseURL,
+					dangerouslyAllowBrowser: true
+				})
+
+				const adapter = new OpenAIProviderAdapter({
+					mcpManager: mcpMgr,
+					mcpExecutor: mcpExec,
+					openaiClient: client,
+					controller,
+					resolveEmbedAsBinary
+				})
+
+				await adapter.initialize()
+
+				const coordinator = new ToolCallingCoordinator()
+
+				// Convert messages to coordinator format
+				const formattedMessages = await Promise.all(messages.map((msg) => formatMsgForCoordinator(msg, resolveEmbedAsBinary)))
+
+				yield* coordinator.generateWithTools(
+					formattedMessages,
+					adapter,
+					mcpExec,
+					{ documentPath: documentPath || 'unknown.md' }
+				)
+
+				return
+			} catch (error) {
+				console.warn('Failed to use tool-aware path, falling back to original:', error)
+				// Fall through to original path
+			}
+		}
+
+		// Original streaming path (backward compatible)
 		let requestParams: Record<string, unknown> = { model, ...remains }
 		if (mcpManager && mcpExecutor) {
 			try {
@@ -21,7 +65,7 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 				console.warn('Failed to inject MCP tools for OpenAI:', error)
 			}
 		}
-		
+
 		const formattedMessages = await Promise.all(messages.map((msg) => formatMsg(msg, resolveEmbedAsBinary)))
 		const client = new OpenAI({
 			apiKey,
@@ -68,6 +112,18 @@ const formatMsg = async (msg: Message, resolveEmbedAsBinary: ResolveEmbedAsBinar
 	return {
 		role: msg.role,
 		content
+	}
+}
+
+/**
+ * Format message for coordinator (simpler format - just role and content)
+ */
+const formatMsgForCoordinator = async (msg: Message, resolveEmbedAsBinary: ResolveEmbedAsBinary) => {
+	// For coordinator, we keep it simple - embeds will be handled by the adapter
+	return {
+		role: msg.role,
+		content: msg.content,
+		embeds: msg.embeds
 	}
 }
 

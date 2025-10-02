@@ -469,10 +469,11 @@ export const generate = async (
 			throw new Error(`No vendor found ${provider.vendor}`)
 		}
 
-		// Inject MCP manager and executor into provider options if available
+		// Inject MCP manager, executor, and document path into provider options if available
 		if (mcpManager && mcpExecutor) {
 			provider.options.mcpManager = mcpManager
 			provider.options.mcpExecutor = mcpExecutor
+			provider.options.documentPath = env.filePath
 		}
 
 		const conversation = await extractConversation(env, 0, endOffset)

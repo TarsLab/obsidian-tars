@@ -49,6 +49,7 @@ export interface BaseOptions {
 	// MCP tool integration - injected by the system when available
 	mcpManager?: unknown // MCPServerManager from mcp module
 	mcpExecutor?: unknown // ToolExecutor from mcp module
+	documentPath?: string // Current document path for tool execution context
 }
 
 export interface ProviderSettings {
