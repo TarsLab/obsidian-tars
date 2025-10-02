@@ -3,8 +3,8 @@ import { exportCmd, replaceCmd, replaceCmdId } from './commands'
 import { exportCmdId } from './commands/export'
 import { t } from './lang/helper'
 import type TarsPlugin from './main'
-import { type MCPServerConfig, TransportProtocol } from './mcp/types'
-import { parseExecutionCommand } from './mcp/utils'
+import { MCP_CONFIG_EXAMPLES, parseConfigInput, validateConfigInput } from './mcp/config'
+import type { MCPServerConfig } from './mcp/types'
 import { SelectModelModal, SelectVendorModal } from './modal'
 import type { BaseOptions, Optional, ProviderSettings, Vendor } from './providers'
 import { type ClaudeOptions, claudeVendor } from './providers/claude'
@@ -27,6 +27,23 @@ export class TarsSettingTab extends PluginSettingTab {
 
 	hide(): void {
 		this.plugin.buildTagCommands()
+	}
+
+	// Helper: Generate unique server name
+	private generateUniqueName(baseName: string): string {
+		const existingNames = this.plugin.settings.mcpServers.map((s) => s.name)
+
+		// If base name is unique, use it
+		if (!existingNames.includes(baseName)) {
+			return baseName
+		}
+
+		// Otherwise, append number
+		let counter = 2
+		while (existingNames.includes(`${baseName}-${counter}`)) {
+			counter++
+		}
+		return `${baseName}-${counter}`
 	}
 
 	display(expandLastProvider = false): void {
@@ -313,6 +330,8 @@ export class TarsSettingTab extends PluginSettingTab {
 		// MCP Servers collapsible section
 		const mcpSection = containerEl.createEl('details')
 		mcpSection.createEl('summary', { text: 'MCP Servers', cls: 'tars-setting-h4' })
+		// Keep MCP section open by default for better UX
+		mcpSection.setAttribute('open', 'true')
 
 		// Global MCP settings
 		new Setting(mcpSection)
@@ -333,11 +352,11 @@ export class TarsSettingTab extends PluginSettingTab {
 
 		new Setting(mcpSection)
 			.setName('Concurrent limit')
-			.setDesc('Maximum number of tools executing simultaneously (default: 25)')
+			.setDesc('Maximum number of tools executing simultaneously (default: 3)')
 			.addText((text) =>
 				text
-					.setPlaceholder('25')
-					.setValue(this.plugin.settings.mcpConcurrentLimit?.toString() || '25')
+					.setPlaceholder('3')
+					.setValue(this.plugin.settings.mcpConcurrentLimit?.toString() || '3')
 					.onChange(async (value) => {
 						const limit = parseInt(value, 10)
 						if (!Number.isNaN(limit) && limit > 0) {
@@ -438,47 +457,78 @@ export class TarsSettingTab extends PluginSettingTab {
 							.setClass('mcp-control-button')
 							.setTooltip('Test server connection')
 							.onClick(async () => {
-								new Notice(`Testing ${server.name}...`)
+								// Disable button and show loading state
+								btn.setDisabled(true)
+								const originalText = btn.buttonEl.textContent || 'Test'
+								btn.setButtonText('Testing...')
+								new Notice(`Testing ${server.name}...`, 2000)
 
 								try {
-									if (!this.plugin.mcpManager) {
-										new Notice('❌ MCP Manager not initialized', 5000)
+									// Validate configuration first
+									const validationError = validateConfigInput(server.configInput)
+									if (validationError) {
+										new Notice(`❌ ${server.name}: Invalid configuration\n${validationError}`, 8000)
 										return
 									}
 
-									// Try to start the server if not already started
-									try {
-										await this.plugin.mcpManager.startServer(server.id)
-									} catch (startError) {
-										// Server might already be running, that's ok
-										console.debug('Server start attempt:', startError)
+									// Parse and convert config to mcp-use format
+									const parsed = parseConfigInput(server.configInput)
+									if (!parsed || !parsed.mcpUseConfig) {
+										new Notice(`❌ ${server.name}: Could not parse configuration`, 5000)
+										return
 									}
 
-									// Wait a moment for connection to establish
-									await new Promise((resolve) => setTimeout(resolve, 1000))
+									// Create a temporary test client using mcp-use directly
+									const { MCPClient } = await import('mcp-use')
+									const testConfig = {
+										mcpServers: {
+											[server.id]: {
+												command: parsed.mcpUseConfig.command,
+												args: parsed.mcpUseConfig.args || [],
+												env: parsed.mcpUseConfig.env
+											}
+										}
+									}
+									const testClient = MCPClient.fromDict(testConfig)
 
-									const client = this.plugin.mcpManager.getClient(server.id)
+									// Create session and connect
+									const session = await testClient.createSession(server.id, true)
 
-									if (client?.isConnected()) {
-										const tools = await client.listTools()
-										const toolCount = tools.length
-										const toolNames = tools
-											.slice(0, 3)
-											.map((t: { name: string }) => t.name)
-											.join(', ')
-										const more = toolCount > 3 ? ` and ${toolCount - 3} more` : ''
-										new Notice(`✅ ${server.name}: Connected!\n${toolCount} tools available: ${toolNames}${more}`, 8000)
-									} else {
-										const health = this.plugin.mcpManager.getHealthStatus(server.id)
-										const stateStr = health?.connectionState || 'unknown'
-										new Notice(
-											`❌ ${server.name}: Not connected\nState: ${stateStr}\n\nCheck Docker is running and image is available:\ndocker pull mcp/memory:latest`,
-											10000
-										)
+									// Get tools from the connector
+									// biome-ignore lint/suspicious/noExplicitAny: mcp-use connector type not exported
+									const tools = (session.connector as any).tools || []
+									const toolCount = tools.length
+									const toolNames = tools
+										.slice(0, 3)
+										// biome-ignore lint/suspicious/noExplicitAny: tool type not exported
+										.map((t: any) => t.name)
+										.join(', ')
+									const more = toolCount > 3 ? ` and ${toolCount - 3} more` : ''
+
+									new Notice(`✅ ${server.name}: Connected!\n${toolCount} tools: ${toolNames}${more}`, 8000)
+
+									// Cleanup test client
+									try {
+										await session.disconnect()
+									} catch (e) {
+										console.debug('Error closing test session:', e)
 									}
 								} catch (error) {
 									const msg = error instanceof Error ? error.message : String(error)
-									new Notice(`❌ Test failed: ${msg}`, 8000)
+
+									// Build helpful error message based on config
+									let helpText = ''
+									if (server.configInput.includes('docker')) {
+										helpText = '\nTip: Make sure Docker is running'
+									} else if (server.configInput.includes('npx') || server.configInput.includes('uvx')) {
+										helpText = '\nTip: Check package is installed and env vars are set'
+									}
+
+									new Notice(`❌ ${server.name}: Test failed\n${msg}${helpText}`, 10000)
+								} finally {
+									// Re-enable button and restore original text
+									btn.setDisabled(false)
+									btn.setButtonText(originalText)
 								}
 							})
 					)
@@ -499,110 +549,96 @@ export class TarsSettingTab extends PluginSettingTab {
 							})
 					)
 
-				// Server name
-				new Setting(serverSection).setName('Server name').addText((text) =>
-					text
+				// Server name with uniqueness validation
+				let nameErrorContainer: HTMLElement | null = null
+				const showNameError = (message: string) => {
+					if (!nameErrorContainer) {
+						nameErrorContainer = serverSection.createDiv({ cls: 'mcp-name-error' })
+						nameErrorContainer.style.color = 'var(--text-error)'
+						nameErrorContainer.style.fontSize = '12px'
+						nameErrorContainer.style.marginTop = '4px'
+					}
+					nameErrorContainer.setText(`⚠️ ${message}`)
+				}
+
+				const hideNameError = () => {
+					if (nameErrorContainer) {
+						nameErrorContainer.remove()
+						nameErrorContainer = null
+					}
+				}
+
+				const isNameUnique = (name: string, currentServerId: string): boolean => {
+					return !this.plugin.settings.mcpServers.some(
+						(s) => s.id !== currentServerId && s.name === name
+					)
+				}
+
+				new Setting(serverSection).setName('Server name').addText((text) => {
+					const textInput = text
 						.setPlaceholder('my-mcp-server')
 						.setValue(server.name)
 						.onChange(async (value) => {
-							server.name = value
+							const trimmedName = value.trim()
+
+							// Check if name is unique
+							if (!isNameUnique(trimmedName, server.id)) {
+								showNameError('Server name must be unique')
+								text.inputEl.style.borderColor = 'var(--text-error)'
+								return
+							}
+
+							hideNameError()
+							text.inputEl.style.borderColor = ''
+							server.name = trimmedName
 							await this.plugin.saveSettings()
 							// Update summary with colored status
 							updateSummary()
 						})
-				)
 
-				// Transport
-				new Setting(serverSection)
-					.setName('Transport')
-					.setDesc('Communication protocol (stdio for local, sse for remote)')
-					.addDropdown((dropdown) =>
-						dropdown
-							.addOptions({ stdio: 'stdio', sse: 'SSE' })
-							.setValue(server.transport)
-							.onChange(async (value) => {
-								server.transport = value as TransportProtocol
-								await this.plugin.saveSettings()
-							})
-					)
+					// Initial validation
+					if (!isNameUnique(server.name, server.id)) {
+						showNameError('Server name must be unique')
+						text.inputEl.style.borderColor = 'var(--text-error)'
+					}
 
-				// Execution command, JSON, or URL
+					return textInput
+				})
+
+				// Info: Transport is always stdio via mcp-use
+				// (No UI needed - it's automatically determined from config)
+
+				// Configuration Input (3 formats)
 				new Setting(serverSection)
-					.setName('Execution Command, JSON Or URL')
-					.setDesc(
-						'Provide one of: 1) Shell command (e.g., "docker run..."), 2) VS Code MCP JSON config, or 3) URL for remote server (e.g., "http://localhost:3000/sse")'
-					)
+					.setName('Configuration')
+					.setDesc('Supports 3 formats: Command, Claude JSON, or URL (coming soon)')
 
 				// Create textarea in a separate container for full-width layout
 				const textareaContainer = serverSection.createDiv({ cls: 'mcp-textarea-container' })
 				const textarea = textareaContainer.createEl('textarea', {
-					placeholder: `Examples:
-
-1. Command: docker run -it --rm mcp-server:latest
-
-2. JSON (VS Code format):
-{
-  "command": "docker",
-  "args": ["run", "--name", "mcp-server", "-it", "--rm", "mcp-server:latest"],
-  "env": {
-    "API_KEY": "secret123",
-    "DEBUG": "mcp:*"
-  }
-}
-
-3. URL: http://localhost:8080/sse`,
+					placeholder: MCP_CONFIG_EXAMPLES.command.examples.join('\n\n') + '\n\nOr:\n\n' + MCP_CONFIG_EXAMPLES.json.example,
 					cls: 'mcp-execution-textarea'
 				})
-				textarea.value = server.executionCommand || ''
-				textarea.rows = 8
+				textarea.value = server.configInput || ''
+				textarea.rows = 10
 				textarea.style.width = '100%'
 				textarea.style.fontFamily = 'monospace'
 				textarea.style.fontSize = '13px'
-				
+
 				// Error container for validation messages
 				let errorContainer: HTMLElement | null = null
-				
-				const validateExecutionCommand = (cmd: string): string | null => {
-					if (!cmd || !cmd.trim()) {
-						return null // Empty is valid
-					}
-					
-					// Try to parse as JSON if it starts with {
-					if (cmd.trim().startsWith('{')) {
-						try {
-							JSON.parse(cmd)
-						} catch (e) {
-							return `Invalid JSON: ${e instanceof Error ? e.message : String(e)}`
-						}
-					}
-					
-					// Try parsing with the actual parser to catch any other issues
-					try {
-						const testConfig: MCPServerConfig = {
-							...server,
-							executionCommand: cmd,
-							dockerConfig: undefined,
-							sseConfig: undefined
-						}
-						parseExecutionCommand(testConfig)
-					} catch (e) {
-						return `Parse error: ${e instanceof Error ? e.message : String(e)}`
-					}
-					
-					return null
-				}
-				
+
 				const showError = (errorMsg: string) => {
 					if (!errorContainer) {
 						errorContainer = textareaContainer.createDiv({ cls: 'mcp-error-container' })
 					}
 					errorContainer.empty()
-					
+
 					errorContainer.createEl('pre', {
 						text: errorMsg,
 						cls: 'mcp-error-message'
 					})
-					
+
 					const copyBtn = errorContainer.createEl('button', { cls: 'mcp-error-copy-btn' })
 					setIcon(copyBtn, 'clipboard')
 					copyBtn.addEventListener('click', () => {
@@ -610,32 +646,66 @@ export class TarsSettingTab extends PluginSettingTab {
 						new Notice('Error message copied to clipboard')
 					})
 				}
-				
+
 				const hideError = () => {
 					if (errorContainer) {
 						errorContainer.remove()
 						errorContainer = null
 					}
 				}
-				
+
+				// Show detected format info (single line, reused)
+				let formatInfoContainer: HTMLElement | null = null
+				const showFormatInfo = (input: string) => {
+					const parsed = parseConfigInput(input)
+
+					// Create container only once
+					if (!formatInfoContainer) {
+						formatInfoContainer = textareaContainer.createDiv({ cls: 'mcp-format-info' })
+						formatInfoContainer.style.marginTop = '8px'
+						formatInfoContainer.style.fontSize = '12px'
+						formatInfoContainer.style.color = 'var(--text-muted)'
+					}
+
+					if (!parsed) {
+						formatInfoContainer.setText('❌ Could not parse config')
+					} else if (parsed.error) {
+						formatInfoContainer.setText(`❌ ${parsed.error}`)
+					} else {
+						formatInfoContainer.setText(`✓ Detected: ${parsed.type.toUpperCase()} format | Server: ${parsed.serverName || 'N/A'}`)
+					}
+				}
+
+				const hideFormatInfo = () => {
+					if (formatInfoContainer) {
+						formatInfoContainer.remove()
+						formatInfoContainer = null
+					}
+				}
+
 				textarea.addEventListener('input', async (e) => {
 					const target = e.target as HTMLTextAreaElement
-					server.executionCommand = target.value
+					server.configInput = target.value
 					await this.plugin.saveSettings()
-					
+
 					// Validate and show/hide error
-					const validationError = validateExecutionCommand(target.value)
+					const validationError = validateConfigInput(target.value)
 					if (validationError) {
 						showError(validationError)
 					} else {
 						hideError()
+						if (target.value.trim()) {
+							showFormatInfo(target.value)
+						}
 					}
 				})
-				
+
 				// Initial validation
-				const initialError = validateExecutionCommand(server.executionCommand || '')
+				const initialError = validateConfigInput(server.configInput || '')
 				if (initialError) {
 					showError(initialError)
+				} else if (server.configInput) {
+					showFormatInfo(server.configInput)
 				}
 			}
 		} else {
@@ -644,45 +714,51 @@ export class TarsSettingTab extends PluginSettingTab {
 
 		// Promoted MCP servers
 		new Setting(mcpSection)
-			.setName('Promoted MCP Servers')
-			.setDesc('Pre-configured popular MCP servers')
+			.setName('Quick Add Popular Servers')
+			.setDesc('One-click add pre-configured MCP servers')
 			.addButton((btn) =>
-				btn.setButtonText('Add Exa Search Server').onClick(async () => {
-					const exaServer: MCPServerConfig = {
+				btn.setButtonText('+ Exa Search').onClick(async () => {
+					const server: MCPServerConfig = {
 						id: `mcp-exa-${Date.now()}`,
-						name: 'exa-search',
-						transport: TransportProtocol.STDIO,
-						executionCommand: JSON.stringify({
-							command: 'npx',
-							args: ['-y', '@exa/mcp-server'],
-							env: {
-								EXA_API_KEY: 'your-exa-api-key-here'
-							}
-						}, null, 2),
+						name: this.generateUniqueName('exa-search'),
+						configInput: 'npx -y @exa/mcp-server-exa',
 						enabled: false,
 						failureCount: 0,
-						autoDisabled: false,
-						sectionBindings: []
+						autoDisabled: false
 					}
-					this.plugin.settings.mcpServers.push(exaServer)
+					this.plugin.settings.mcpServers.push(server)
 					await this.plugin.saveSettings()
-					new Notice('Exa Search MCP server added! Please update the EXA_API_KEY in the configuration.')
+					new Notice('Exa Search MCP server added! Set EXA_API_KEY in environment.')
+					this.display()
+				})
+			)
+			.addButton((btn) =>
+				btn.setButtonText('+ Filesystem Server').onClick(async () => {
+					const server: MCPServerConfig = {
+						id: `mcp-filesystem-${Date.now()}`,
+						name: this.generateUniqueName('filesystem'),
+						configInput: 'npx -y @modelcontextprotocol/server-filesystem /path/to/files',
+						enabled: false,
+						failureCount: 0,
+						autoDisabled: false
+					}
+					this.plugin.settings.mcpServers.push(server)
+					await this.plugin.saveSettings()
+					new Notice('Filesystem MCP server added! Update the path in configuration.')
 					this.display()
 				})
 			)
 
 		// Add new server button
 		new Setting(mcpSection).addButton((btn) =>
-			btn.setButtonText('Add MCP Server').onClick(async () => {
+			btn.setButtonText('Add Custom MCP Server').onClick(async () => {
 				const newServer: MCPServerConfig = {
 					id: `mcp-server-${Date.now()}`,
-					name: 'new-server',
-					transport: TransportProtocol.STDIO,
-					executionCommand: '',
+					name: this.generateUniqueName('my-server'),
+					configInput: '',
 					enabled: false,
 					failureCount: 0,
-					autoDisabled: false,
-					sectionBindings: []
+					autoDisabled: false
 				}
 				this.plugin.settings.mcpServers.push(newServer)
 				await this.plugin.saveSettings()

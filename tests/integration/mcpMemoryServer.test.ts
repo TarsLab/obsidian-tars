@@ -83,18 +83,10 @@ describe('Integration: MCP Components', () => {
 		serverConfig = {
 			id: 'test-server',
 			name: 'test-server',
-			transport: 'stdio' as const,
-			deploymentType: 'managed' as const,
-			dockerConfig: {
-				image: 'test:latest',
-				containerName: 'test-container',
-				command: []
-			},
+			configInput: 'docker run -i --rm --name test-container test:latest',
 			enabled: true,
 			failureCount: 0,
-			autoDisabled: false,
-			sectionBindings: [],
-			executionCommand: ''
+			autoDisabled: false
 		}
 
 		// Initialize manager ONCE for all tests

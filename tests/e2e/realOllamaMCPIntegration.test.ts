@@ -91,7 +91,7 @@ describe.skipIf(SKIP_REAL_E2E)('Real E2E: Ollama + MCP Memory Server', () => {
 			id: 'memory-server',
 			name: 'Memory Server',
 			transport: TransportProtocol.STDIO,
-			deploymentType: DeploymentType.MANAGED,
+			// deploymentType: DeploymentType.MANAGED, // Removed
 			dockerConfig: {
 				image: 'mcp/memory:latest', // Docker image from hub.docker.com
 				containerName: 'tars-mcp-memory-e2e',

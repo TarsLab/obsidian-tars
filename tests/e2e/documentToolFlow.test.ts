@@ -16,7 +16,7 @@ import {
 	createCodeBlockProcessor,
 	createMCPManager,
 	createToolExecutor,
-	DeploymentType,
+	// DeploymentType, // Removed in simplification
 	formatToolsForSystemMessage,
 	type MCPServerManager,
 	ToolExecutor,
@@ -125,32 +125,18 @@ describe('E2E: Document → Tool Execution Flow', () => {
 			{
 				id: 'weather-service',
 				name: 'Weather Service',
-				transport: TransportProtocol.STDIO,
-				deploymentType: DeploymentType.MANAGED,
-				dockerConfig: {
-					image: 'mcp/weather:latest',
-					containerName: 'tars-weather'
-				},
+				configInput: 'docker run -i --rm --name tars-weather mcp/weather:latest',
 				enabled: true,
 				failureCount: 0,
-				autoDisabled: false,
-				sectionBindings: [],
-				executionCommand: ''
+				autoDisabled: false
 			},
 			{
 				id: 'search-service',
 				name: 'Search Service',
-				transport: TransportProtocol.STDIO,
-				deploymentType: DeploymentType.MANAGED,
-				dockerConfig: {
-					image: 'mcp/search:latest',
-					containerName: 'tars-search'
-				},
+				configInput: 'docker run -i --rm --name tars-search mcp/search:latest',
 				enabled: true,
 				failureCount: 0,
-				autoDisabled: false,
-				sectionBindings: [],
-				executionCommand: ''
+				autoDisabled: false
 			}
 		]
 

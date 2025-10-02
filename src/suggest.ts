@@ -75,13 +75,17 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 	tagLowerCaseMap: Map<string, Omit<TagEntry, 'replacement'>>
 	statusBarManager: StatusBarManager
 	requestController: RequestController
+	mcpManager?: unknown
+	mcpExecutor?: unknown
 
 	constructor(
 		app: App,
 		settings: PluginSettings,
 		tagLowerCaseMap: Map<string, Omit<TagEntry, 'replacement'>>,
 		statusBarManager: StatusBarManager,
-		requestController: RequestController
+		requestController: RequestController,
+		mcpManager?: unknown,
+		mcpExecutor?: unknown
 	) {
 		super(app)
 		this.app = app
@@ -89,6 +93,8 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 		this.tagLowerCaseMap = tagLowerCaseMap
 		this.statusBarManager = statusBarManager
 		this.requestController = requestController
+		this.mcpManager = mcpManager
+		this.mcpExecutor = mcpExecutor
 	}
 
 	/** Based on the editor line and cursor position, determine if this EditorSuggest should be triggered at this moment. Typically, you would run a regular expression on the current line text before the cursor. Return null to indicate that this editor suggest is not supposed to be triggered.
@@ -201,7 +207,9 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 				messagesEndOffset,
 				this.statusBarManager,
 				this.settings.editorStatus,
-				this.requestController
+				this.requestController,
+				this.mcpManager,
+				this.mcpExecutor
 			)
 		} catch (error) {
 			console.error('error', error)

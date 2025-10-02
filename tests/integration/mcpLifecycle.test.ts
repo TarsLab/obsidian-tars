@@ -57,37 +57,22 @@ describe('MCP Lifecycle Integration', () => {
 	describe('Full lifecycle management', () => {
 		it('should initialize with multiple server configurations', async () => {
 			// GIVEN: Multiple MCP server configurations
-			const { TransportProtocol, DeploymentType } = await import('../../src/mcp/types')
 			const serverConfigs = [
 				{
 					id: 'test-docker-server',
 					name: 'test-docker',
-					transport: TransportProtocol.STDIO,
-					deploymentType: DeploymentType.MANAGED,
-					dockerConfig: {
-						image: 'mcp-test/echo:latest',
-						containerName: 'test-container',
-						command: ['mcp-server']
-					},
+					configInput: 'docker run -i --rm mcp-test/echo:latest',
 					enabled: true,
 					failureCount: 0,
-					autoDisabled: false,
-					sectionBindings: [],
-					executionCommand: ''
+					autoDisabled: false
 				},
 				{
-					id: 'test-remote-server',
-					name: 'test-remote',
-					transport: TransportProtocol.SSE,
-					deploymentType: DeploymentType.EXTERNAL,
-					sseConfig: {
-						url: 'http://localhost:8080/sse'
-					},
+					id: 'test-npx-server',
+					name: 'test-memory',
+					configInput: 'npx -y @modelcontextprotocol/server-memory',
 					enabled: true,
 					failureCount: 0,
-					autoDisabled: false,
-					sectionBindings: [],
-					executionCommand: ''
+					autoDisabled: false
 				}
 			]
 
@@ -98,7 +83,7 @@ describe('MCP Lifecycle Integration', () => {
 			const servers = manager.listServers()
 			expect(servers).toHaveLength(2)
 			expect(servers[0].name).toBe('test-docker')
-			expect(servers[1].name).toBe('test-remote')
+			expect(servers[1].name).toBe('test-memory')
 		})
 
 		it('should handle plugin load and unload lifecycle', async () => {

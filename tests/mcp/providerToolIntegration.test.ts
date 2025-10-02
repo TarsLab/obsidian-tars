@@ -68,19 +68,10 @@ describe('Provider Tool Integration', () => {
 			{
 				id: 'test-server',
 				name: 'Test Server',
-				// biome-ignore lint/suspicious/noExplicitAny: test config
-				transport: 'stdio' as any,
-				// biome-ignore lint/suspicious/noExplicitAny: test config
-				deploymentType: 'managed' as any,
-				dockerConfig: {
-					image: 'test:latest',
-					containerName: 'test'
-				},
+				configInput: 'npx -y @modelcontextprotocol/server-test',
 				enabled: true,
 				failureCount: 0,
-				autoDisabled: false,
-				sectionBindings: [],
-				executionCommand: ''
+				autoDisabled: false
 			}
 		])
 	})

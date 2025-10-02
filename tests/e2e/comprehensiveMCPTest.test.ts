@@ -16,7 +16,7 @@ import {
 	createCodeBlockProcessor,
 	createMCPManager,
 	createToolExecutor,
-	DeploymentType,
+	// DeploymentType, // Removed in simplification
 	type MCPServerManager,
 	ToolExecutor,
 	TransportProtocol
@@ -154,17 +154,10 @@ describe('E2E: Comprehensive MCP Capabilities', () => {
 		const serverConfig = {
 			id: 'everything-server',
 			name: 'Everything Server',
-			transport: TransportProtocol.STDIO,
-			deploymentType: DeploymentType.MANAGED,
-			dockerConfig: {
-				image: 'mcp/everything:latest',
-				containerName: 'tars-everything'
-			},
+			configInput: 'docker run -i --rm --name tars-everything mcp/everything:latest',
 			enabled: true,
 			failureCount: 0,
-			autoDisabled: false,
-			sectionBindings: [],
-			executionCommand: ''
+			autoDisabled: false
 		}
 
 		await manager.initialize([serverConfig])

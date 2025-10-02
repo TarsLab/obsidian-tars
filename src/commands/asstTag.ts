@@ -30,7 +30,9 @@ export const asstTagCmd = (
 	app: App,
 	settings: PluginSettings,
 	statusBarManager: StatusBarManager,
-	requestController: RequestController
+	requestController: RequestController,
+	mcpManager?: unknown,
+	mcpExecutor?: unknown
 ): Command => ({
 	id,
 	name,
@@ -61,7 +63,9 @@ export const asstTagCmd = (
 					messagesEndOffset,
 					statusBarManager,
 					settings.editorStatus,
-					requestController
+					requestController,
+					mcpManager,
+					mcpExecutor
 				)
 				return
 			}
@@ -86,17 +90,19 @@ export const asstTagCmd = (
 					messagesEndOffset,
 					statusBarManager,
 					settings.editorStatus,
-					requestController
+					requestController,
+					mcpManager,
+					mcpExecutor
 				)
 			} else if (role === 'assistant') {
 				// If it's an asstTag, prompt the user whether to regenerate
 				if (settings.confirmRegenerate) {
 					const onConfirm = async () => {
-						await regenerate(app, settings, statusBarManager, requestController, editor, provider, range, mark)
+						await regenerate(app, settings, statusBarManager, requestController, editor, provider, range, mark, mcpManager, mcpExecutor)
 					}
 					new ConfirmModal(app, onConfirm).open()
 				} else {
-					await regenerate(app, settings, statusBarManager, requestController, editor, provider, range, mark)
+					await regenerate(app, settings, statusBarManager, requestController, editor, provider, range, mark, mcpManager, mcpExecutor)
 				}
 			} else {
 				// If it's a userTag, systemTag (warn later), newChat mixed, etc., add a new line, insert assistant tag. Let subsequent code handle the judgment
@@ -115,7 +121,9 @@ export const asstTagCmd = (
 					messagesEndOffset,
 					statusBarManager,
 					settings.editorStatus,
-					requestController
+					requestController,
+					mcpManager,
+					mcpExecutor
 				)
 			}
 		} catch (error) {
@@ -140,7 +148,9 @@ const regenerate = async (
 	editor: Editor,
 	provider: ProviderSettings,
 	range: EditorRange,
-	mark: string
+	mark: string,
+	mcpManager?: unknown,
+	mcpExecutor?: unknown
 ) => {
 	editor.replaceRange(mark, range.from, range.to)
 	editor.setCursor({
@@ -153,7 +163,7 @@ const regenerate = async (
 		ch: 0
 	})
 	const env = await buildRunEnv(app, settings)
-	await generate(env, editor, provider, messagesEndOffset, statusBarManager, settings.editorStatus, requestController)
+	await generate(env, editor, provider, messagesEndOffset, statusBarManager, settings.editorStatus, requestController, mcpManager, mcpExecutor)
 }
 
 class ConfirmModal extends Modal {

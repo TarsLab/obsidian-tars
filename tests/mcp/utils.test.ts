@@ -1,118 +1,108 @@
 /**
- * Tests for MCP utility functions, specifically executionCommand parsing
+ * Tests for MCP utility functions, specifically config parsing
  */
 
 import { describe, expect, it } from 'vitest'
-import { DeploymentType, type MCPServerConfig, TransportProtocol } from '../../src/mcp/types'
-import { parseExecutionCommand } from '../../src/mcp/utils'
+import { parseConfigInput } from '../../src/mcp/config'
 
-describe('parseExecutionCommand', () => {
+describe('parseConfigInput', () => {
 	it('should parse VS Code MCP JSON format with docker run', () => {
-		const config: MCPServerConfig = {
-			id: 'test-1',
-			name: 'memory-server',
-			transport: TransportProtocol.STDIO,
-			executionCommand: JSON.stringify({
-				command: 'docker',
-				args: ['run', '-i', '--rm', 'mcp/memory:latest'],
-				env: {}
-			}),
-			enabled: true,
-			failureCount: 0,
-			autoDisabled: false,
-			sectionBindings: []
-		}
+		const input = JSON.stringify({
+			command: 'docker',
+			args: ['run', '-i', '--rm', 'mcp/memory:latest'],
+			env: {}
+		})
 
-		parseExecutionCommand(config)
+		const result = parseConfigInput(input)
 
-		expect(config.deploymentType).toBe(DeploymentType.MANAGED)
-		expect(config.dockerConfig).toBeDefined()
-		expect(config.dockerConfig?.image).toBe('mcp/memory:latest')
-		expect(config.dockerConfig?.containerName).toBe('memory-server')
+		expect(result.type).toBe('json')
+		expect(result.mcpUseConfig).toBeDefined()
+		expect(result.mcpUseConfig?.command).toBe('docker')
+		expect(result.mcpUseConfig?.args).toContain('run')
+		expect(result.mcpUseConfig?.args).toContain('mcp/memory:latest')
+	})
+
+	it('should parse Claude Desktop JSON format', () => {
+		const input = JSON.stringify({
+			mcpServers: {
+				memory: {
+					command: 'npx',
+					args: ['-y', '@modelcontextprotocol/server-memory'],
+					env: {}
+				}
+			}
+		})
+
+		const result = parseConfigInput(input)
+
+		expect(result.type).toBe('json')
+		expect(result.serverName).toBe('memory')
+		expect(result.mcpUseConfig).toBeDefined()
+		expect(result.mcpUseConfig?.command).toBe('npx')
+		expect(result.mcpUseConfig?.args).toContain('-y')
 	})
 
 	it('should parse plain docker run command', () => {
-		const config: MCPServerConfig = {
-			id: 'test-2',
-			name: 'test-server',
-			transport: TransportProtocol.STDIO,
-			executionCommand: 'docker run -i --rm mcp/memory:latest',
-			enabled: true,
-			failureCount: 0,
-			autoDisabled: false,
-			sectionBindings: []
-		}
+		const input = 'docker run -i --rm mcp/memory:latest'
 
-		parseExecutionCommand(config)
+		const result = parseConfigInput(input)
 
-		expect(config.deploymentType).toBe(DeploymentType.MANAGED)
-		expect(config.dockerConfig).toBeDefined()
-		expect(config.dockerConfig?.image).toBe('mcp/memory:latest')
+		expect(result.type).toBe('command')
+		expect(result.mcpUseConfig).toBeDefined()
+		expect(result.mcpUseConfig?.command).toBe('docker')
+		expect(result.mcpUseConfig?.args).toContain('run')
+		expect(result.mcpUseConfig?.args).toContain('mcp/memory:latest')
 	})
 
 	it('should parse URL for SSE transport', () => {
-		const config: MCPServerConfig = {
-			id: 'test-3',
-			name: 'remote-server',
-			transport: TransportProtocol.STDIO,
-			executionCommand: 'http://localhost:3000/sse',
-			enabled: true,
-			failureCount: 0,
-			autoDisabled: false,
-			sectionBindings: []
-		}
+		const input = 'http://localhost:3000/sse'
 
-		parseExecutionCommand(config)
+		const result = parseConfigInput(input)
 
-		expect(config.deploymentType).toBe(DeploymentType.EXTERNAL)
-		expect(config.sseConfig).toBeDefined()
-		expect(config.sseConfig?.url).toBe('http://localhost:3000/sse')
-		expect(config.transport).toBe(TransportProtocol.SSE)
+		expect(result.type).toBe('url')
+		expect(result.url).toBe('http://localhost:3000/sse')
+		expect(result.error).toBeDefined() // SSE not supported yet
 	})
 
 	it('should parse npx command', () => {
-		const config: MCPServerConfig = {
-			id: 'test-4',
-			name: 'npx-server',
-			transport: TransportProtocol.STDIO,
-			executionCommand: 'npx @modelcontextprotocol/server-memory',
-			enabled: true,
-			failureCount: 0,
-			autoDisabled: false,
-			sectionBindings: []
-		}
+		const input = 'npx @modelcontextprotocol/server-memory'
 
-		parseExecutionCommand(config)
+		const result = parseConfigInput(input)
 
-		expect(config.deploymentType).toBe(DeploymentType.MANAGED)
-		expect(config.dockerConfig).toBeDefined()
-		expect(config.dockerConfig?.image).toBe('npx')
-		expect(config.dockerConfig?.command).toContain('@modelcontextprotocol/server-memory')
+		expect(result.type).toBe('command')
+		expect(result.mcpUseConfig).toBeDefined()
+		expect(result.mcpUseConfig?.command).toBe('npx')
+		expect(result.mcpUseConfig?.args).toContain('@modelcontextprotocol/server-memory')
+		expect(result.serverName).toBe('server-memory')
 	})
 
-	it('should skip parsing if dockerConfig already exists', () => {
-		const existingConfig = {
-			image: 'existing:image',
-			containerName: 'existing-container',
-			command: ['test']
-		}
+	it('should parse uvx command', () => {
+		const input = 'uvx mcp-server-git'
 
-		const config: MCPServerConfig = {
-			id: 'test-5',
-			name: 'existing',
-			transport: TransportProtocol.STDIO,
-			executionCommand: 'docker run -i --rm new-image:latest',
-			enabled: true,
-			failureCount: 0,
-			autoDisabled: false,
-			sectionBindings: [],
-			dockerConfig: existingConfig
-		}
+		const result = parseConfigInput(input)
 
-		parseExecutionCommand(config)
+		expect(result.type).toBe('command')
+		expect(result.mcpUseConfig).toBeDefined()
+		expect(result.mcpUseConfig?.command).toBe('uvx')
+		expect(result.mcpUseConfig?.args).toContain('mcp-server-git')
+		expect(result.serverName).toBe('mcp-server-git')
+	})
 
-		// Should not change existing config
-		expect(config.dockerConfig).toBe(existingConfig)
-		expect(config.dockerConfig?.image).toBe('existing:image')
+	it('should handle invalid JSON gracefully', () => {
+		const input = '{ invalid json'
+
+		const result = parseConfigInput(input)
+
+		expect(result.type).toBe('json')
+		expect(result.error).toBeDefined()
+		expect(result.mcpUseConfig).toBeNull()
+	})
+
+	it('should handle empty input', () => {
+		const input = ''
+
+		const result = parseConfigInput(input)
+
+		expect(result).toBeNull()
 	})
 })

@@ -8,6 +8,8 @@ export { CodeBlockProcessor } from './codeBlockProcessor'
 export * from './errors'
 export { ToolExecutor } from './executor'
 export { MCPServerManager } from './managerMCPUse' // Using mcp-use library
+// Migration
+export { migrateServerConfig, migrateServerConfigs, needsMigration } from './migration'
 // Provider integration
 export {
 	buildAIToolContext,

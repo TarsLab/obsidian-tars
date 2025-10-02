@@ -81,7 +81,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	// MCP Server Integration defaults
 	mcpServers: [],
 	mcpGlobalTimeout: 30000,
-	mcpConcurrentLimit: 25,
+	mcpConcurrentLimit: 3,
 	mcpSessionLimit: 25
 }
 

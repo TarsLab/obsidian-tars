@@ -5,6 +5,7 @@
  * with the mcp-use library's expected format.
  */
 
+import { parseConfigInput, toMCPUseFormat } from './config'
 import type { MCPServerConfig } from './types'
 
 /**
@@ -27,69 +28,25 @@ export interface MCPUseConfig {
  * Convert a single Tars MCPServerConfig to mcp-use format
  */
 export function toMCPUseServerConfig(config: MCPServerConfig): Record<string, MCPUseServerConfig> {
-	const serverName = config.id
+	const mcpUse = toMCPUseFormat(config)
 
-	// Handle stdio transport
-	if (config.transport === 'stdio') {
-		if (!config.dockerConfig) {
-			throw new Error(`Stdio transport requires dockerConfig for server ${config.id}`)
-		}
-
-		if (config.deploymentType === 'managed') {
-			// Check if this is a package name (like @modelcontextprotocol/server-memory) or Docker image
-			const isPackage =
-				config.dockerConfig.image.startsWith('@') ||
-				(config.dockerConfig.image.includes('/') && !config.dockerConfig.image.includes(':'))
-
-			if (isPackage) {
-				// Run as npx package
-				return {
-					[serverName]: {
-						command: 'npx',
-						args: ['-y', config.dockerConfig.image, ...(config.dockerConfig.command || [])],
-						env: config.dockerConfig.env
-					}
-				}
-			} else {
-				// Managed server: spawn container with docker run
-				return {
-					[serverName]: {
-						command: 'docker',
-						args: [
-							'run',
-							'-i',
-							'--rm', // Auto-remove when done
-							'--name',
-							config.dockerConfig.containerName,
-							config.dockerConfig.image,
-							...(config.dockerConfig.command || [])
-						],
-						env: config.dockerConfig.env
-					}
-				}
-			}
-		} else {
-			// External server: exec into existing container
-			const execCommand = config.dockerConfig.command || ['mcp-server']
-			return {
-				[serverName]: {
-					command: 'docker',
-					args: ['exec', '-i', config.dockerConfig.containerName, ...execCommand],
-					env: config.dockerConfig.env
-				}
-			}
-		}
-	}
-
-	// Handle SSE transport (not supported by mcp-use yet)
-	if (config.transport === 'sse') {
+	if (!mcpUse) {
+		const parsed = parseConfigInput(config.configInput)
 		throw new Error(
-			`SSE transport is not yet supported by mcp-use for server ${config.id}. ` +
-				'Please use stdio transport or implement custom SSE handling.'
+			(parsed?.error) || `Could not convert server ${config.id} to mcp-use format`
 		)
 	}
 
-	throw new Error(`Unsupported transport type: ${config.transport}`)
+	// Use config.name as server key (fallback to parsed name)
+	const serverKey = config.name || mcpUse.serverName
+
+	return {
+		[serverKey]: {
+			command: mcpUse.command,
+			args: mcpUse.args,
+			env: mcpUse.env
+		}
+	}
 }
 
 /**
@@ -116,17 +73,8 @@ export function toMCPUseConfig(configs: MCPServerConfig[]): MCPUseConfig {
  * Validate that a config can be converted to mcp-use format
  */
 export function canUseMCPUse(config: MCPServerConfig): boolean {
-	// Only stdio transport is supported by mcp-use
-	if (config.transport !== 'stdio') {
-		return false
-	}
-
-	// Requires docker config
-	if (!config.dockerConfig) {
-		return false
-	}
-
-	return true
+	const mcpUse = toMCPUseFormat(config)
+	return mcpUse !== null
 }
 
 /**

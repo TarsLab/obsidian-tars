@@ -12,6 +12,7 @@ export interface StatusBarState {
 	type: StatusBarType
 	content: StatusBarContent
 	data?: GenerationStats | ErrorInfo
+	mcpStatus?: MCPStatusInfo
 	timestamp: Date
 }
 
@@ -30,6 +31,72 @@ export interface ErrorInfo {
 	name?: string
 	stack?: string
 	timestamp: Date
+}
+
+export interface MCPStatusInfo {
+	runningServers: number
+	totalServers: number
+	availableTools: number
+	servers: Array<{
+		id: string
+		name: string
+		enabled: boolean
+		isConnected: boolean
+		toolCount: number
+	}>
+}
+
+class MCPStatusModal extends Modal {
+	constructor(
+		app: App,
+		private mcpStatus: MCPStatusInfo
+	) {
+		super(app)
+	}
+
+	onOpen() {
+		const { contentEl } = this
+		contentEl.createEl('h2', { text: 'MCP Server Status' })
+
+		const statusContainer = contentEl.createDiv({ cls: 'mcp-status-modal' })
+
+		// Summary
+		const summary = statusContainer.createDiv({ cls: 'mcp-summary' })
+		summary.createEl('p', {
+			text: `Running: ${this.mcpStatus.runningServers} / ${this.mcpStatus.totalServers} servers`
+		})
+		summary.createEl('p', {
+			text: `Available Tools: ${this.mcpStatus.availableTools}`
+		})
+
+		// Server list
+		if (this.mcpStatus.servers.length > 0) {
+			statusContainer.createEl('h3', { text: 'Servers', cls: 'mcp-servers-heading' })
+
+			const serverList = statusContainer.createDiv({ cls: 'mcp-server-list' })
+
+			for (const server of this.mcpStatus.servers) {
+				const serverItem = serverList.createDiv({ cls: 'mcp-server-item' })
+
+				const statusIcon = server.isConnected ? '✅' : (server.enabled ? '🔴' : '⚪')
+				const statusText = server.isConnected ? 'Connected' : (server.enabled ? 'Disconnected' : 'Disabled')
+
+				serverItem.createEl('div', {
+					text: `${statusIcon} ${server.name}`,
+					cls: 'mcp-server-name'
+				})
+				serverItem.createEl('div', {
+					text: `Status: ${statusText} | Tools: ${server.toolCount}`,
+					cls: 'mcp-server-details'
+				})
+			}
+		}
+	}
+
+	onClose() {
+		const { contentEl } = this
+		contentEl.empty()
+	}
 }
 
 class GenerationStatsModal extends Modal {
@@ -125,6 +192,12 @@ export class StatusBarManager {
 
 	private setupClickHandler() {
 		this.statusBarItem.addEventListener('click', () => {
+			// MCP status takes priority
+			if (this.state.mcpStatus) {
+				new MCPStatusModal(this.app, this.state.mcpStatus).open()
+				return
+			}
+
 			if (!this.state.data) return
 
 			if (this.state.type === 'error') {
@@ -195,6 +268,29 @@ export class StatusBarManager {
 				tooltip: `${t('Round')} ${stats.round} | ${stats.characters}${t('characters')} | ${stats.duration} | ${stats.model}`
 			},
 			data: stats
+		})
+	}
+
+	setMCPStatus(mcpStatus: MCPStatusInfo) {
+		// Update the base text to include MCP info
+		let baseText = 'Tars'
+		if (mcpStatus.totalServers > 0) {
+			baseText += ` | MCP: ${mcpStatus.runningServers}/${mcpStatus.totalServers}`
+			if (mcpStatus.availableTools > 0) {
+				baseText += ` (${mcpStatus.availableTools} tools)`
+			}
+		}
+
+		const tooltip = mcpStatus.totalServers > 0
+			? `MCP: ${mcpStatus.runningServers} of ${mcpStatus.totalServers} servers running, ${mcpStatus.availableTools} tools available. Click for details.`
+			: t('Tars AI assistant is ready')
+
+		this.updateState({
+			content: {
+				text: baseText,
+				tooltip
+			},
+			mcpStatus
 		})
 	}
 

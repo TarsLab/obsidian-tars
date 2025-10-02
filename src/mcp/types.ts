@@ -9,11 +9,6 @@ export enum TransportProtocol {
 	SSE = 'sse'
 }
 
-export enum DeploymentType {
-	MANAGED = 'managed', // Docker-hosted, plugin manages lifecycle
-	EXTERNAL = 'external' // Remote-hosted, plugin only monitors health
-}
-
 export enum ConnectionState {
 	DISCONNECTED = 'disconnected',
 	CONNECTING = 'connecting',
@@ -31,18 +26,15 @@ export enum ExecutionStatus {
 	CANCELLED = 'cancelled'
 }
 
-// Core Configuration Types
+// Core Configuration Types (DEPRECATED - use config.ts instead)
+// Keeping for backward compatibility during migration
 export interface MCPServerConfig {
 	// Identity
 	id: string
 	name: string
 
-	// Connection
-	transport: TransportProtocol
-
-	// Execution command (bash/cmd command to start the MCP server)
-	// Examples: "docker run...", "uvx mcp-server", "npx @modelcontextprotocol/server"
-	executionCommand: string
+	// Configuration input (URL, Command, or JSON)
+	configInput: string
 
 	// State
 	enabled: boolean
@@ -51,22 +43,6 @@ export interface MCPServerConfig {
 	lastConnectedAt?: number
 	failureCount: number
 	autoDisabled: boolean
-
-	// Section associations
-	sectionBindings: SectionBinding[]
-
-	// Legacy fields (for backward compatibility - will be migrated)
-	deploymentType?: DeploymentType
-	dockerConfig?: {
-		image: string
-		containerName: string
-		command?: string[]
-		ports?: { [key: string]: number }
-		env?: Record<string, string>
-	}
-	sseConfig?: {
-		url: string
-	}
 }
 
 export interface SectionBinding {
@@ -180,18 +156,14 @@ export function isMCPServerConfig(obj: unknown): obj is MCPServerConfig {
 		typeof obj.id === 'string' &&
 		'name' in obj &&
 		typeof obj.name === 'string' &&
-		'transport' in obj &&
-		Object.values(TransportProtocol).includes(obj.transport as TransportProtocol) &&
-		'deploymentType' in obj &&
-		Object.values(DeploymentType).includes(obj.deploymentType as DeploymentType) &&
+		'configInput' in obj &&
+		typeof obj.configInput === 'string' &&
 		'enabled' in obj &&
 		typeof obj.enabled === 'boolean' &&
 		'failureCount' in obj &&
 		typeof obj.failureCount === 'number' &&
 		'autoDisabled' in obj &&
-		typeof obj.autoDisabled === 'boolean' &&
-		'sectionBindings' in obj &&
-		Array.isArray(obj.sectionBindings)
+		typeof obj.autoDisabled === 'boolean'
 	)
 }
 

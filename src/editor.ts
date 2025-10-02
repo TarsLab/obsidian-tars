@@ -459,12 +459,20 @@ export const generate = async (
 	endOffset: number,
 	statusBarManager: StatusBarManager,
 	editorStatus: EditorStatus,
-	requestController: RequestController
+	requestController: RequestController,
+	mcpManager?: unknown,
+	mcpExecutor?: unknown
 ) => {
 	try {
 		const vendor = availableVendors.find((v) => v.name === provider.vendor)
 		if (!vendor) {
 			throw new Error(`No vendor found ${provider.vendor}`)
+		}
+
+		// Inject MCP manager and executor into provider options if available
+		if (mcpManager && mcpExecutor) {
+			provider.options.mcpManager = mcpManager
+			provider.options.mcpExecutor = mcpExecutor
 		}
 
 		const conversation = await extractConversation(env, 0, endOffset)

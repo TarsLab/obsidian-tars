@@ -13,7 +13,7 @@ import {
 import { getMCPCommands } from './commands/mcpCommands'
 import type { RequestController } from './editor'
 import { t } from './lang/helper'
-import { CodeBlockProcessor, createToolExecutor, MCPServerManager, type ToolExecutor } from './mcp'
+import { CodeBlockProcessor, createToolExecutor, MCPServerManager, migrateServerConfigs, type ToolExecutor } from './mcp'
 import { getTitleFromCmdId, loadTemplateFileCommand, promptTemplateCmd, templateToCmdId } from './prompt'
 import { DEFAULT_SETTINGS, type PluginSettings } from './settings'
 import { TarsSettingTab } from './settingTab'
@@ -104,6 +104,11 @@ export default class TarsPlugin extends Plugin {
 		const statusBarItem = this.addStatusBarItem()
 		this.statusBarManager = new StatusBarManager(this.app, statusBarItem)
 
+		// Update MCP status in status bar if MCP manager is initialized
+		if (this.mcpManager) {
+			this.updateMCPStatus()
+		}
+
 		this.buildTagCommands(true)
 		this.buildPromptCommands(true)
 
@@ -126,7 +131,9 @@ export default class TarsPlugin extends Plugin {
 					this.settings,
 					this.tagLowerCaseMap,
 					this.statusBarManager,
-					this.getRequestController()
+					this.getRequestController(),
+					this.mcpManager,
+					this.mcpExecutor
 				)
 			)
 
@@ -183,7 +190,7 @@ export default class TarsPlugin extends Plugin {
 				break
 			case 'assistant':
 				this.addCommand(
-					asstTagCmd(tagCmdMeta, this.app, this.settings, this.statusBarManager, this.getRequestController())
+					asstTagCmd(tagCmdMeta, this.app, this.settings, this.statusBarManager, this.getRequestController(), this.mcpManager, this.mcpExecutor)
 				)
 				break
 			default:
@@ -267,10 +274,64 @@ export default class TarsPlugin extends Plugin {
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData())
+		const data = await this.loadData()
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, data)
+
+		// Migrate legacy MCP server configs (dockerConfig/deploymentType → executionCommand)
+		if (this.settings.mcpServers && this.settings.mcpServers.length > 0) {
+			const migratedServers = migrateServerConfigs(this.settings.mcpServers)
+			const needsSave = JSON.stringify(migratedServers) !== JSON.stringify(this.settings.mcpServers)
+
+			if (needsSave) {
+				this.settings.mcpServers = migratedServers
+				await this.saveSettings()
+				console.log('[Tars] Migrated MCP server configs to executionCommand format')
+			}
+		}
 	}
 
 	async saveSettings() {
 		await this.saveData(this.settings)
+	}
+
+	async updateMCPStatus() {
+		if (!this.mcpManager || !this.statusBarManager) return
+
+		const servers = this.mcpManager.listServers()
+		const serverDetailsPromises = servers.map(async (server) => {
+			const client = this.mcpManager?.getClient(server.id)
+			const isConnected = client?.isConnected() ?? false
+
+			let toolCount = 0
+			if (isConnected && client) {
+				try {
+					const tools = await client.listTools()
+					toolCount = tools.length
+				} catch (error) {
+					console.debug(`Could not list tools for ${server.id}:`, error)
+				}
+			}
+
+			return {
+				id: server.id,
+				name: server.name,
+				enabled: server.enabled,
+				isConnected,
+				toolCount
+			}
+		})
+
+		const serverDetails = await Promise.all(serverDetailsPromises)
+
+		const runningServers = serverDetails.filter((s) => s.isConnected).length
+		const totalServers = servers.length
+		const availableTools = serverDetails.reduce((sum, s) => sum + s.toolCount, 0)
+
+		this.statusBarManager.setMCPStatus({
+			runningServers,
+			totalServers,
+			availableTools,
+			servers: serverDetails
+		})
 	}
 }

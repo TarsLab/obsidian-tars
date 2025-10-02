@@ -48,8 +48,8 @@ export class MCPServerManager extends EventEmitter<MCPServerManagerEvents> {
 		if (process.env.NODE_ENV !== 'test' && process.env.VITEST !== 'true') {
 			for (const config of customConfigs) {
 				console.warn(
-					`[MCP Manager] Server ${config.id} uses unsupported transport/deployment. ` +
-						`Supported: stdio transport only. Config: ${config.transport}/${config.deploymentType}`
+					`[MCP Manager] Server ${config.id} uses unsupported format. ` +
+						`Supported: stdio commands or Claude Desktop JSON format.`
 				)
 			}
 		}
