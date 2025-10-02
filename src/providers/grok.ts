@@ -5,18 +5,30 @@ import { CALLOUT_BLOCK_END, CALLOUT_BLOCK_START, convertEmbedToImageUrl } from '
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, resolveEmbedAsBinary: ResolveEmbedAsBinary) {
-		const { parameters, ...optionsExcludingParams } = settings
+		const { parameters, mcpManager, mcpExecutor, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, baseURL, model, ...remains } = options
 		if (!apiKey) throw new Error(t('API key is required'))
 		if (!model) throw new Error(t('Model is required'))
 
+		// Inject MCP tools if available
+		// biome-ignore lint/suspicious/noExplicitAny: MCP tools inject runtime
+		let requestBody: any = { model, ...remains }
+		if (mcpManager && mcpExecutor) {
+			try {
+				const { injectMCPTools } = await import('../mcp/providerToolIntegration.js')
+				// biome-ignore lint/suspicious/noExplicitAny: MCP types are optional dependencies
+				requestBody = await injectMCPTools(requestBody, 'Grok', mcpManager as any, mcpExecutor as any)
+			} catch (error) {
+				console.warn('Failed to inject MCP tools for Grok:', error)
+			}
+		}
+
 		const formattedMessages = await Promise.all(messages.map((msg) => formatMsg(msg, resolveEmbedAsBinary)))
 		const data = {
-			model,
+			...requestBody,
 			messages: formattedMessages,
-			stream: true,
-			...remains
+			stream: true
 		}
 		const response = await axios.post(baseURL, data, {
 			headers: {

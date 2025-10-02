@@ -5,26 +5,35 @@ import { arrayBufferToBase64, getMimeTypeFromFilename } from './utils'
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, resolveEmbedAsBinary: ResolveEmbedAsBinary) {
-		const { parameters, ...optionsExcludingParams } = settings
+		const { parameters, mcpManager, mcpExecutor, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, baseURL, model, ...remains } = options
 		if (!apiKey) throw new Error(t('API key is required'))
 		if (!model) throw new Error(t('Model is required'))
 
-		const formattedMessages = await Promise.all(messages.map((msg) => formatMsg(msg, resolveEmbedAsBinary)))
-		const data = {
-			model,
-			messages: formattedMessages,
-			stream: true,
-			...remains
+		// Inject MCP tools if available
+		// biome-ignore lint/suspicious/noExplicitAny: MCP tools inject runtime
+		let requestBody: any = { model, messages: [], ...remains }
+		if (mcpManager && mcpExecutor) {
+			try {
+				const { injectMCPTools } = await import('../mcp/providerToolIntegration.js')
+				// biome-ignore lint/suspicious/noExplicitAny: MCP types are optional dependencies
+				requestBody = await injectMCPTools(requestBody, 'OpenRouter', mcpManager as any, mcpExecutor as any)
+			} catch (error) {
+				console.warn('Failed to inject MCP tools for OpenRouter:', error)
+			}
 		}
+
+		const formattedMessages = await Promise.all(messages.map((msg) => formatMsg(msg, resolveEmbedAsBinary)))
+		requestBody.messages = formattedMessages
+
 		const response = await fetch(baseURL, {
 			method: 'POST',
 			headers: {
-				Authorization: `Bearer ${apiKey}`,
-				'Content-Type': 'application/json'
+				'Content-Type': 'application/json',
+				'Authorization': `Bearer ${apiKey}`
 			},
-			body: JSON.stringify(data),
+			body: JSON.stringify({ ...requestBody, stream: true }),
 			signal: controller.signal
 		})
 

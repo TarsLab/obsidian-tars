@@ -10,10 +10,22 @@ interface AzureOptions extends BaseOptions {
 
 const sendRequestFunc = (settings: AzureOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, _resolveEmbedAsBinary: ResolveEmbedAsBinary) {
-		const { parameters, ...optionsExcludingParams } = settings
+		const { parameters, mcpManager, mcpExecutor, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters } // 这样的设计，让parameters 可以覆盖掉前面的设置 optionsExcludingParams
 		const { apiKey, model, endpoint, apiVersion, ...remains } = options
 		if (!apiKey) throw new Error(t('API key is required'))
+
+		// Inject MCP tools if available
+		let requestParams: Record<string, unknown> = { model, ...remains }
+		if (mcpManager && mcpExecutor) {
+			try {
+				const { injectMCPTools } = await import('../mcp/providerToolIntegration.js')
+				// biome-ignore lint/suspicious/noExplicitAny: MCP types are optional dependencies
+				requestParams = await injectMCPTools(requestParams, 'Azure', mcpManager as any, mcpExecutor as any)
+			} catch (error) {
+				console.warn('Failed to inject MCP tools for Azure:', error)
+			}
+		}
 
 		const client = new AzureOpenAI({ endpoint, apiKey, apiVersion, deployment: model, dangerouslyAllowBrowser: true })
 
@@ -23,17 +35,16 @@ const sendRequestFunc = (settings: AzureOptions): SendRequest =>
 			...messages
 		]
 
-		const stream = await client.chat.completions.create(
+		const stream = (await client.chat.completions.create(
 			{
-				model,
+				...(requestParams as object),
 				messages,
-				stream: true,
-				...remains
-			},
+				stream: true
+			} as Parameters<typeof client.chat.completions.create>[0],
 			{
 				signal: controller.signal
 			}
-		)
+		)) as AsyncIterable<{ usage?: { prompt_tokens?: number; completion_tokens?: number }; choices: Array<{ delta?: { content?: string } }> }>
 
 		let isReasoning = false
 		let thinkBegin = false // 过滤掉重复的 <think>

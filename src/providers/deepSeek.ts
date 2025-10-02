@@ -9,10 +9,22 @@ type DeepSeekDelta = OpenAI.ChatCompletionChunk.Choice.Delta & {
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, _resolveEmbedAsBinary: ResolveEmbedAsBinary) {
-		const { parameters, ...optionsExcludingParams } = settings
+		const { parameters, mcpManager, mcpExecutor, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, baseURL, model, ...remains } = options
 		if (!apiKey) throw new Error(t('API key is required'))
+
+		// Inject MCP tools if available
+		let requestParams: Record<string, unknown> = { model, ...remains }
+		if (mcpManager && mcpExecutor) {
+			try {
+				const { injectMCPTools } = await import('../mcp/providerToolIntegration.js')
+				// biome-ignore lint/suspicious/noExplicitAny: MCP types are optional dependencies
+				requestParams = await injectMCPTools(requestParams, 'DeepSeek', mcpManager as any, mcpExecutor as any)
+			} catch (error) {
+				console.warn('Failed to inject MCP tools for DeepSeek:', error)
+			}
+		}
 
 		const client = new OpenAI({
 			apiKey,
@@ -22,11 +34,10 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 
 		const stream = await client.chat.completions.create(
 			{
-				model,
+				...(requestParams as object),
 				messages,
-				stream: true,
-				...remains
-			},
+				stream: true
+			} as OpenAI.ChatCompletionCreateParamsStreaming,
 			{ signal: controller.signal }
 		)
 

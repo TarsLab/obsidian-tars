@@ -45,6 +45,9 @@ export interface BaseOptions {
 	model: string
 	parameters: Record<string, unknown>
 	enableWebSearch?: boolean
+	// MCP tool integration - injected by the system when available
+	mcpManager?: unknown // MCPServerManager from mcp module
+	mcpExecutor?: unknown // ToolExecutor from mcp module
 }
 
 export interface ProviderSettings {
