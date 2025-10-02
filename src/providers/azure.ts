@@ -9,13 +9,63 @@ interface AzureOptions extends BaseOptions {
 }
 
 const sendRequestFunc = (settings: AzureOptions): SendRequest =>
-	async function* (messages: Message[], controller: AbortController, _resolveEmbedAsBinary: ResolveEmbedAsBinary) {
-		const { parameters, mcpManager, mcpExecutor, ...optionsExcludingParams } = settings
+	async function* (messages: Message[], controller: AbortController, resolveEmbedAsBinary: ResolveEmbedAsBinary) {
+		const { parameters, mcpManager, mcpExecutor, documentPath, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters } // 这样的设计，让parameters 可以覆盖掉前面的设置 optionsExcludingParams
 		const { apiKey, model, endpoint, apiVersion, ...remains } = options
 		if (!apiKey) throw new Error(t('API key is required'))
 
-		// Inject MCP tools if available
+		// Tool-aware path: Use coordinator for autonomous tool calling
+		if (mcpManager && mcpExecutor) {
+			try {
+				const { ToolCallingCoordinator, OpenAIProviderAdapter } = await import('../mcp/index.js')
+				// biome-ignore lint/suspicious/noExplicitAny: MCP types are optional dependencies
+				const mcpMgr = mcpManager as any
+				// biome-ignore lint/suspicious/noExplicitAny: MCP types are optional dependencies
+				const mcpExec = mcpExecutor as any
+
+				const client = new AzureOpenAI({
+					endpoint,
+					apiKey,
+					apiVersion,
+					deployment: model,
+					dangerouslyAllowBrowser: true
+				})
+
+				const adapter = new OpenAIProviderAdapter({
+					mcpManager: mcpMgr,
+					mcpExecutor: mcpExec,
+					openaiClient: client,
+					controller,
+					resolveEmbedAsBinary
+				})
+
+				await adapter.initialize()
+
+				const coordinator = new ToolCallingCoordinator()
+
+				// Convert messages to coordinator format
+				const formattedMessages = messages.map((msg) => ({
+					role: msg.role,
+					content: msg.content,
+					embeds: msg.embeds
+				}))
+
+				yield* coordinator.generateWithTools(
+					formattedMessages,
+					adapter,
+					mcpExec,
+					{ documentPath: documentPath || 'unknown.md' }
+				)
+
+				return
+			} catch (error) {
+				console.warn('Failed to use tool-aware path for Azure, falling back to original:', error)
+				// Fall through to original path
+			}
+		}
+
+		// Original streaming path (backward compatible)
 		let requestParams: Record<string, unknown> = { model, ...remains }
 		if (mcpManager && mcpExecutor) {
 			try {
