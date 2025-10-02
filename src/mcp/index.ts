@@ -10,6 +10,26 @@ export { ToolExecutor } from './executor'
 export { MCPServerManager } from './managerMCPUse' // Using mcp-use library
 // Migration
 export { migrateServerConfig, migrateServerConfigs, needsMigration } from './migration'
+// Tool calling infrastructure
+export {
+	ClaudeToolResponseParser,
+	OllamaToolResponseParser,
+	OpenAIToolResponseParser,
+	type StreamChunk,
+	type TextChunk,
+	type ToolCall,
+	type ToolCallChunk,
+	type ToolResponseParser
+} from './toolResponseParser'
+export {
+	createToolCallingCoordinator,
+	type GenerateOptions,
+	type Message,
+	type ProviderAdapter,
+	ToolCallingCoordinator,
+	type ToolExecutionRequest,
+	type ToolExecutionResult
+} from './toolCallingCoordinator'
 // Provider integration
 export {
 	buildAIToolContext,
