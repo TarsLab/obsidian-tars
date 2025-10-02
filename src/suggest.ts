@@ -1,18 +1,18 @@
 import {
-	App,
-	Editor,
-	EditorPosition,
+	type App,
+	type Editor,
+	type EditorPosition,
 	EditorSuggest,
-	EditorSuggestContext,
-	EditorSuggestTriggerInfo,
+	type EditorSuggestContext,
+	type EditorSuggestTriggerInfo,
 	Notice,
 	Platform,
-	TFile
+	type TFile
 } from 'obsidian'
-import { RequestController, buildRunEnv, generate } from './editor'
+import { buildRunEnv, generate, type RequestController } from './editor'
 import { t } from './lang/helper'
-import { PluginSettings } from './settings'
-import { StatusBarManager } from './statusBarManager'
+import type { PluginSettings } from './settings'
+import type { StatusBarManager } from './statusBarManager'
 
 export type TagRole = 'user' | 'assistant' | 'system' | 'newChat'
 
@@ -51,7 +51,7 @@ const extractWords = (input: string): string[] => {
 	// Use regex to match up to two words and return them directly
 	const matches = []
 	const regex = /[^\s#:：]+/g
-	let match
+	let match: RegExpExecArray | null
 
 	// Only search for a maximum of 3 matches
 	for (let i = 0; i < 3; i++) {
@@ -107,7 +107,7 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 		const firstTag = this.tagLowerCaseMap.get(words[0].toLowerCase())
 		if (!firstTag) return null
 
-		let secondTag: Omit<TagEntry, 'replacement'> | undefined = undefined
+		let secondTag: Omit<TagEntry, 'replacement'> | undefined
 		if (words.length === 2) {
 			secondTag = this.tagLowerCaseMap.get(words[1].toLowerCase())
 			if (!secondTag) return null
@@ -188,7 +188,7 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 		try {
 			const provider = this.settings.providers.find((p) => p.tag === element.tag)
 			if (!provider) {
-				throw new Error('No provider found ' + element.tag)
+				throw new Error(`No provider found ${element.tag}`)
 			}
 
 			const env = await buildRunEnv(this.app, this.settings)

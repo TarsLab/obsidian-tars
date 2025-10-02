@@ -1,8 +1,8 @@
-import { App, Command, Editor, MarkdownView, Notice, Platform } from 'obsidian'
+import { type App, type Command, type Editor, type MarkdownView, Notice, Platform } from 'obsidian'
 import { t } from 'src/lang/helper'
-import { PluginSettings } from 'src/settings'
+import type { PluginSettings } from 'src/settings'
 import { toSpeakMark } from 'src/suggest'
-import { TagCmdMeta } from './tagCmd'
+import type { TagCmdMeta } from './tagCmd'
 import { fetchTagMeta, insertMarkToBegin, insertMarkToEmptyLines, isEmptyLines, replaceTag } from './tagUtils'
 
 export const userTagCmd = ({ id, name, tag }: TagCmdMeta, app: App, settings: PluginSettings): Command => ({

@@ -1,4 +1,4 @@
-import { App, Command, Modal, Notice, Setting } from 'obsidian'
+import { type App, type Command, Modal, Notice, Setting } from 'obsidian'
 import { t } from 'src/lang/helper'
 
 export const replaceCmdId = 'replace-tag'
@@ -34,7 +34,7 @@ const convertToTag = (speaker: string) => {
 		return speaker
 	}
 	// Tags can't contain blank spaces. To separate two or more words, use a hyphen (-) , #kebab-case
-	return '#' + speaker.trim().replace(/\s(?!:)/g, '-') // Replace spaces in the middle with a hyphen (-)
+	return `#${speaker.trim().replace(/\s(?!:)/g, '-')}` // Replace spaces in the middle with a hyphen (-)
 }
 
 class ReplaceTagModal extends Modal {
@@ -53,7 +53,7 @@ class ReplaceTagModal extends Modal {
 			text: t('Replace the names of the two most frequently occurring speakers with tag format.')
 		})
 		for (const tag of this.recommendTags) {
-			new Setting(contentEl).setName(tag.original + ` (${tag.count})`).addText((text) =>
+			new Setting(contentEl).setName(`${tag.original} (${tag.count})`).addText((text) =>
 				text
 					.setPlaceholder(tag.newTag)
 					.setValue(tag.newTag)

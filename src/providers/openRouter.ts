@@ -1,6 +1,6 @@
-import { EmbedCache } from 'obsidian'
+import type { EmbedCache } from 'obsidian'
 import { t } from 'src/lang/helper'
-import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
+import type { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 import { arrayBufferToBase64, getMimeTypeFromFilename } from './utils'
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>

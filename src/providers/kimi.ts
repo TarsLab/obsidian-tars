@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { t } from 'src/lang/helper'
-import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
+import type { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 import { CALLOUT_BLOCK_END, CALLOUT_BLOCK_START, convertEmbedToImageUrl } from './utils'
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
@@ -51,7 +51,7 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 				const trimmedPart = part.replace(/^data: /, '').trim()
 				if (trimmedPart) {
 					const data = JSON.parse(trimmedPart)
-					if (data.choices && data.choices[0].delta) {
+					if (data.choices?.[0].delta) {
 						const delta = data.choices[0].delta
 						const reasonContent = delta.reasoning_content
 

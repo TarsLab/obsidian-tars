@@ -1,12 +1,13 @@
-import { App, Notice, PluginSettingTab, requestUrl, Setting } from 'obsidian'
+import { type App, Notice, PluginSettingTab, requestUrl, Setting } from 'obsidian'
 import { exportCmd, replaceCmd, replaceCmdId } from './commands'
 import { exportCmdId } from './commands/export'
 import { t } from './lang/helper'
-import TarsPlugin from './main'
+import type TarsPlugin from './main'
+import { type MCPServerConfig, TransportProtocol } from './mcp/types'
 import { SelectModelModal, SelectVendorModal } from './modal'
-import { BaseOptions, Optional, ProviderSettings, Vendor } from './providers'
-import { ClaudeOptions, claudeVendor } from './providers/claude'
-import { GptImageOptions, gptImageVendor } from './providers/gptImage'
+import type { BaseOptions, Optional, ProviderSettings, Vendor } from './providers'
+import { type ClaudeOptions, claudeVendor } from './providers/claude'
+import { type GptImageOptions, gptImageVendor } from './providers/gptImage'
 import { grokVendor } from './providers/grok'
 import { kimiVendor } from './providers/kimi'
 import { ollamaVendor } from './providers/ollama'
@@ -14,7 +15,6 @@ import { openRouterVendor } from './providers/openRouter'
 import { siliconFlowVendor } from './providers/siliconflow'
 import { getCapabilityEmoji } from './providers/utils'
 import { availableVendors, DEFAULT_SETTINGS } from './settings'
-import { TransportProtocol, MCPServerConfig } from './mcp/types'
 
 export class TarsSettingTab extends PluginSettingTab {
 	plugin: TarsPlugin
@@ -75,7 +75,7 @@ export class TarsSettingTab extends PluginSettingTab {
 
 		let newChatTagsInput: HTMLInputElement | null = null
 		new Setting(containerEl)
-			.setName(this.plugin.settings.roleEmojis.newChat + ' ' + t('New chat tags'))
+			.setName(`${this.plugin.settings.roleEmojis.newChat} ${t('New chat tags')}`)
 			.addExtraButton((btn) => {
 				btn
 					.setIcon('reset')
@@ -103,7 +103,7 @@ export class TarsSettingTab extends PluginSettingTab {
 
 		let userTagsInput: HTMLInputElement | null = null
 		new Setting(containerEl)
-			.setName(this.plugin.settings.roleEmojis.user + ' ' + t('User message tags'))
+			.setName(`${this.plugin.settings.roleEmojis.user} ${t('User message tags')}`)
 			.addExtraButton((btn) => {
 				btn
 					.setIcon('reset')
@@ -131,7 +131,7 @@ export class TarsSettingTab extends PluginSettingTab {
 
 		let systemTagsInput: HTMLInputElement | null = null
 		new Setting(containerEl)
-			.setName(this.plugin.settings.roleEmojis.system + ' ' + t('System message tags'))
+			.setName(`${this.plugin.settings.roleEmojis.system} ${t('System message tags')}`)
 			.addExtraButton((btn) => {
 				btn
 					.setIcon('reset')
@@ -308,7 +308,7 @@ export class TarsSettingTab extends PluginSettingTab {
 
 		// MCP Server Integration Settings
 		containerEl.createEl('br')
-		
+
 		// MCP Servers collapsible section
 		const mcpSection = containerEl.createEl('details')
 		mcpSection.createEl('summary', { text: 'MCP Servers', cls: 'tars-setting-h4' })
@@ -322,8 +322,8 @@ export class TarsSettingTab extends PluginSettingTab {
 					.setPlaceholder('30000')
 					.setValue(this.plugin.settings.mcpGlobalTimeout?.toString() || '30000')
 					.onChange(async (value) => {
-						const timeout = parseInt(value)
-						if (!isNaN(timeout) && timeout > 0) {
+						const timeout = parseInt(value, 10)
+						if (!Number.isNaN(timeout) && timeout > 0) {
 							this.plugin.settings.mcpGlobalTimeout = timeout
 							await this.plugin.saveSettings()
 						}
@@ -338,8 +338,8 @@ export class TarsSettingTab extends PluginSettingTab {
 					.setPlaceholder('25')
 					.setValue(this.plugin.settings.mcpConcurrentLimit?.toString() || '25')
 					.onChange(async (value) => {
-						const limit = parseInt(value)
-						if (!isNaN(limit) && limit > 0) {
+						const limit = parseInt(value, 10)
+						if (!Number.isNaN(limit) && limit > 0) {
 							this.plugin.settings.mcpConcurrentLimit = limit
 							await this.plugin.saveSettings()
 						}
@@ -354,8 +354,8 @@ export class TarsSettingTab extends PluginSettingTab {
 					.setPlaceholder('25')
 					.setValue(this.plugin.settings.mcpSessionLimit?.toString() || '25')
 					.onChange(async (value) => {
-						const limit = parseInt(value)
-						if (!isNaN(limit) && limit >= -1) {
+						const limit = parseInt(value, 10)
+						if (!Number.isNaN(limit) && limit >= -1) {
 							this.plugin.settings.mcpSessionLimit = limit
 							await this.plugin.saveSettings()
 						}
@@ -382,14 +382,14 @@ export class TarsSettingTab extends PluginSettingTab {
 							.onClick(async () => {
 								server.enabled = !server.enabled
 								await this.plugin.saveSettings()
-								
+
 								// Update button text and tooltip
 								btn.setButtonText(server.enabled ? 'Disable' : 'Enable')
 								btn.setTooltip(server.enabled ? 'Disable server' : 'Enable server')
-								
+
 								// Update summary text
 								serverSummary.setText(`${server.name} (${server.enabled ? '✓ Enabled' : '✗ Disabled'})`)
-								
+
 								// Reinitialize MCP manager
 								if (this.plugin.mcpManager) {
 									await this.plugin.mcpManager.shutdown()
@@ -405,7 +405,7 @@ export class TarsSettingTab extends PluginSettingTab {
 							.setTooltip('Test server connection')
 							.onClick(async () => {
 								new Notice(`Testing ${server.name}...`)
-								
+
 								try {
 									if (!this.plugin.mcpManager) {
 										new Notice('❌ MCP Manager not initialized', 5000)
@@ -421,20 +421,26 @@ export class TarsSettingTab extends PluginSettingTab {
 									}
 
 									// Wait a moment for connection to establish
-									await new Promise(resolve => setTimeout(resolve, 1000))
+									await new Promise((resolve) => setTimeout(resolve, 1000))
 
 									const client = this.plugin.mcpManager.getClient(server.id)
-									
-									if (client && client.isConnected()) {
+
+									if (client?.isConnected()) {
 										const tools = await client.listTools()
 										const toolCount = tools.length
-										const toolNames = tools.slice(0, 3).map((t: { name: string }) => t.name).join(', ')
+										const toolNames = tools
+											.slice(0, 3)
+											.map((t: { name: string }) => t.name)
+											.join(', ')
 										const more = toolCount > 3 ? ` and ${toolCount - 3} more` : ''
 										new Notice(`✅ ${server.name}: Connected!\n${toolCount} tools available: ${toolNames}${more}`, 8000)
 									} else {
 										const health = this.plugin.mcpManager.getHealthStatus(server.id)
 										const stateStr = health?.connectionState || 'unknown'
-										new Notice(`❌ ${server.name}: Not connected\nState: ${stateStr}\n\nCheck Docker is running and image is available:\ndocker pull mcp/memory:latest`, 10000)
+										new Notice(
+											`❌ ${server.name}: Not connected\nState: ${stateStr}\n\nCheck Docker is running and image is available:\ndocker pull mcp/memory:latest`,
+											10000
+										)
 									}
 								} catch (error) {
 									const msg = error instanceof Error ? error.message : String(error)
@@ -460,19 +466,17 @@ export class TarsSettingTab extends PluginSettingTab {
 					)
 
 				// Server name
-				new Setting(serverSection)
-					.setName('Server name')
-					.addText((text) =>
-						text
-							.setPlaceholder('my-mcp-server')
-							.setValue(server.name)
-							.onChange(async (value) => {
-								server.name = value
-								await this.plugin.saveSettings()
-								// Update summary text without re-rendering
-								serverSummary.setText(`${server.name} (${server.enabled ? '✓ Enabled' : '✗ Disabled'})`)
-							})
-					)
+				new Setting(serverSection).setName('Server name').addText((text) =>
+					text
+						.setPlaceholder('my-mcp-server')
+						.setValue(server.name)
+						.onChange(async (value) => {
+							server.name = value
+							await this.plugin.saveSettings()
+							// Update summary text without re-rendering
+							serverSummary.setText(`${server.name} (${server.enabled ? '✓ Enabled' : '✗ Disabled'})`)
+						})
+				)
 
 				// Transport
 				new Setting(serverSection)
@@ -491,8 +495,10 @@ export class TarsSettingTab extends PluginSettingTab {
 				// Execution command, JSON, or URL
 				new Setting(serverSection)
 					.setName('Execution Command, JSON Or URL')
-					.setDesc('Provide one of: 1) Shell command (e.g., "docker run..."), 2) VS Code MCP JSON config, or 3) URL for remote server (e.g., "http://localhost:3000/sse")')
-				
+					.setDesc(
+						'Provide one of: 1) Shell command (e.g., "docker run..."), 2) VS Code MCP JSON config, or 3) URL for remote server (e.g., "http://localhost:3000/sse")'
+					)
+
 				// Create textarea in a separate container for full-width layout
 				const textareaContainer = serverSection.createDiv({ cls: 'mcp-textarea-container' })
 				const textarea = textareaContainer.createEl('textarea', {
@@ -550,7 +556,7 @@ export class TarsSettingTab extends PluginSettingTab {
 
 	createProviderSetting = (index: number, settings: ProviderSettings, isOpen: boolean = false) => {
 		const vendor = availableVendors.find((v) => v.name === settings.vendor)
-		if (!vendor) throw new Error('No vendor found ' + settings.vendor)
+		if (!vendor) throw new Error(`No vendor found ${settings.vendor}`)
 		const { containerEl } = this
 		const details = containerEl.createEl('details')
 		details.createEl('summary', { text: getSummary(settings.tag, vendor.name), cls: 'tars-setting-h4' })
@@ -593,14 +599,14 @@ export class TarsSettingTab extends PluginSettingTab {
 								if (error instanceof Error) {
 									const errorMessage = error.message.toLowerCase()
 									if (errorMessage.includes('401') || errorMessage.includes('unauthorized')) {
-										new Notice('🔑 ' + t('API key may be incorrect. Please check your API key.'))
+										new Notice(`🔑 ${t('API key may be incorrect. Please check your API key.')}`)
 									} else if (errorMessage.includes('403') || errorMessage.includes('forbidden')) {
-										new Notice('🚫 ' + t('Access denied. Please check your API permissions.'))
+										new Notice(`🚫 ${t('Access denied. Please check your API permissions.')}`)
 									} else {
-										new Notice('🔴 ' + error.message)
+										new Notice(`🔴 ${error.message}`)
 									}
 								} else {
-									new Notice('🔴 ' + String(error))
+									new Notice(`🔴 ${String(error)}`)
 								}
 							}
 						})
@@ -652,7 +658,7 @@ export class TarsSettingTab extends PluginSettingTab {
 
 		this.addParametersSection(details, settings.options)
 
-		new Setting(details).setName(t('Remove') + ' ' + vendor.name).addButton((btn) => {
+		new Setting(details).setName(`${t('Remove')} ${vendor.name}`).addButton((btn) => {
 			btn
 				.setWarning()
 				.setButtonText(t('Remove'))
@@ -666,7 +672,7 @@ export class TarsSettingTab extends PluginSettingTab {
 
 	addTagSection = (details: HTMLDetailsElement, settings: ProviderSettings, index: number, defaultTag: string) =>
 		new Setting(details)
-			.setName('✨ ' + t('Assistant message tag'))
+			.setName(`✨ ${t('Assistant message tag')}`)
 			.setDesc(t('Tag used to trigger AI text generation'))
 			.addText((text) =>
 				text
@@ -678,7 +684,7 @@ export class TarsSettingTab extends PluginSettingTab {
 						if (trimmed.length === 0) return
 						if (!validateTag(trimmed)) return
 						const otherTags = this.plugin.settings.providers
-							.filter((e, i) => i !== index)
+							.filter((_e, i) => i !== index)
 							.map((e) => e.tag.toLowerCase())
 						if (otherTags.includes(trimmed.toLowerCase())) {
 							new Notice(t('Keyword for tag must be unique'))
@@ -696,7 +702,7 @@ export class TarsSettingTab extends PluginSettingTab {
 		let textInput: HTMLInputElement | null = null
 		new Setting(details)
 			.setName('baseURL')
-			.setDesc(t('Default:') + ' ' + defaultValue)
+			.setDesc(`${t('Default:')} ${defaultValue}`)
 			.addExtraButton((btn) => {
 				btn
 					.setIcon('reset')
@@ -802,8 +808,8 @@ export class TarsSettingTab extends PluginSettingTab {
 					.setPlaceholder('')
 					.setValue(options.budget_tokens ? options.budget_tokens.toString() : '1600')
 					.onChange(async (value) => {
-						const number = parseInt(value)
-						if (isNaN(number)) {
+						const number = parseInt(value, 10)
+						if (Number.isNaN(number)) {
 							new Notice(t('Please enter a number'))
 							return
 						}
@@ -824,8 +830,8 @@ export class TarsSettingTab extends PluginSettingTab {
 					.setPlaceholder('')
 					.setValue(options.max_tokens.toString())
 					.onChange(async (value) => {
-						const number = parseInt(value)
-						if (isNaN(number)) {
+						const number = parseInt(value, 10)
+						if (Number.isNaN(number)) {
 							new Notice(t('Please enter a number'))
 							return
 						}
@@ -939,8 +945,8 @@ export class TarsSettingTab extends PluginSettingTab {
 				.addOptions({
 					auto: 'Auto',
 					'1024x1024': '1024x1024',
-					'1536x1024': '1536x1024 ' + t('landscape'),
-					'1024x1536': '1024x1536 ' + t('portrait')
+					'1536x1024': `1536x1024 ${t('landscape')}`,
+					'1024x1536': `1024x1536 ${t('portrait')}`
 				})
 				.setValue(options.size)
 				.onChange(async (value) => {
@@ -1010,8 +1016,7 @@ export class TarsSettingTab extends PluginSettingTab {
 	}
 }
 
-const getSummary = (tag: string, defaultTag: string) =>
-	tag === defaultTag ? defaultTag : tag + ' (' + defaultTag + ')'
+const getSummary = (tag: string, defaultTag: string) => (tag === defaultTag ? defaultTag : `${tag} (${defaultTag})`)
 
 const validateTag = (tag: string) => {
 	if (tag.includes('#')) {

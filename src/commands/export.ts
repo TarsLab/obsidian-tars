@@ -1,8 +1,8 @@
-import { App, Notice, normalizePath } from 'obsidian'
+import { type App, Notice, normalizePath } from 'obsidian'
 import { buildRunEnv, extractConversationsTextOnly } from 'src/editor'
 import { t } from 'src/lang/helper'
-import { Message } from 'src/providers'
-import { PluginSettings } from 'src/settings'
+import type { Message } from 'src/providers'
+import type { PluginSettings } from 'src/settings'
 
 export const exportCmdId = 'export-to-jsonl'
 

@@ -1,26 +1,33 @@
 import {
-	App,
-	Editor,
-	EditorPosition,
-	EmbedCache,
-	LinkCache,
-	MetadataCache,
-	Notice,
-	ReferenceCache,
-	SectionCache,
-	TagCache,
-	Vault,
+	type App,
 	debounce,
+	type Editor,
+	type EditorPosition,
+	type EmbedCache,
+	type LinkCache,
+	type MetadataCache,
+	Notice,
 	normalizePath,
 	parseLinktext,
-	resolveSubpath
+	type ReferenceCache,
+	resolveSubpath,
+	type SectionCache,
+	type TagCache,
+	type Vault
 } from 'obsidian'
 import { t } from 'src/lang/helper'
-import { CreatePlainText, Message, ProviderSettings, ResolveEmbedAsBinary, SaveAttachment, Vendor } from './providers'
+import type {
+	CreatePlainText,
+	Message,
+	ProviderSettings,
+	ResolveEmbedAsBinary,
+	SaveAttachment,
+	Vendor
+} from './providers'
 import { withStreamLogging } from './providers/decorator'
-import { APP_FOLDER, EditorStatus, PluginSettings, availableVendors } from './settings'
-import { GenerationStats, StatusBarManager } from './statusBarManager'
-import { TagRole } from './suggest'
+import { APP_FOLDER, availableVendors, type EditorStatus, type PluginSettings } from './settings'
+import type { GenerationStats, StatusBarManager } from './statusBarManager'
+import type { TagRole } from './suggest'
 
 export interface RunEnv {
 	readonly appMeta: MetadataCache
@@ -106,7 +113,7 @@ export const buildRunEnv = async (app: App, settings: PluginSettings): Promise<R
 		console.debug('resolveEmbed path', path, 'subpath', subpath)
 		const targetFile = appMeta.getFirstLinkpathDest(path, filePath)
 		if (targetFile === null) {
-			throw new Error('LinkText broken: ' + embed.link.substring(0, 20))
+			throw new Error(`LinkText broken: ${embed.link.substring(0, 20)}`)
 		}
 		return await vault.readBinary(targetFile)
 	}
@@ -138,7 +145,7 @@ const resolveLinkedContent = async (env: RunEnv, linkText: string) => {
 	const targetFile = appMeta.getFirstLinkpathDest(path, filePath)
 
 	if (targetFile === null) {
-		throw new Error('LinkText broken: ' + linkText.substring(0, 20))
+		throw new Error(`LinkText broken: ${linkText.substring(0, 20)}`)
 	}
 
 	const fileMeta = appMeta.getFileCache(targetFile)
@@ -215,8 +222,8 @@ const resolveTextRangeWithLinks = async (
 ) => {
 	const {
 		fileText,
-		links: links = [],
-		embeds: embeds = [],
+		links = [],
+		embeds = [],
 		options: { enableInternalLink, enableInternalLinkForAssistantMsg }
 	} = env
 
@@ -457,7 +464,7 @@ export const generate = async (
 	try {
 		const vendor = availableVendors.find((v) => v.name === provider.vendor)
 		if (!vendor) {
-			throw new Error('No vendor found ' + provider.vendor)
+			throw new Error(`No vendor found ${provider.vendor}`)
 		}
 
 		const conversation = await extractConversation(env, 0, endOffset)
@@ -519,7 +526,7 @@ export const generate = async (
 			throw new Error(t('No text generated'))
 		}
 
-		console.debug('✨ ' + t('AI generate') + ' ✨ ', llmResponse)
+		console.debug(`✨ ${t('AI generate')} ✨ `, llmResponse)
 		if (startPos) {
 			const endPos = editor.getCursor('to')
 			const insertedText = editor.getRange(startPos, endPos)
@@ -543,11 +550,11 @@ const formatTextWithLeadingBreaks = (text: string) => {
 	const firstLine = text.split('\n')[0]
 	if (firstLine.startsWith('#') || firstLine.startsWith('```')) {
 		// Markdown header or code block
-		return ' \n' + text
+		return ` \n${text}`
 	}
 	if (firstLine.startsWith('| ')) {
 		// Markdown table
-		return ' \n\n' + text
+		return ` \n\n${text}`
 	}
 	return text
 }

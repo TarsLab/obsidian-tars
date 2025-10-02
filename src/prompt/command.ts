@@ -1,10 +1,19 @@
 import Handlebars from 'handlebars'
-import { App, Command, Editor, EditorSelection, MarkdownView, normalizePath, Notice, Platform } from 'obsidian'
+import {
+	type App,
+	type Command,
+	type Editor,
+	type EditorSelection,
+	type MarkdownView,
+	Notice,
+	normalizePath,
+	Platform
+} from 'obsidian'
 import { refineRange } from 'src/commands/tagUtils'
 import { t } from 'src/lang/helper'
-import { APP_FOLDER, PluginSettings } from 'src/settings'
+import { APP_FOLDER, type PluginSettings } from 'src/settings'
 import { ReporterModal } from './modal'
-import { findChangedTemplates, getPromptTemplatesFromFile, PromptTemplate } from './template'
+import { findChangedTemplates, getPromptTemplatesFromFile, type PromptTemplate } from './template'
 
 export const templateToCmdId = (template: PromptTemplate): string => `Prompt#${template.title}`
 export const getTitleFromCmdId = (id: string): string => id.slice(id.indexOf('#') + 1)
@@ -16,7 +25,7 @@ export const loadTemplateFileCommand = (
 	buildPromptCommands: () => void
 ): Command => ({
 	id: 'LoadTemplateFile',
-	name: t('Load template file: ') + `${APP_FOLDER}/${t('promptFileName')}.md`,
+	name: `${t('Load template file: ')}${APP_FOLDER}/${t('promptFileName')}.md`,
 	callback: async () => {
 		try {
 			const filePath = normalizePath(`${APP_FOLDER}/${t('promptFileName')}.md`)
@@ -63,7 +72,7 @@ const createPromptFileIfNotExists = async (app: App) => {
 	const promptFilePath = normalizePath(`${APP_FOLDER}/${t('promptFileName')}.md`)
 	if (!(await app.vault.adapter.exists(promptFilePath))) {
 		await app.vault.create(promptFilePath, t('PRESET_PROMPT_TEMPLATES'))
-		new Notice(t('Create prompt template file') + ' ' + `${APP_FOLDER}/${t('promptFileName')}.md`)
+		new Notice(`${t('Create prompt template file')} ${APP_FOLDER}/${t('promptFileName')}.md`)
 		isCreated = true
 	}
 
@@ -71,7 +80,7 @@ const createPromptFileIfNotExists = async (app: App) => {
 }
 
 const workspaceOpenFile = async (app: App, filePath: string) => {
-	if (app.workspace.getActiveFile()?.path != filePath) {
+	if (app.workspace.getActiveFile()?.path !== filePath) {
 		await app.workspace.openLinkText('', filePath, true)
 	}
 }

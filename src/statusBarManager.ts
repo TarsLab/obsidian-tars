@@ -1,4 +1,4 @@
-import { App, Modal, Notice, Platform } from 'obsidian'
+import { type App, Modal, Notice, Platform } from 'obsidian'
 import { t } from './lang/helper'
 
 export type StatusBarType = 'idle' | 'generating' | 'success' | 'error'

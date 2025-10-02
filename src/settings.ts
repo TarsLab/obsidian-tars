@@ -1,5 +1,6 @@
-import { PromptTemplate } from './prompt'
-import { ProviderSettings, Vendor } from './providers'
+import type { MCPServerConfig } from './mcp/types'
+import type { PromptTemplate } from './prompt'
+import type { ProviderSettings, Vendor } from './providers'
 import { azureVendor } from './providers/azure'
 import { claudeVendor } from './providers/claude'
 import { deepSeekVendor } from './providers/deepSeek'
@@ -15,7 +16,6 @@ import { qianFanVendor } from './providers/qianFan'
 import { qwenVendor } from './providers/qwen'
 import { siliconFlowVendor } from './providers/siliconflow'
 import { zhipuVendor } from './providers/zhipu'
-import type { MCPServerConfig } from './mcp/types'
 
 export const APP_FOLDER = 'Tars'
 

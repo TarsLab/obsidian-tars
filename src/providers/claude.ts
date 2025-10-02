@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { EmbedCache, Notice } from 'obsidian'
+import { type EmbedCache, Notice } from 'obsidian'
 import { t } from 'src/lang/helper'
-import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
+import type { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 import {
 	arrayBufferToBase64,
 	CALLOUT_BLOCK_END,
@@ -159,7 +159,7 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 					messageStreamEvent.content_block.type === 'server_tool_use' &&
 					messageStreamEvent.content_block.name === 'web_search'
 				) {
-					new Notice(getCapabilityEmoji('Web Search') + 'Web Search')
+					new Notice(`${getCapabilityEmoji('Web Search')}Web Search`)
 				}
 			} else if (messageStreamEvent.type === 'message_delta') {
 				// Handle message-level incremental updates

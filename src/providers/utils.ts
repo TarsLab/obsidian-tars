@@ -1,6 +1,6 @@
-import { EmbedCache } from 'obsidian'
+import type { EmbedCache } from 'obsidian'
 import { t } from 'src/lang/helper'
-import { Capability, ResolveEmbedAsBinary } from '.'
+import type { Capability, ResolveEmbedAsBinary } from '.'
 
 export const getMimeTypeFromFilename = (filename: string) => {
 	const extension = filename.split('.').pop()?.toLowerCase() || ''

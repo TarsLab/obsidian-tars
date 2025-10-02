@@ -16,11 +16,11 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Ollama } from 'ollama';
-import { execSync } from 'child_process';
-import { readFileSync } from 'fs';
+import { execSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import {
-  MCPServerManager,
-  ToolExecutor,
+  type MCPServerManager,
+  type ToolExecutor,
   createMCPManager,
   createToolExecutor,
   buildAIToolContext,
@@ -103,15 +103,12 @@ describe.skipIf(SKIP_REAL_E2E)('Real E2E: Ollama + MCP Memory Server', () => {
       sectionBindings: [],
       executionCommand: ''
     };
-
     // Suppress MCP server startup messages in test environment
     const originalStderr = process.stderr.write;
     process.stderr.write = () => true;
     
     try {
       await manager.initialize([serverConfig]);
-    } catch (error) {
-      throw error;
     } finally {
       process.stderr.write = originalStderr;
     }
@@ -215,7 +212,7 @@ describe.skipIf(SKIP_REAL_E2E)('Real E2E: Ollama + MCP Memory Server', () => {
       // Execute the tool via our executor (catch errors for incomplete params)
       try {
         const result = await executor.executeTool({
-          serverId: tool!.serverId,
+          serverId: tool?.serverId,
           toolName: toolCall.function.name,
           parameters: toolCall.function.arguments,
           source: 'ai-autonomous',
@@ -223,7 +220,7 @@ describe.skipIf(SKIP_REAL_E2E)('Real E2E: Ollama + MCP Memory Server', () => {
         });
 
         expect(result.content).toBeDefined();
-      } catch (error) {
+      } catch (_error) {
         // This is OK - the LLM might not provide all required parameters
       }
     }
@@ -242,6 +239,7 @@ describe.skipIf(SKIP_REAL_E2E)('Real E2E: Ollama + MCP Memory Server', () => {
       }
     }));
 
+    // biome-ignore lint/suspicious/noExplicitAny: conversation history can contain various types
     const conversation: Array<any> = [];
 
     // Step 1: User asks to store something

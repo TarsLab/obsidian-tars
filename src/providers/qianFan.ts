@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { Notice, Platform, requestUrl } from 'obsidian'
 import { t } from 'src/lang/helper'
-import { BaseOptions, Message, Optional, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
+import type { BaseOptions, Message, Optional, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 
 interface TokenResponse {
 	access_token: string
@@ -94,7 +94,7 @@ const sendRequestFunc = (settings: QianFanOptions): SendRequest =>
 				stream: true,
 				...remains
 			}
-			const response = await axios.post(baseURL + `/${model}?access_token=${token.accessToken}`, data, {
+			const response = await axios.post(`${baseURL}/${model}?access_token=${token.accessToken}`, data, {
 				headers: {
 					'Content-Type': 'application/json'
 				},
@@ -130,7 +130,7 @@ const sendRequestFunc = (settings: QianFanOptions): SendRequest =>
 			new Notice(t('This is a non-streaming request, please wait...'), 5 * 1000)
 
 			const response = await requestUrl({
-				url: baseURL + `/${model}?access_token=${token.accessToken}`,
+				url: `${baseURL}/${model}?access_token=${token.accessToken}`,
 				method: 'POST',
 				body: JSON.stringify(data),
 				headers: {

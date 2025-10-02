@@ -3,273 +3,269 @@
  * Handles parsing and rendering of MCP tool invocation code blocks
  */
 
-import { ToolExecutionResult, ErrorInfo, MCPServerConfig, ToolInvocation } from './types';
-import { YAMLParseError } from './errors';
-import { logError } from './utils';
+import { YAMLParseError } from './errors'
+import type { ErrorInfo, MCPServerConfig, ToolExecutionResult, ToolInvocation } from './types'
+import { logError } from './utils'
 
 export class CodeBlockProcessor {
-  private serverConfigs: MCPServerConfig[] = [];
+	private serverConfigs: MCPServerConfig[] = []
 
-  /**
-   * Update server configurations
-   */
-  updateServerConfigs(configs: MCPServerConfig[]): void {
-    this.serverConfigs = configs;
-  }
+	/**
+	 * Update server configurations
+	 */
+	updateServerConfigs(configs: MCPServerConfig[]): void {
+		this.serverConfigs = configs
+	}
 
-  /**
-   * Parse code block content to extract tool invocation
-   */
-  parseToolInvocation(source: string, language: string): ToolInvocation | null {
-    try {
-      // Check if language matches a server name
-      const serverConfig = this.getServerByName(language);
-      if (!serverConfig) {
-        return null; // Not an MCP code block
-      }
+	/**
+	 * Parse code block content to extract tool invocation
+	 */
+	parseToolInvocation(source: string, language: string): ToolInvocation | null {
+		try {
+			// Check if language matches a server name
+			const serverConfig = this.getServerByName(language)
+			if (!serverConfig) {
+				return null // Not an MCP code block
+			}
 
-      const lines = source.trim().split('\n');
-      if (lines.length === 0) {
-        return null;
-      }
+			const lines = source.trim().split('\n')
+			if (lines.length === 0) {
+				return null
+			}
 
-      // Find tool line (format: tool: tool_name)
-      const toolLine = lines.find(line => line.trim().startsWith('tool:'));
-      if (!toolLine) {
-        return null;
-      }
+			// Find tool line (format: tool: tool_name)
+			const toolLine = lines.find((line) => line.trim().startsWith('tool:'))
+			if (!toolLine) {
+				return null
+			}
 
-      const toolMatch = toolLine.trim().match(/^tool:\s*(.+)$/);
-      if (!toolMatch) {
-        return null;
-      }
+			const toolMatch = toolLine.trim().match(/^tool:\s*(.+)$/)
+			if (!toolMatch) {
+				return null
+			}
 
-      const toolName = toolMatch[1].trim();
+			const toolName = toolMatch[1].trim()
 
-      // Parse remaining lines as YAML parameters
-      const yamlLines = lines.filter(line => !line.trim().startsWith('tool:'));
-      const parameters = this.parseYAMLParameters(yamlLines);
+			// Parse remaining lines as YAML parameters
+			const yamlLines = lines.filter((line) => !line.trim().startsWith('tool:'))
+			const parameters = this.parseYAMLParameters(yamlLines)
 
-      return {
-        serverId: serverConfig.id,
-        toolName,
-        parameters
-      };
+			return {
+				serverId: serverConfig.id,
+				toolName,
+				parameters
+			}
+		} catch (error) {
+			logError('Failed to parse tool invocation', error)
+			return null
+		}
+	}
 
-    } catch (error) {
-      logError('Failed to parse tool invocation', error);
-      return null;
-    }
-  }
+	/**
+	 * Render tool execution result in code block element
+	 */
+	renderResult(
+		el: HTMLElement,
+		result: ToolExecutionResult,
+		options: {
+			collapsible?: boolean
+			showMetadata?: boolean
+		} = {}
+	): void {
+		// Clear existing content
+		el.empty()
 
-  /**
-   * Render tool execution result in code block element
-   */
-  renderResult(
-    el: HTMLElement,
-    result: ToolExecutionResult,
-    options: {
-      collapsible?: boolean;
-      showMetadata?: boolean;
-    } = {}
-  ): void {
-    // Clear existing content
-    el.empty();
+		// Create result container
+		const container = el.createDiv({ cls: 'mcp-tool-result' })
 
-    // Create result container
-    const container = el.createDiv({ cls: 'mcp-tool-result' });
+		// Add metadata if requested
+		if (options.showMetadata) {
+			const metadata = container.createDiv({ cls: 'mcp-metadata' })
+			metadata.createSpan({
+				text: `Duration: ${result.executionDuration}ms`,
+				cls: 'mcp-duration'
+			})
 
-    // Add metadata if requested
-    if (options.showMetadata) {
-      const metadata = container.createDiv({ cls: 'mcp-metadata' });
-      metadata.createSpan({
-        text: `Duration: ${result.executionDuration}ms`,
-        cls: 'mcp-duration'
-      });
+			if (result.tokensUsed) {
+				metadata.createSpan({
+					text: `Tokens: ${result.tokensUsed}`,
+					cls: 'mcp-tokens'
+				})
+			}
 
-      if (result.tokensUsed) {
-        metadata.createSpan({
-          text: `Tokens: ${result.tokensUsed}`,
-          cls: 'mcp-tokens'
-        });
-      }
+			metadata.createSpan({
+				text: `Type: ${result.contentType}`,
+				cls: 'mcp-content-type'
+			})
+		}
 
-      metadata.createSpan({
-        text: `Type: ${result.contentType}`,
-        cls: 'mcp-content-type'
-      });
-    }
+		// Create content container
+		let contentContainer: HTMLElement
 
-    // Create content container
-    let contentContainer: HTMLElement;
+		if (options.collapsible && result.contentType === 'json') {
+			// Collapsible JSON result
+			const details = container.createEl('details', { cls: 'mcp-collapsible' })
+			details.createEl('summary', { text: 'Tool Result (click to expand)' })
+			contentContainer = details.createEl('pre', { cls: 'mcp-content' })
+		} else {
+			// Direct content display
+			contentContainer = container.createEl('pre', { cls: 'mcp-content' })
+		}
 
-    if (options.collapsible && result.contentType === 'json') {
-      // Collapsible JSON result
-      const details = container.createEl('details', { cls: 'mcp-collapsible' });
-      details.createEl('summary', { text: 'Tool Result (click to expand)' });
-      contentContainer = details.createEl('pre', { cls: 'mcp-content' });
-    } else {
-      // Direct content display
-      contentContainer = container.createEl('pre', { cls: 'mcp-content' });
-    }
+		// Render content based on type
+		switch (result.contentType) {
+			case 'json':
+				contentContainer.textContent = JSON.stringify(result.content, null, 2)
+				break
+			case 'markdown':
+				// For markdown, we'd need to render it, but for now just show as text
+				contentContainer.textContent = String(result.content)
+				break
+			default:
+				contentContainer.textContent = String(result.content)
+				break
+		}
 
-    // Render content based on type
-    switch (result.contentType) {
-      case 'json':
-        contentContainer.textContent = JSON.stringify(result.content, null, 2);
-        break;
-      case 'markdown':
-        // For markdown, we'd need to render it, but for now just show as text
-        contentContainer.textContent = String(result.content);
-        break;
-      case 'text':
-      default:
-        contentContainer.textContent = String(result.content);
-        break;
-    }
+		// Add status indicator
+		const statusIndicator = container.createDiv({ cls: 'mcp-status' })
+		statusIndicator.createSpan({
+			text: '✅ Success',
+			cls: 'mcp-status-success'
+		})
+	}
 
-    // Add status indicator
-    const statusIndicator = container.createDiv({ cls: 'mcp-status' });
-    statusIndicator.createSpan({
-      text: '✅ Success',
-      cls: 'mcp-status-success'
-    });
-  }
+	/**
+	 * Render error state in code block element
+	 */
+	renderError(el: HTMLElement, error: ErrorInfo): void {
+		el.empty()
 
-  /**
-   * Render error state in code block element
-   */
-  renderError(el: HTMLElement, error: ErrorInfo): void {
-    el.empty();
+		const container = el.createDiv({ cls: 'mcp-tool-error' })
 
-    const container = el.createDiv({ cls: 'mcp-tool-error' });
+		// Error header
+		const header = container.createDiv({ cls: 'mcp-error-header' })
+		header.createSpan({
+			text: '❌ Tool Execution Failed',
+			cls: 'mcp-error-title'
+		})
 
-    // Error header
-    const header = container.createDiv({ cls: 'mcp-error-header' });
-    header.createSpan({
-      text: '❌ Tool Execution Failed',
-      cls: 'mcp-error-title'
-    });
+		// Error message
+		const message = container.createDiv({ cls: 'mcp-error-message' })
+		message.textContent = error.message
 
-    // Error message
-    const message = container.createDiv({ cls: 'mcp-error-message' });
-    message.textContent = error.message;
+		// Error details (if available)
+		if (error.details) {
+			const details = container.createDiv({ cls: 'mcp-error-details' })
+			details.createEl('pre').textContent = JSON.stringify(error.details, null, 2)
+		}
 
-    // Error details (if available)
-    if (error.details) {
-      const details = container.createDiv({ cls: 'mcp-error-details' });
-      details.createEl('pre').textContent = JSON.stringify(error.details, null, 2);
-    }
+		// Timestamp
+		const timestamp = container.createDiv({ cls: 'mcp-error-timestamp' })
+		timestamp.textContent = `Error occurred at ${new Date(error.timestamp).toLocaleString()}`
+	}
 
-    // Timestamp
-    const timestamp = container.createDiv({ cls: 'mcp-error-timestamp' });
-    timestamp.textContent = `Error occurred at ${new Date(error.timestamp).toLocaleString()}`;
-  }
+	/**
+	 * Render pending/executing state in code block element
+	 */
+	renderStatus(el: HTMLElement, status: 'pending' | 'executing'): void {
+		el.empty()
 
-  /**
-   * Render pending/executing state in code block element
-   */
-  renderStatus(el: HTMLElement, status: 'pending' | 'executing'): void {
-    el.empty();
+		const container = el.createDiv({ cls: 'mcp-tool-status' })
 
-    const container = el.createDiv({ cls: 'mcp-tool-status' });
+		const indicator = status === 'pending' ? '⏳' : '⚙️'
+		const message = status === 'pending' ? 'Tool execution queued...' : 'Executing tool...'
 
-    const indicator = status === 'pending' ? '⏳' : '⚙️';
-    const message = status === 'pending' ? 'Tool execution queued...' : 'Executing tool...';
+		container.createSpan({
+			text: `${indicator} ${message}`,
+			cls: 'mcp-status-indicator'
+		})
+	}
 
-    container.createSpan({
-      text: `${indicator} ${message}`,
-      cls: 'mcp-status-indicator'
-    });
-  }
+	/**
+	 * Parse YAML parameters from code block lines
+	 */
+	parseYAMLParameters(lines: string[]): Record<string, unknown> {
+		if (lines.length === 0) {
+			return {}
+		}
 
-  /**
-   * Parse YAML parameters from code block lines
-   */
-  parseYAMLParameters(lines: string[]): Record<string, unknown> {
-    if (lines.length === 0) {
-      return {};
-    }
+		try {
+			// Simple YAML-like parsing (key: value format)
+			const params: Record<string, unknown> = {}
+			let currentKey = ''
+			let currentValue: string[] = []
 
-    try {
-      // Simple YAML-like parsing (key: value format)
-      const params: Record<string, unknown> = {};
-      let currentKey = '';
-      let currentValue: string[] = [];
+			for (const line of lines) {
+				const trimmed = line.trim()
 
-      for (const line of lines) {
-        const trimmed = line.trim();
+				if (trimmed === '') {
+					continue // Skip empty lines
+				}
 
-        if (trimmed === '') {
-          continue; // Skip empty lines
-        }
+				// Check if line starts a new key (key: value format)
+				const keyValueMatch = trimmed.match(/^([^:]+):\s*(.*)$/)
+				if (keyValueMatch) {
+					// Save previous key-value pair
+					if (currentKey) {
+						params[currentKey] = this.parseYAMLValue(currentValue.join('\n'))
+					}
 
-        // Check if line starts a new key (key: value format)
-        const keyValueMatch = trimmed.match(/^([^:]+):\s*(.*)$/);
-        if (keyValueMatch) {
-          // Save previous key-value pair
-          if (currentKey) {
-            params[currentKey] = this.parseYAMLValue(currentValue.join('\n'));
-          }
+					// Start new key-value pair
+					currentKey = keyValueMatch[1].trim()
+					currentValue = [keyValueMatch[2].trim()]
+				} else {
+					// Continuation of previous value (multiline)
+					currentValue.push(trimmed)
+				}
+			}
 
-          // Start new key-value pair
-          currentKey = keyValueMatch[1].trim();
-          currentValue = [keyValueMatch[2].trim()];
-        } else {
-          // Continuation of previous value (multiline)
-          currentValue.push(trimmed);
-        }
-      }
+			// Save last key-value pair
+			if (currentKey) {
+				params[currentKey] = this.parseYAMLValue(currentValue.join('\n'))
+			}
 
-      // Save last key-value pair
-      if (currentKey) {
-        params[currentKey] = this.parseYAMLValue(currentValue.join('\n'));
-      }
+			return params
+		} catch (error) {
+			throw new YAMLParseError(
+				undefined, // No specific line number available
+				error instanceof Error ? error.message : String(error)
+			)
+		}
+	}
 
-      return params;
+	/**
+	 * Parse individual YAML value
+	 */
+	private parseYAMLValue(value: string): unknown {
+		const trimmed = value.trim()
 
-    } catch (error) {
-      throw new YAMLParseError(
-        undefined, // No specific line number available
-        error instanceof Error ? error.message : String(error)
-      );
-    }
-  }
+		// Handle empty/null values
+		if (trimmed === '' || trimmed === 'null') {
+			return null
+		}
 
-  /**
-   * Parse individual YAML value
-   */
-  private parseYAMLValue(value: string): unknown {
-    const trimmed = value.trim();
+		// Handle boolean values
+		if (trimmed === 'true') return true
+		if (trimmed === 'false') return false
 
-    // Handle empty/null values
-    if (trimmed === '' || trimmed === 'null') {
-      return null;
-    }
+		// Handle numeric values
+		if (/^-?\d+(\.\d+)?$/.test(trimmed)) {
+			return parseFloat(trimmed)
+		}
 
-    // Handle boolean values
-    if (trimmed === 'true') return true;
-    if (trimmed === 'false') return false;
+		// Handle quoted strings (remove quotes)
+		if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+			return trimmed.slice(1, -1)
+		}
 
-    // Handle numeric values
-    if (/^-?\d+(\.\d+)?$/.test(trimmed)) {
-      return parseFloat(trimmed);
-    }
+		// Default to string
+		return trimmed
+	}
 
-    // Handle quoted strings (remove quotes)
-    if ((trimmed.startsWith('"') && trimmed.endsWith('"')) ||
-        (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
-      return trimmed.slice(1, -1);
-    }
-
-    // Default to string
-    return trimmed;
-  }
-
-  /**
-   * Get server configuration by name
-   */
-  getServerByName(serverName: string): MCPServerConfig | undefined {
-    return this.serverConfigs.find(config => config.name === serverName);
-  }
+	/**
+	 * Get server configuration by name
+	 */
+	getServerByName(serverName: string): MCPServerConfig | undefined {
+		return this.serverConfigs.find((config) => config.name === serverName)
+	}
 }

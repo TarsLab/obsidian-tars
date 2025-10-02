@@ -10,15 +10,15 @@ import {
 	systemTagCmd,
 	userTagCmd
 } from './commands'
-import { RequestController } from './editor'
-import { t } from './lang/helper'
-import { getTitleFromCmdId, loadTemplateFileCommand, promptTemplateCmd, templateToCmdId } from './prompt'
-import { TarsSettingTab } from './settingTab'
-import { DEFAULT_SETTINGS, PluginSettings } from './settings'
-import { StatusBarManager } from './statusBarManager'
-import { getMaxTriggerLineLength, TagEditorSuggest, TagEntry } from './suggest'
-import { MCPServerManager, ToolExecutor, createToolExecutor, CodeBlockProcessor } from './mcp'
 import { getMCPCommands } from './commands/mcpCommands'
+import type { RequestController } from './editor'
+import { t } from './lang/helper'
+import { CodeBlockProcessor, createToolExecutor, MCPServerManager, type ToolExecutor } from './mcp'
+import { getTitleFromCmdId, loadTemplateFileCommand, promptTemplateCmd, templateToCmdId } from './prompt'
+import { DEFAULT_SETTINGS, type PluginSettings } from './settings'
+import { TarsSettingTab } from './settingTab'
+import { StatusBarManager } from './statusBarManager'
+import { getMaxTriggerLineLength, TagEditorSuggest, type TagEntry } from './suggest'
 
 export default class TarsPlugin extends Plugin {
 	settings: PluginSettings
@@ -42,29 +42,29 @@ export default class TarsPlugin extends Plugin {
 			try {
 				this.mcpManager = new MCPServerManager()
 				await this.mcpManager.initialize(this.settings.mcpServers)
-				
+
 				// Create tool executor
 				this.mcpExecutor = createToolExecutor(this.mcpManager)
-				
+
 				// Create code block processor
 				this.mcpCodeBlockProcessor = new CodeBlockProcessor()
 				this.mcpCodeBlockProcessor.updateServerConfigs(this.settings.mcpServers)
-				
+
 				// Register code block processors for each server
-				this.settings.mcpServers.forEach(server => {
+				this.settings.mcpServers.forEach((server) => {
 					this.registerMarkdownCodeBlockProcessor(server.name, async (source, el, ctx) => {
 						if (!this.mcpExecutor || !this.mcpCodeBlockProcessor) return
-						
+
 						// Parse tool invocation
 						const invocation = this.mcpCodeBlockProcessor.parseToolInvocation(source, server.name)
 						if (!invocation) {
 							el.createDiv({ text: 'Invalid tool invocation format', cls: 'mcp-error' })
 							return
 						}
-						
+
 						// Show executing status
 						this.mcpCodeBlockProcessor.renderStatus(el, 'executing')
-						
+
 						try {
 							// Execute tool
 							const result = await this.mcpExecutor.executeTool({
@@ -74,7 +74,7 @@ export default class TarsPlugin extends Plugin {
 								source: 'user-codeblock',
 								documentPath: ctx.sourcePath
 							})
-							
+
 							// Render result
 							this.mcpCodeBlockProcessor.renderResult(el, result, {
 								showMetadata: true,
@@ -89,11 +89,11 @@ export default class TarsPlugin extends Plugin {
 						}
 					})
 				})
-				
+
 				// Register MCP commands
 				const mcpCommands = getMCPCommands(this.mcpExecutor)
-				mcpCommands.forEach(cmd => this.addCommand(cmd))
-				
+				mcpCommands.forEach((cmd) => this.addCommand(cmd))
+
 				console.debug('MCP integration initialized with', this.settings.mcpServers.length, 'servers')
 			} catch (error) {
 				console.error('Failed to initialize MCP integration:', error)
@@ -157,7 +157,7 @@ export default class TarsPlugin extends Plugin {
 
 	async onunload() {
 		this.statusBarManager?.dispose()
-		
+
 		// Shutdown MCP manager
 		if (this.mcpManager) {
 			try {
@@ -260,10 +260,8 @@ export default class TarsPlugin extends Plugin {
 				return this.aborterInstance
 			},
 			cleanup: () => {
-				{
-					this.settings.editorStatus.isTextInserting = false
-					this.aborterInstance = null
-				}
+				this.settings.editorStatus.isTextInserting = false
+				this.aborterInstance = null
 			}
 		}
 	}

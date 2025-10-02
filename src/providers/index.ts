@@ -1,18 +1,12 @@
-import { EmbedCache } from 'obsidian'
+import type { EmbedCache } from 'obsidian'
 
 export type MsgRole = 'user' | 'assistant' | 'system'
 
-export interface SaveAttachment {
-	(fileName: string, data: ArrayBuffer): Promise<void>
-}
+export type SaveAttachment = (fileName: string, data: ArrayBuffer) => Promise<void>
 
-export interface ResolveEmbedAsBinary {
-	(embed: EmbedCache): Promise<ArrayBuffer>
-}
+export type ResolveEmbedAsBinary = (embed: EmbedCache) => Promise<ArrayBuffer>
 
-export interface CreatePlainText {
-	(filePath: string, text: string): Promise<void>
-}
+export type CreatePlainText = (filePath: string, text: string) => Promise<void>
 
 export interface Message {
 	readonly role: MsgRole

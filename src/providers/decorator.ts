@@ -1,6 +1,6 @@
 import { normalizePath } from 'obsidian'
 import { APP_FOLDER } from 'src/settings'
-import { CreatePlainText, SendRequest } from '.'
+import type { CreatePlainText, SendRequest } from '.'
 
 interface TextWithTime {
 	readonly text: string

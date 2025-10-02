@@ -1,7 +1,7 @@
-import { Command, Editor, MarkdownView, Notice, Platform } from 'obsidian'
+import { type Command, type Editor, type MarkdownView, Notice, Platform } from 'obsidian'
 import { t } from 'src/lang/helper'
 import { toNewChatMark } from 'src/suggest'
-import { TagCmdMeta } from './tagCmd'
+import type { TagCmdMeta } from './tagCmd'
 
 export const newChatTagCmd = ({ id, name, tag }: TagCmdMeta): Command => ({
 	id,

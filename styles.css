@@ -24,7 +24,6 @@ summary.tars-setting-h4 {
 .capability-tag {
 	display: inline-flex;
 	align-items: center;
-	display: inline-block;
 	padding: var(--size-2-1) var(--size-2-3);
 	font-size: var(--font-ui-smaller);
 	background-color: var(--background-modifier-border);
@@ -162,10 +161,10 @@ summary.tars-setting-h4 {
 
 /* Control buttons - uniform sizing */
 .mcp-control-button {
-	min-width: 80px !important;
-	height: 32px !important;
-	padding: var(--size-2-1) var(--size-4-2) !important;
-	display: inline-flex !important;
-	align-items: center !important;
-	justify-content: center !important;
+	min-width: 80px;
+	height: 32px;
+	padding: var(--size-2-1) var(--size-4-2);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 }

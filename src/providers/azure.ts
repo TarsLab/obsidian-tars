@@ -1,6 +1,6 @@
 import { AzureOpenAI } from 'openai'
 import { t } from 'src/lang/helper'
-import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
+import type { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 import { CALLOUT_BLOCK_END, CALLOUT_BLOCK_START } from './utils'
 
 interface AzureOptions extends BaseOptions {
@@ -40,7 +40,7 @@ const sendRequestFunc = (settings: AzureOptions): SendRequest =>
 		let thinkEnd = false // 过滤掉重复的 </think>
 
 		for await (const part of stream) {
-			if (part.usage && part.usage.prompt_tokens && part.usage.completion_tokens)
+			if (part.usage?.prompt_tokens && part.usage.completion_tokens)
 				console.debug(`Prompt tokens: ${part.usage.prompt_tokens}, completion tokens: ${part.usage.completion_tokens}`)
 
 			const text = part.choices[0]?.delta?.content

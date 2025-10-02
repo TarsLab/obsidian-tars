@@ -1,11 +1,21 @@
-import { App, Command, Editor, EditorRange, MarkdownView, Modal, Notice, Platform, Setting } from 'obsidian'
-import { buildRunEnv, generate, RequestController } from 'src/editor'
+import {
+	type App,
+	type Command,
+	type Editor,
+	type EditorRange,
+	type MarkdownView,
+	Modal,
+	Notice,
+	Platform,
+	Setting
+} from 'obsidian'
+import { buildRunEnv, generate, type RequestController } from 'src/editor'
 import { t } from 'src/lang/helper'
-import { ProviderSettings } from 'src/providers'
-import { PluginSettings } from 'src/settings'
-import { StatusBarManager } from 'src/statusBarManager'
+import type { ProviderSettings } from 'src/providers'
+import type { PluginSettings } from 'src/settings'
+import type { StatusBarManager } from 'src/statusBarManager'
 import { toSpeakMark } from 'src/suggest'
-import { TagCmdMeta } from './tagCmd'
+import type { TagCmdMeta } from './tagCmd'
 import {
 	fetchTagMeta,
 	HARD_LINE_BREAK,
@@ -61,7 +71,7 @@ export const asstTagCmd = (
 				insertMarkToBegin(editor, range, defaultUserMark)
 
 				editor.setCursor({ line: range.to.line, ch: editor.getLine(range.to.line).length })
-				insertText(editor, HARD_LINE_BREAK + '\n')
+				insertText(editor, `${HARD_LINE_BREAK}\n`)
 				const lnToWrite = await insertMarkSlowMo(editor, mark, settings.answerDelayInMilliseconds)
 
 				const messagesEndOffset = editor.posToOffset({
@@ -91,7 +101,7 @@ export const asstTagCmd = (
 			} else {
 				// If it's a userTag, systemTag (warn later), newChat mixed, etc., add a new line, insert assistant tag. Let subsequent code handle the judgment
 				editor.setCursor({ line: range.to.line, ch: editor.getLine(range.to.line).length })
-				const lnToWrite = insertText(editor, HARD_LINE_BREAK + '\n' + mark)
+				const lnToWrite = insertText(editor, `${HARD_LINE_BREAK}\n${mark}`)
 
 				const messagesEndOffset = editor.posToOffset({
 					line: lnToWrite,
