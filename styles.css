@@ -134,6 +134,9 @@ summary.tars-setting-h4 {
 	margin-bottom: var(--size-4-2);
 	background-color: var(--background-secondary-alt);
 	border-radius: var(--radius-m);
+	min-height: 48px;
+	display: flex;
+	align-items: center;
 }
 
 .mcp-textarea-container {
@@ -167,4 +170,55 @@ summary.tars-setting-h4 {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
+}
+
+/* MCP Server Status Colors */
+.mcp-status-enabled {
+	color: var(--text-success, #4ade80);
+	margin-left: 8px;
+}
+
+.mcp-status-disabled {
+	color: var(--text-muted);
+	margin-left: 8px;
+}
+
+.mcp-status-error {
+	color: var(--text-error);
+	margin-left: 8px;
+}
+
+/* MCP Error Message */
+.mcp-error-container {
+	margin-top: var(--size-2-2);
+	padding: var(--size-2-3);
+	background-color: var(--background-modifier-error);
+	border: 1px solid var(--text-error);
+	border-radius: var(--radius-s);
+	display: flex;
+	align-items: flex-start;
+	gap: var(--size-2-3);
+}
+
+.mcp-error-message {
+	flex: 1;
+	color: var(--text-on-accent, #ffffff);
+	font-family: var(--font-monospace);
+	font-size: var(--font-ui-smaller);
+	word-break: break-word;
+	margin: 0;
+}
+
+.mcp-error-copy-btn {
+	flex-shrink: 0;
+	cursor: pointer;
+	padding: var(--size-2-1);
+	border-radius: var(--radius-s);
+	color: var(--text-on-accent, #ffffff);
+	background-color: rgba(255, 255, 255, 0.1);
+	border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.mcp-error-copy-btn:hover {
+	background-color: rgba(255, 255, 255, 0.2);
 }

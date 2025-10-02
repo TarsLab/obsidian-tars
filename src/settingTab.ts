@@ -1,9 +1,10 @@
-import { type App, Notice, PluginSettingTab, requestUrl, Setting } from 'obsidian'
+import { type App, Notice, PluginSettingTab, requestUrl, Setting, setIcon } from 'obsidian'
 import { exportCmd, replaceCmd, replaceCmdId } from './commands'
 import { exportCmdId } from './commands/export'
 import { t } from './lang/helper'
 import type TarsPlugin from './main'
 import { type MCPServerConfig, TransportProtocol } from './mcp/types'
+import { parseExecutionCommand } from './mcp/utils'
 import { SelectModelModal, SelectVendorModal } from './modal'
 import type { BaseOptions, Optional, ProviderSettings, Vendor } from './providers'
 import { type ClaudeOptions, claudeVendor } from './providers/claude'
@@ -366,10 +367,43 @@ export class TarsSettingTab extends PluginSettingTab {
 		if (this.plugin.settings.mcpServers && this.plugin.settings.mcpServers.length > 0) {
 			for (const [index, server] of this.plugin.settings.mcpServers.entries()) {
 				const serverSection = mcpSection.createEl('details', { cls: 'mcp-server-section' })
-				const serverSummary = serverSection.createEl('summary', {
-					text: `${server.name} (${server.enabled ? '✓ Enabled' : '✗ Disabled'})`,
-					cls: 'mcp-server-summary'
-				})
+				
+				// Determine server status and CSS class
+				let statusText = ''
+				let statusClass = ''
+				if (server.autoDisabled) {
+					statusText = '✗ Error'
+					statusClass = 'mcp-status-error'
+				} else if (server.enabled) {
+					statusText = '✓ Enabled'
+					statusClass = 'mcp-status-enabled'
+				} else {
+					statusText = '✗ Disabled'
+					statusClass = 'mcp-status-disabled'
+				}
+				
+				const serverSummary = serverSection.createEl('summary', { cls: 'mcp-server-summary' })
+				serverSummary.createSpan({ text: server.name })
+				serverSummary.createSpan({ text: ` (${statusText})`, cls: statusClass })
+
+				// Helper function to update summary with colored status
+				const updateSummary = () => {
+					let statusText = ''
+					let statusClass = ''
+					if (server.autoDisabled) {
+						statusText = '✗ Error'
+						statusClass = 'mcp-status-error'
+					} else if (server.enabled) {
+						statusText = '✓ Enabled'
+						statusClass = 'mcp-status-enabled'
+					} else {
+						statusText = '✗ Disabled'
+						statusClass = 'mcp-status-disabled'
+					}
+					serverSummary.empty()
+					serverSummary.createSpan({ text: server.name })
+					serverSummary.createSpan({ text: ` (${statusText})`, cls: statusClass })
+				}
 
 				// First row: Enable/Disable | Test | Delete
 				new Setting(serverSection)
@@ -387,8 +421,8 @@ export class TarsSettingTab extends PluginSettingTab {
 								btn.setButtonText(server.enabled ? 'Disable' : 'Enable')
 								btn.setTooltip(server.enabled ? 'Disable server' : 'Enable server')
 
-								// Update summary text
-								serverSummary.setText(`${server.name} (${server.enabled ? '✓ Enabled' : '✗ Disabled'})`)
+								// Update summary with colored status
+								updateSummary()
 
 								// Reinitialize MCP manager
 								if (this.plugin.mcpManager) {
@@ -473,8 +507,8 @@ export class TarsSettingTab extends PluginSettingTab {
 						.onChange(async (value) => {
 							server.name = value
 							await this.plugin.saveSettings()
-							// Update summary text without re-rendering
-							serverSummary.setText(`${server.name} (${server.enabled ? '✓ Enabled' : '✗ Disabled'})`)
+							// Update summary with colored status
+							updateSummary()
 						})
 				)
 
@@ -524,15 +558,118 @@ export class TarsSettingTab extends PluginSettingTab {
 				textarea.style.width = '100%'
 				textarea.style.fontFamily = 'monospace'
 				textarea.style.fontSize = '13px'
+				
+				// Error container for validation messages
+				let errorContainer: HTMLElement | null = null
+				
+				const validateExecutionCommand = (cmd: string): string | null => {
+					if (!cmd || !cmd.trim()) {
+						return null // Empty is valid
+					}
+					
+					// Try to parse as JSON if it starts with {
+					if (cmd.trim().startsWith('{')) {
+						try {
+							JSON.parse(cmd)
+						} catch (e) {
+							return `Invalid JSON: ${e instanceof Error ? e.message : String(e)}`
+						}
+					}
+					
+					// Try parsing with the actual parser to catch any other issues
+					try {
+						const testConfig: MCPServerConfig = {
+							...server,
+							executionCommand: cmd,
+							dockerConfig: undefined,
+							sseConfig: undefined
+						}
+						parseExecutionCommand(testConfig)
+					} catch (e) {
+						return `Parse error: ${e instanceof Error ? e.message : String(e)}`
+					}
+					
+					return null
+				}
+				
+				const showError = (errorMsg: string) => {
+					if (!errorContainer) {
+						errorContainer = textareaContainer.createDiv({ cls: 'mcp-error-container' })
+					}
+					errorContainer.empty()
+					
+					errorContainer.createEl('pre', {
+						text: errorMsg,
+						cls: 'mcp-error-message'
+					})
+					
+					const copyBtn = errorContainer.createEl('button', { cls: 'mcp-error-copy-btn' })
+					setIcon(copyBtn, 'clipboard')
+					copyBtn.addEventListener('click', () => {
+						navigator.clipboard.writeText(errorMsg)
+						new Notice('Error message copied to clipboard')
+					})
+				}
+				
+				const hideError = () => {
+					if (errorContainer) {
+						errorContainer.remove()
+						errorContainer = null
+					}
+				}
+				
 				textarea.addEventListener('input', async (e) => {
 					const target = e.target as HTMLTextAreaElement
 					server.executionCommand = target.value
 					await this.plugin.saveSettings()
+					
+					// Validate and show/hide error
+					const validationError = validateExecutionCommand(target.value)
+					if (validationError) {
+						showError(validationError)
+					} else {
+						hideError()
+					}
 				})
+				
+				// Initial validation
+				const initialError = validateExecutionCommand(server.executionCommand || '')
+				if (initialError) {
+					showError(initialError)
+				}
 			}
 		} else {
 			new Setting(mcpSection).setDesc('No MCP servers configured. Add a server to get started.')
 		}
+
+		// Promoted MCP servers
+		new Setting(mcpSection)
+			.setName('Promoted MCP Servers')
+			.setDesc('Pre-configured popular MCP servers')
+			.addButton((btn) =>
+				btn.setButtonText('Add Exa Search Server').onClick(async () => {
+					const exaServer: MCPServerConfig = {
+						id: `mcp-exa-${Date.now()}`,
+						name: 'exa-search',
+						transport: TransportProtocol.STDIO,
+						executionCommand: JSON.stringify({
+							command: 'npx',
+							args: ['-y', '@exa/mcp-server'],
+							env: {
+								EXA_API_KEY: 'your-exa-api-key-here'
+							}
+						}, null, 2),
+						enabled: false,
+						failureCount: 0,
+						autoDisabled: false,
+						sectionBindings: []
+					}
+					this.plugin.settings.mcpServers.push(exaServer)
+					await this.plugin.saveSettings()
+					new Notice('Exa Search MCP server added! Please update the EXA_API_KEY in the configuration.')
+					this.display()
+				})
+			)
 
 		// Add new server button
 		new Setting(mcpSection).addButton((btn) =>
