@@ -94,5 +94,5 @@ export const azureVendor: Vendor = {
 	sendRequestFunc,
 	models,
 	websiteToObtainKey: 'https://portal.azure.com',
-	capabilities: ['Text Generation', 'Reasoning']
+	capabilities: ['Text Generation', 'Reasoning', 'Tool Calling']
 }

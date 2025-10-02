@@ -86,5 +86,5 @@ export const qwenVendor: Vendor = {
 	sendRequestFunc,
 	models,
 	websiteToObtainKey: 'https://dashscope.console.aliyun.com',
-	capabilities: ['Text Generation', 'Image Vision']
+	capabilities: ['Text Generation', 'Image Vision', 'Tool Calling']
 }

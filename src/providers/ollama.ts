@@ -41,5 +41,5 @@ export const ollamaVendor: Vendor = {
 	sendRequestFunc,
 	models: [],
 	websiteToObtainKey: 'https://ollama.com',
-	capabilities: ['Text Generation']
+	capabilities: ['Text Generation', 'Tool Calling']
 }

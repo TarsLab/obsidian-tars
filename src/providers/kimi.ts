@@ -126,5 +126,5 @@ export const kimiVendor: Vendor = {
 	sendRequestFunc,
 	models: [],
 	websiteToObtainKey: 'https://www.moonshot.cn',
-	capabilities: ['Text Generation', 'Image Vision', 'Reasoning']
+	capabilities: ['Text Generation', 'Image Vision', 'Reasoning', 'Tool Calling']
 }

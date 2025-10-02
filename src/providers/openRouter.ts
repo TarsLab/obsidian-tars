@@ -140,5 +140,5 @@ export const openRouterVendor: Vendor = {
 	sendRequestFunc,
 	models: [],
 	websiteToObtainKey: 'https://openrouter.ai',
-	capabilities: ['Text Generation', 'Image Vision', 'PDF Vision']
+	capabilities: ['Text Generation', 'Image Vision', 'PDF Vision', 'Tool Calling']
 }

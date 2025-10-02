@@ -49,6 +49,7 @@ export default {
 	'Image Editing': 'Image Editing',
 	'Web Search': 'Web Search',
 	Reasoning: 'Reasoning',
+	'Tool Calling': 'Tool Calling',
 	'Only PNG, JPEG, GIF, and WebP images are supported.': 'Only PNG, JPEG, GIF, and WebP images are supported.',
 	'Only PNG, JPEG, GIF, WebP, and PDF files are supported.': 'Only PNG, JPEG, GIF, WebP, and PDF files are supported.',
 

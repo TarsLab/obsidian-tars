@@ -72,5 +72,5 @@ export const deepSeekVendor: Vendor = {
 	sendRequestFunc,
 	models,
 	websiteToObtainKey: 'https://platform.deepseek.com',
-	capabilities: ['Text Generation', 'Reasoning']
+	capabilities: ['Text Generation', 'Reasoning', 'Tool Calling']
 }

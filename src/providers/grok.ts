@@ -126,5 +126,5 @@ export const grokVendor: Vendor = {
 	sendRequestFunc,
 	models: [],
 	websiteToObtainKey: 'https://x.ai',
-	capabilities: ['Text Generation', 'Reasoning', 'Image Vision']
+	capabilities: ['Text Generation', 'Reasoning', 'Image Vision', 'Tool Calling']
 }

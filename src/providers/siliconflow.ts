@@ -94,5 +94,5 @@ export const siliconFlowVendor: Vendor = {
 	sendRequestFunc,
 	models: [],
 	websiteToObtainKey: 'https://siliconflow.cn',
-	capabilities: ['Text Generation', 'Image Vision', 'Reasoning']
+	capabilities: ['Text Generation', 'Image Vision', 'Reasoning', 'Tool Calling']
 }

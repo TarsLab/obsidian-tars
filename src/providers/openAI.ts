@@ -82,5 +82,5 @@ export const openAIVendor: Vendor = {
 	sendRequestFunc,
 	models: [],
 	websiteToObtainKey: 'https://platform.openai.com/api-keys',
-	capabilities: ['Text Generation', 'Image Vision']
+	capabilities: ['Text Generation', 'Image Vision', 'Tool Calling']
 }
