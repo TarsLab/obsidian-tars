@@ -7,11 +7,12 @@
  */
 
 import OpenAI from 'openai'
+import type { Ollama } from 'ollama/browser'
 import type { EmbedCache } from 'obsidian'
 import type { ToolExecutor } from './executor'
 import type { MCPServerManager } from './managerMCPUse'
 import type { Message, ProviderAdapter, ToolExecutionResult } from './toolCallingCoordinator'
-import { OpenAIToolResponseParser } from './toolResponseParser'
+import { OpenAIToolResponseParser, OllamaToolResponseParser } from './toolResponseParser'
 
 // ============================================================================
 // OpenAI Provider Adapter
@@ -301,5 +302,153 @@ export async function createOpenAIAdapterWithMapping(
 					: JSON.stringify(result.content)
 			}
 		}
+	}
+}
+
+// ============================================================================
+// Ollama Provider Adapter
+// ============================================================================
+
+interface OllamaChunk {
+	message?: {
+		content?: string
+		tool_calls?: Array<{
+			function: {
+				name: string
+				arguments: Record<string, unknown>
+			}
+		}>
+	}
+	done?: boolean
+}
+
+export interface OllamaAdapterConfig {
+	mcpManager: MCPServerManager
+	mcpExecutor: ToolExecutor
+	ollamaClient: Ollama
+	controller: AbortController
+	model: string
+}
+
+/**
+ * Ollama Provider Adapter
+ * Implements complete ProviderAdapter interface for use with ToolCallingCoordinator
+ *
+ * Note: Ollama's tool calling format is simpler than OpenAI:
+ * - Tool calls arrive complete (not streamed)
+ * - Arguments are already parsed as objects
+ * - No tool_call_id, we generate synthetic IDs
+ */
+export class OllamaProviderAdapter implements ProviderAdapter<OllamaChunk> {
+	private mcpManager: MCPServerManager
+	private mcpExecutor: ToolExecutor
+	private client: Ollama
+	private controller: AbortController
+	private model: string
+	private toolMapping: Map<string, string> | null = null
+	private parser: OllamaToolResponseParser
+
+	constructor(config: OllamaAdapterConfig) {
+		this.mcpManager = config.mcpManager
+		this.mcpExecutor = config.mcpExecutor
+		this.client = config.ollamaClient
+		this.controller = config.controller
+		this.model = config.model
+		this.parser = new OllamaToolResponseParser()
+	}
+
+	async initialize(): Promise<void> {
+		this.toolMapping = await buildToolServerMapping(this.mcpManager)
+	}
+
+	getParser(): OllamaToolResponseParser {
+		return this.parser
+	}
+
+	findServerId(toolName: string): string | null {
+		if (!this.toolMapping) {
+			throw new Error('OllamaProviderAdapter not initialized - call initialize() first')
+		}
+		return this.toolMapping.get(toolName) || null
+	}
+
+	async *sendRequest(messages: Message[]): AsyncGenerator<OllamaChunk> {
+		// Build tools array for Ollama
+		const tools = await this.buildTools()
+
+		// Format messages for Ollama
+		const formattedMessages = await this.formatMessages(messages)
+
+		// Create request
+		const requestParams = {
+			model: this.model,
+			messages: formattedMessages,
+			stream: true,
+			tools: tools.length > 0 ? tools : undefined
+		}
+
+		// biome-ignore lint/suspicious/noExplicitAny: Ollama SDK types
+		const response = (await this.client.chat(requestParams as any)) as unknown as AsyncIterable<OllamaChunk>
+
+		for await (const chunk of response) {
+			if (this.controller.signal.aborted) {
+				this.client.abort()
+				break
+			}
+			yield chunk
+		}
+	}
+
+	formatToolResult(_toolCallId: string, result: ToolExecutionResult): Message {
+		// Ollama uses assistant role for tool results
+		return {
+			role: 'assistant',
+			content: typeof result.content === 'string'
+				? result.content
+				: JSON.stringify(result.content)
+		}
+	}
+
+	/**
+	 * Build tools array for Ollama from MCP servers
+	 */
+	private async buildTools(): Promise<Array<{ type: 'function'; function: { name: string; description?: string; parameters?: unknown } }>> {
+		const tools: Array<{ type: 'function'; function: { name: string; description?: string; parameters?: unknown } }> = []
+
+		const servers = this.mcpManager.listServers()
+		for (const server of servers) {
+			if (!server.enabled) continue
+
+			const client = this.mcpManager.getClient(server.id)
+			if (!client) continue
+
+			try {
+				const serverTools = await client.listTools()
+				for (const tool of serverTools) {
+					tools.push({
+						type: 'function',
+						function: {
+							name: tool.name,
+							description: tool.description,
+							parameters: tool.inputSchema
+						}
+					})
+				}
+			} catch (error) {
+				console.error(`Failed to list tools from Ollama server ${server.id}:`, error)
+			}
+		}
+
+		return tools
+	}
+
+	/**
+	 * Format messages for Ollama API
+	 */
+	private async formatMessages(messages: Message[]): Promise<Array<{ role: string; content: string }>> {
+		return messages.map((msg) => ({
+			role: msg.role === 'tool' ? 'assistant' : msg.role,
+			content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+		}))
 	}
 }
