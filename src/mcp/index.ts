@@ -30,6 +30,14 @@ export {
 	type ToolExecutionRequest,
 	type ToolExecutionResult
 } from './toolCallingCoordinator'
+export {
+	buildToolServerMapping,
+	createOpenAIAdapter,
+	createOpenAIAdapterWithMapping,
+	type OpenAIAdapterConfig,
+	type OpenAIAdapterConfigSimple,
+	OpenAIProviderAdapter
+} from './providerAdapters'
 // Provider integration
 export {
 	buildAIToolContext,
