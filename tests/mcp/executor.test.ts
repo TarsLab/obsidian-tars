@@ -125,4 +125,154 @@ describe('ToolExecutor limits contract tests', () => {
 			expect(true).toBe(true) // Placeholder
 		})
 	})
+
+	describe('Memory Leak Prevention', () => {
+		it('should clean up activeExecutions on successful execution', async () => {
+			// GIVEN: Executor with mock manager
+			const mockManager = {
+				getClient: vi.fn().mockReturnValue({
+					callTool: vi.fn().mockResolvedValue({ content: [{ type: 'text', text: 'Success' }] })
+				}),
+				listServers: vi.fn().mockReturnValue([{ id: 'test-server', name: 'Test Server' }])
+			} as unknown as MCPServerManager
+
+			const tracker = {
+				concurrentLimit: 3,
+				sessionLimit: -1,
+				activeExecutions: new Set<string>(),
+				totalExecuted: 0,
+				stopped: false,
+				executionHistory: []
+			}
+
+			const executor = new ToolExecutor(mockManager, tracker)
+
+			// WHEN: Tool executes successfully
+			await executor.executeTool({
+				serverId: 'test-server',
+				toolName: 'test-tool',
+				parameters: {},
+				source: 'user-codeblock',
+				documentPath: '/test.md'
+			})
+
+			// THEN: activeExecutions should be empty (cleaned up)
+			expect(tracker.activeExecutions.size).toBe(0)
+			expect(tracker.totalExecuted).toBe(1)
+		})
+
+		it('should clean up activeExecutions on error', async () => {
+			// GIVEN: Executor with failing tool
+			const mockManager = {
+				getClient: vi.fn().mockReturnValue({
+					callTool: vi.fn().mockRejectedValue(new Error('Tool execution failed'))
+				}),
+				listServers: vi.fn().mockReturnValue([{ id: 'test-server', name: 'Test Server' }])
+			} as unknown as MCPServerManager
+
+			const tracker = {
+				concurrentLimit: 3,
+				sessionLimit: -1,
+				activeExecutions: new Set<string>(),
+				totalExecuted: 0,
+				stopped: false,
+				executionHistory: []
+			}
+
+			const executor = new ToolExecutor(mockManager, tracker)
+
+			// WHEN: Tool execution fails
+			await expect(
+				executor.executeTool({
+					serverId: 'test-server',
+					toolName: 'failing-tool',
+					parameters: {},
+					source: 'user-codeblock',
+					documentPath: '/test.md'
+				})
+			).rejects.toThrow('Tool execution failed')
+
+			// THEN: activeExecutions should still be empty (cleaned up despite error)
+			expect(tracker.activeExecutions.size).toBe(0)
+			expect(tracker.totalExecuted).toBe(1)
+		})
+
+		it('should not leak memory with 100 failed executions', async () => {
+			// GIVEN: Executor with consistently failing tool
+			const mockManager = {
+				getClient: vi.fn().mockReturnValue({
+					callTool: vi.fn().mockRejectedValue(new Error('Persistent failure'))
+				}),
+				listServers: vi.fn().mockReturnValue([{ id: 'test-server', name: 'Test Server' }])
+			} as unknown as MCPServerManager
+
+			const tracker = {
+				concurrentLimit: 100,
+				sessionLimit: -1,
+				activeExecutions: new Set<string>(),
+				totalExecuted: 0,
+				stopped: false,
+				executionHistory: []
+			}
+
+			const executor = new ToolExecutor(mockManager, tracker)
+
+			// WHEN: 100 executions fail
+			const promises = Array.from({ length: 100 }, () =>
+				executor
+					.executeTool({
+						serverId: 'test-server',
+						toolName: 'failing-tool',
+						parameters: {},
+						source: 'user-codeblock',
+						documentPath: '/test.md'
+					})
+					.catch(() => {
+						/* ignore errors */
+					})
+			)
+
+			await Promise.all(promises)
+
+			// THEN: activeExecutions should remain bounded (no unbounded growth)
+			expect(tracker.activeExecutions.size).toBe(0)
+			expect(tracker.totalExecuted).toBe(100)
+		})
+
+		it('should clean up even when client throws synchronously', async () => {
+			// GIVEN: Executor with client that throws immediately
+			const mockManager = {
+				getClient: vi.fn().mockImplementation(() => {
+					throw new Error('Client creation failed')
+				}),
+				listServers: vi.fn().mockReturnValue([{ id: 'test-server', name: 'Test Server' }])
+			} as unknown as MCPServerManager
+
+			const tracker = {
+				concurrentLimit: 3,
+				sessionLimit: -1,
+				activeExecutions: new Set<string>(),
+				totalExecuted: 0,
+				stopped: false,
+				executionHistory: []
+			}
+
+			const executor = new ToolExecutor(mockManager, tracker)
+
+			// WHEN: Execution fails before try-catch
+			await expect(
+				executor.executeTool({
+					serverId: 'test-server',
+					toolName: 'test-tool',
+					parameters: {},
+					source: 'user-codeblock',
+					documentPath: '/test.md'
+				})
+			).rejects.toThrow('Client creation failed')
+
+			// THEN: activeExecutions should remain empty (no additions before error)
+			expect(tracker.activeExecutions.size).toBe(0)
+			expect(tracker.totalExecuted).toBe(0)
+		})
+	})
 })
