@@ -28,6 +28,8 @@ export enum ExecutionStatus {
 
 // Core Configuration Types (DEPRECATED - use config.ts instead)
 // Keeping for backward compatibility during migration
+export type ConfigDisplayMode = 'simple' | 'command'
+
 export interface MCPServerConfig {
 	// Identity
 	id: string
@@ -35,6 +37,9 @@ export interface MCPServerConfig {
 
 	// Configuration input (URL, Command, or JSON)
 	configInput: string
+
+	// Preferred display mode for settings UI (optional)
+	displayMode?: ConfigDisplayMode
 
 	// State
 	enabled: boolean

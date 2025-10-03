@@ -7,13 +7,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { HEALTH_CHECK_INTERVAL } from '../../src/mcp'
 
 describe('MCP Health Check Timer Orchestration', () => {
+	let consoleDebugSpy: ReturnType<typeof vi.spyOn> | undefined
+	let consoleDebugMessages: string[]
+
 	beforeEach(() => {
 		vi.clearAllMocks()
 		vi.useFakeTimers()
+		consoleDebugMessages = []
+		consoleDebugSpy = vi.spyOn(console, 'debug').mockImplementation((...args) => {
+			consoleDebugMessages.push(args.map((arg) => String(arg)).join(' '))
+		})
 	})
 
 	afterEach(() => {
 		vi.useRealTimers()
+		consoleDebugSpy?.mockRestore()
 	})
 
 	it('should schedule health check interval when MCP manager exists', async () => {
@@ -113,6 +121,7 @@ describe('MCP Health Check Timer Orchestration', () => {
 		// THEN: Error doesn't break the timer
 		expect(mockPerformHealthCheck).toHaveBeenCalledTimes(1)
 		expect(mockUpdateStatus).not.toHaveBeenCalled() // Not called due to error
+		expect(consoleDebugMessages.some((msg) => msg.includes('Health check failed'))).toBe(true)
 
 		// Second execution succeeds
 		await vi.advanceTimersByTimeAsync(HEALTH_CHECK_INTERVAL)

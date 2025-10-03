@@ -4,6 +4,14 @@ import { exportCmdId } from './commands/export'
 import { t } from './lang/helper'
 import type TarsPlugin from './main'
 import { MCP_CONFIG_EXAMPLES, parseConfigInput, validateConfigInput } from './mcp/config'
+import {
+	CommandDisplayMode,
+	commandToRemoteUrl,
+	isValidRemoteUrl,
+	normalizeDisplayMode,
+	remoteUrlToCommand
+} from './mcp/displayMode'
+import type { CommandDisplayModeValue } from './mcp/displayMode'
 import type { MCPServerConfig } from './mcp/types'
 import { SelectModelModal, SelectVendorModal } from './modal'
 import type { BaseOptions, Optional, ProviderSettings, Vendor } from './providers'
@@ -611,34 +619,56 @@ export class TarsSettingTab extends PluginSettingTab {
 				// Configuration Input (3 formats)
 				new Setting(serverSection)
 					.setName('Configuration')
-					.setDesc('Supports 3 formats: Command, Claude JSON, or URL (coming soon)')
+					.setDesc('Supports 3 formats: Command, Claude JSON, or URL')
 
-				// Create textarea in a separate container for full-width layout
-				const textareaContainer = serverSection.createDiv({ cls: 'mcp-textarea-container' })
+				const configContainer = serverSection.createDiv({ cls: 'mcp-config-container' })
+
+				const simpleContainer = configContainer.createDiv({ cls: 'mcp-config-simple' })
+				const simpleInputId = `mcp-config-simple-${server.id}`
+				const simpleLabel = simpleContainer.createEl('label', {
+					text: 'Remote URL',
+					cls: 'mcp-config-simple-label'
+				})
+				simpleLabel.setAttr('for', simpleInputId)
+				const simpleInput = simpleContainer.createEl('input', {
+					type: 'text',
+					cls: 'mcp-config-simple-input',
+					placeholder: 'https://mcp.example.com'
+				}) as HTMLInputElement
+				simpleInput.id = simpleInputId
+				simpleInput.style.width = '100%'
+				simpleInput.style.boxSizing = 'border-box'
+				simpleInput.style.marginBottom = '8px'
+
+				const textareaContainer = configContainer.createDiv({ cls: 'mcp-textarea-container' })
 				const textarea = textareaContainer.createEl('textarea', {
 					placeholder: MCP_CONFIG_EXAMPLES.command.examples.join('\n\n') + '\n\nOr:\n\n' + MCP_CONFIG_EXAMPLES.json.example,
 					cls: 'mcp-execution-textarea'
-				})
-				textarea.value = server.configInput || ''
+				}) as HTMLTextAreaElement
 				textarea.rows = 10
 				textarea.style.width = '100%'
 				textarea.style.fontFamily = 'monospace'
 				textarea.style.fontSize = '13px'
 
-				// Error container for validation messages
-				let errorContainer: HTMLElement | null = null
+				const previewContainer = configContainer.createDiv({ cls: 'mcp-conversion-preview' })
+				previewContainer.style.marginTop = '8px'
+				previewContainer.style.fontFamily = 'monospace'
+				previewContainer.style.fontSize = '12px'
+				previewContainer.style.whiteSpace = 'pre-wrap'
+				previewContainer.style.display = 'none'
 
+				const feedbackContainer = configContainer.createDiv({ cls: 'mcp-config-feedback' })
+
+				let errorContainer: HTMLElement | null = null
 				const showError = (errorMsg: string) => {
 					if (!errorContainer) {
-						errorContainer = textareaContainer.createDiv({ cls: 'mcp-error-container' })
+						errorContainer = feedbackContainer.createDiv({ cls: 'mcp-error-container' })
 					}
 					errorContainer.empty()
-
 					errorContainer.createEl('pre', {
 						text: errorMsg,
 						cls: 'mcp-error-message'
 					})
-
 					const copyBtn = errorContainer.createEl('button', { cls: 'mcp-error-copy-btn' })
 					setIcon(copyBtn, 'clipboard')
 					copyBtn.addEventListener('click', () => {
@@ -654,26 +684,25 @@ export class TarsSettingTab extends PluginSettingTab {
 					}
 				}
 
-				// Show detected format info (single line, reused)
 				let formatInfoContainer: HTMLElement | null = null
 				const showFormatInfo = (input: string) => {
 					const parsed = parseConfigInput(input)
-
-					// Create container only once
 					if (!formatInfoContainer) {
-						formatInfoContainer = textareaContainer.createDiv({ cls: 'mcp-format-info' })
+						formatInfoContainer = feedbackContainer.createDiv({ cls: 'mcp-format-info' })
 						formatInfoContainer.style.marginTop = '8px'
 						formatInfoContainer.style.fontSize = '12px'
 						formatInfoContainer.style.color = 'var(--text-muted)'
 					}
-
+					formatInfoContainer.empty()
 					if (!parsed) {
 						formatInfoContainer.setText('❌ Could not parse config')
-					} else if (parsed.error) {
-						formatInfoContainer.setText(`❌ ${parsed.error}`)
-					} else {
-						formatInfoContainer.setText(`✓ Detected: ${parsed.type.toUpperCase()} format | Server: ${parsed.serverName || 'N/A'}`)
+						return
 					}
+					if (parsed.error) {
+						formatInfoContainer.setText(`❌ ${parsed.error}`)
+						return
+					}
+					formatInfoContainer.setText(`✓ Detected: ${parsed.type.toUpperCase()} format | Server: ${parsed.serverName || 'N/A'}`)
 				}
 
 				const hideFormatInfo = () => {
@@ -683,29 +712,133 @@ export class TarsSettingTab extends PluginSettingTab {
 					}
 				}
 
+				const updatePreviewFromUrl = (value: string) => {
+					const trimmed = value.trim()
+					previewContainer.empty()
+					if (!trimmed) {
+						previewContainer.setText('Enter a URL to preview the generated command.')
+						return
+					}
+					if (!isValidRemoteUrl(trimmed)) {
+						previewContainer.setText('Waiting for a valid http(s) URL to generate the command preview.')
+						return
+					}
+					previewContainer.createEl('pre', {
+						text: remoteUrlToCommand(trimmed),
+						cls: 'mcp-command-preview'
+					})
+				}
+
+				const setSimpleViewFromCommand = () => {
+					const derivedUrl = commandToRemoteUrl(server.configInput || '')
+					simpleInput.value = derivedUrl || ''
+				}
+
+				const setDisplayModeVisibility = (mode: CommandDisplayModeValue) => {
+					if (mode === CommandDisplayMode.Simple) {
+						simpleContainer.style.display = ''
+						textareaContainer.style.display = 'none'
+						previewContainer.style.display = ''
+						updatePreviewFromUrl(simpleInput.value)
+					} else {
+						simpleContainer.style.display = 'none'
+						textareaContainer.style.display = ''
+						previewContainer.style.display = 'none'
+					}
+				}
+
+				textarea.value = server.configInput || ''
+				setSimpleViewFromCommand()
+				let currentMode = normalizeDisplayMode(server.displayMode)
+				server.displayMode = currentMode
+				setDisplayModeVisibility(currentMode)
+
+				simpleInput.addEventListener('input', async (event) => {
+					const target = event.target as HTMLInputElement
+					const value = target.value
+					updatePreviewFromUrl(value)
+					const trimmed = value.trim()
+					if (!trimmed) {
+						hideError()
+						hideFormatInfo()
+						server.configInput = ''
+						textarea.value = ''
+						await this.plugin.saveSettings()
+						return
+					}
+					if (!isValidRemoteUrl(trimmed)) {
+						showError('URL must start with http:// or https://')
+						hideFormatInfo()
+						return
+					}
+
+					hideError()
+					const commandValue = remoteUrlToCommand(trimmed)
+					server.configInput = commandValue
+					textarea.value = commandValue
+					await this.plugin.saveSettings()
+
+					const validationError = validateConfigInput(commandValue)
+					if (validationError) {
+						showError(validationError)
+						hideFormatInfo()
+						return
+					}
+
+					hideError()
+					showFormatInfo(commandValue)
+				})
+
 				textarea.addEventListener('input', async (e) => {
 					const target = e.target as HTMLTextAreaElement
 					server.configInput = target.value
 					await this.plugin.saveSettings()
 
-					// Validate and show/hide error
 					const validationError = validateConfigInput(target.value)
 					if (validationError) {
 						showError(validationError)
+						hideFormatInfo()
 					} else {
 						hideError()
 						if (target.value.trim()) {
 							showFormatInfo(target.value)
+						} else {
+							hideFormatInfo()
 						}
+					}
+
+					setSimpleViewFromCommand()
+					if (normalizeDisplayMode(server.displayMode) === CommandDisplayMode.Simple) {
+						updatePreviewFromUrl(simpleInput.value)
 					}
 				})
 
-				// Initial validation
+				const displayModeSetting = new Setting(serverSection)
+					.setName('Show as command')
+					.setDesc('Toggle between simple URL and command views')
+					.addToggle((toggle) => {
+						toggle.setValue(currentMode === CommandDisplayMode.Command)
+						toggle.onChange(async (value) => {
+							currentMode = value ? CommandDisplayMode.Command : CommandDisplayMode.Simple
+							server.displayMode = currentMode
+							await this.plugin.saveSettings()
+							if (currentMode === CommandDisplayMode.Simple) {
+								setSimpleViewFromCommand()
+							}
+							setDisplayModeVisibility(currentMode)
+						})
+					})
+
+				serverSection.insertBefore(displayModeSetting.settingEl, configContainer)
+
 				const initialError = validateConfigInput(server.configInput || '')
 				if (initialError) {
 					showError(initialError)
 				} else if (server.configInput) {
 					showFormatInfo(server.configInput)
+					if (currentMode === CommandDisplayMode.Simple) {
+						updatePreviewFromUrl(simpleInput.value)
+					}
 				}
 			}
 		} else {
@@ -722,6 +855,7 @@ export class TarsSettingTab extends PluginSettingTab {
 						id: `mcp-exa-${Date.now()}`,
 						name: this.generateUniqueName('exa-search'),
 						configInput: 'npx -y @exa/mcp-server-exa',
+						displayMode: 'command',
 						enabled: false,
 						failureCount: 0,
 						autoDisabled: false
@@ -738,6 +872,7 @@ export class TarsSettingTab extends PluginSettingTab {
 						id: `mcp-filesystem-${Date.now()}`,
 						name: this.generateUniqueName('filesystem'),
 						configInput: 'npx -y @modelcontextprotocol/server-filesystem /path/to/files',
+						displayMode: 'command',
 						enabled: false,
 						failureCount: 0,
 						autoDisabled: false
@@ -752,11 +887,12 @@ export class TarsSettingTab extends PluginSettingTab {
 		// Add new server button
 		new Setting(mcpSection).addButton((btn) =>
 			btn.setButtonText('Add Custom MCP Server').onClick(async () => {
-				const newServer: MCPServerConfig = {
-					id: `mcp-server-${Date.now()}`,
-					name: this.generateUniqueName('my-server'),
-					configInput: '',
-					enabled: false,
+			const newServer: MCPServerConfig = {
+				id: `mcp-server-${Date.now()}`,
+				name: this.generateUniqueName('my-server'),
+				configInput: '',
+				displayMode: 'command',
+				enabled: false,
 					failureCount: 0,
 					autoDisabled: false
 				}

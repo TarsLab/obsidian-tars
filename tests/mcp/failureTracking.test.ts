@@ -7,15 +7,71 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MCPServerManager } from '../../src/mcp/managerMCPUse'
 import type { MCPServerConfig } from '../../src/mcp/types'
 
+const FAILURE_MARKERS = ['server-invalid', 'server-nonexistent']
+
+vi.mock('mcp-use', () => {
+	class MockMCPClient {
+		private readonly serverConfigs: Record<string, { command: string; args: string[]; env?: Record<string, string> }>
+
+		static fromDict(config: { mcpServers: Record<string, { command: string; args: string[]; env?: Record<string, string> }> }) {
+			return new MockMCPClient(config.mcpServers ?? {})
+		}
+
+		constructor(serverConfigs: Record<string, { command: string; args: string[]; env?: Record<string, string> }>) {
+			this.serverConfigs = serverConfigs
+		}
+
+		async createSession(serverId: string): Promise<{ isConnected: boolean }> {
+			const config = this.serverConfigs[serverId]
+			if (!config) {
+				throw new Error(`Unknown server ${serverId}`)
+			}
+			const signature = [config.command, ...(config.args ?? [])].join(' ')
+			if (FAILURE_MARKERS.some((marker) => signature.includes(marker))) {
+				throw new Error(`Simulated failure launching ${signature}`)
+			}
+			return { isConnected: true }
+		}
+
+		async closeSession(): Promise<void> {
+			// no-op for tests
+		}
+
+		async closeAllSessions(): Promise<void> {
+			// no-op for tests
+		}
+	}
+
+	return {
+		MCPClient: MockMCPClient
+	}
+})
+
 describe('MCP Server Failure Tracking', () => {
 	let manager: MCPServerManager
+	let consoleErrorSpy: ReturnType<typeof vi.spyOn> | undefined
+	let consoleWarnSpy: ReturnType<typeof vi.spyOn> | undefined
+	let consoleErrorMessages: string[]
+
+	const expectErrorLoggedFor = (serverId: string) => {
+		expect(
+			consoleErrorMessages.some((msg) => msg.includes(`Failed to create session for ${serverId}`))
+		).toBe(true)
+	}
 
 	beforeEach(() => {
 		manager = new MCPServerManager()
+		consoleErrorMessages = []
+		consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation((...args) => {
+			consoleErrorMessages.push(args.map((arg) => String(arg)).join(' '))
+		})
+		consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
 	})
 
 	afterEach(async () => {
 		await manager.shutdown()
+		consoleErrorSpy?.mockRestore()
+		consoleWarnSpy?.mockRestore()
 	})
 
 	describe('Failure Counter', () => {
@@ -43,6 +99,7 @@ describe('MCP Server Failure Tracking', () => {
 			const servers = manager.listServers()
 			const server = servers.find((s) => s.id === 'test-server')
 			expect(server?.failureCount).toBeGreaterThan(0)
+			expectErrorLoggedFor('test-server')
 		})
 
 		it('should reset failureCount on successful server start', async () => {
@@ -94,6 +151,7 @@ describe('MCP Server Failure Tracking', () => {
 			const servers = manager.listServers()
 			const server = servers.find((s) => s.id === 'failing-server')
 			expect(server?.failureCount).toBeGreaterThanOrEqual(failureCount)
+			expectErrorLoggedFor('failing-server')
 		})
 
 		it('should maintain failureCount across manager instances', async () => {
@@ -151,6 +209,7 @@ describe('MCP Server Failure Tracking', () => {
 			expect(failedEvents.length).toBeGreaterThan(0)
 			expect(failedEvents[0].serverId).toBe('event-test-server')
 			expect(failedEvents[0].error).toBeInstanceOf(Error)
+			expectErrorLoggedFor('event-test-server')
 		})
 	})
 
@@ -179,6 +238,7 @@ describe('MCP Server Failure Tracking', () => {
 			const healthStatus = manager.getHealthStatus('health-test-server')
 			expect(healthStatus).toBeDefined()
 			expect(healthStatus?.connectionState).toBe('error')
+			expectErrorLoggedFor('health-test-server')
 		})
 	})
 
@@ -216,6 +276,7 @@ describe('MCP Server Failure Tracking', () => {
 			expect(server?.enabled).toBe(false)
 			expect(server?.autoDisabled).toBe(true)
 			expect(autoDisabledEvents).toContain('threshold-test-server')
+			expectErrorLoggedFor('threshold-test-server')
 		})
 
 		it('should not auto-disable server below threshold', async () => {
@@ -246,6 +307,7 @@ describe('MCP Server Failure Tracking', () => {
 			expect(server?.enabled).toBe(true)
 			expect(server?.autoDisabled).toBe(false)
 			expect(server?.failureCount).toBe(3)
+			expectErrorLoggedFor('below-threshold-server')
 		})
 
 		it('should emit server-auto-disabled event only once', async () => {
@@ -277,6 +339,7 @@ describe('MCP Server Failure Tracking', () => {
 
 			// THEN: Event should be emitted only once
 			expect(autoDisabledEvents.filter((id) => id === 'once-disable-server')).toHaveLength(1)
+			expectErrorLoggedFor('once-disable-server')
 		})
 
 		it('should allow re-enabling auto-disabled server', async () => {
@@ -315,6 +378,7 @@ describe('MCP Server Failure Tracking', () => {
 			server = servers.find((s) => s.id === 'reenable-test-server')
 			expect(server?.enabled).toBe(true)
 			expect(server?.autoDisabled).toBe(false)
+			expectErrorLoggedFor('reenable-test-server')
 		})
 	})
 })

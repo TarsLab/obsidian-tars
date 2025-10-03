@@ -8,29 +8,9 @@
  * - This enables SSE (Server-Sent Events) transport support
  */
 
-/**
- * MCP Server configuration (simplified)
- * Maps directly to mcp-use library format
- */
-export interface MCPServerConfig {
-	// Identity
-	id: string
-	name: string
+import type { MCPServerConfig } from './types'
 
-	// Input (one of three formats)
-	// 1. URL: "http://localhost:3000" or "https://mcp.example.com"
-	// 2. Command: "npx @playwright/mcp@latest" or "uvx mcp-server-git"
-	// 3. JSON: Claude-compatible config (see below)
-	configInput: string
-
-	// State
-	enabled: boolean
-
-	// Health tracking (internal)
-	lastConnectedAt?: number
-	failureCount: number
-	autoDisabled: boolean
-}
+export type { MCPServerConfig }
 
 /**
  * Claude Desktop MCP Config format
@@ -225,10 +205,6 @@ export function validateConfigInput(input: string): string | null {
 		return parsed.error
 	}
 
-	if (parsed.type === 'url') {
-		return 'SSE transport (URLs) not yet supported. Use command or JSON format.'
-	}
-
 	if (!parsed.mcpUseConfig) {
 		return 'Could not parse config input'
 	}
@@ -269,8 +245,8 @@ export const MCP_CONFIG_EXAMPLES = {
 }`
 	},
 	url: {
-		title: 'URL Format (SSE - Coming Soon)',
+		title: 'URL Format (SSE via mcp-remote)',
 		examples: ['http://localhost:3000', 'https://mcp.example.com'],
-		note: 'SSE transport not yet supported by mcp-use library'
+		note: 'URLs are bridged through npx -y mcp-remote for SSE transport'
 	}
 }

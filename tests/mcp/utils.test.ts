@@ -61,7 +61,8 @@ describe('parseConfigInput', () => {
 
 		expect(result.type).toBe('url')
 		expect(result.url).toBe('http://localhost:3000/sse')
-		expect(result.error).toBeDefined() // SSE not supported yet
+		expect(result.error).toBeUndefined()
+		expect(result.mcpUseConfig).toBeDefined()
 	})
 
 	it('should parse npx command', () => {

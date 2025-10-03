@@ -112,11 +112,24 @@ describe('canUseMCPUse', () => {
 		expect(canUseMCPUse(config)).toBe(true)
 	})
 
-	it('should return false for unsupported configs', () => {
+	it('should return true for remote URL configs via mcp-remote bridge', () => {
 		const config: MCPServerConfig = {
 			id: 'test-server',
 			name: 'Test Server',
-			configInput: 'http://localhost:3000/sse', // SSE not supported
+			configInput: 'http://localhost:3000/sse',
+			enabled: true,
+			failureCount: 0,
+			autoDisabled: false
+		}
+
+		expect(canUseMCPUse(config)).toBe(true)
+	})
+
+	it('should return false for invalid configs', () => {
+		const config: MCPServerConfig = {
+			id: 'invalid-config',
+			name: 'Invalid Config',
+			configInput: '',
 			enabled: true,
 			failureCount: 0,
 			autoDisabled: false
@@ -157,9 +170,9 @@ describe('partitionConfigs', () => {
 
 		const result = partitionConfigs(configs)
 
-		expect(result.mcpUseConfigs).toHaveLength(1)
-		expect(result.mcpUseConfigs[0].id).toBe('mcp-use-server')
-		expect(result.customConfigs).toHaveLength(1)
-		expect(result.customConfigs[0].id).toBe('custom-server')
+		expect(result.mcpUseConfigs).toHaveLength(2)
+		expect(result.mcpUseConfigs.find((cfg) => cfg.id === 'mcp-use-server')).toBeDefined()
+		expect(result.mcpUseConfigs.find((cfg) => cfg.id === 'custom-server')).toBeDefined()
+		expect(result.customConfigs).toHaveLength(0)
 	})
 })
