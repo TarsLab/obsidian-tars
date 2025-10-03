@@ -1,6 +1,11 @@
 /**
  * Simplified MCP Configuration
  * Supports 3 input methods: URL, Command, or Claude-compatible JSON
+ *
+ * URL Support:
+ * - URLs (http:// or https://) are automatically converted to use mcp-remote bridge
+ * - Example: "https://mcp.example.com" → npx -y mcp-remote https://mcp.example.com
+ * - This enables SSE (Server-Sent Events) transport support
  */
 
 /**
@@ -65,14 +70,17 @@ export function parseConfigInput(input: string): {
 		return null
 	}
 
-	// 1. URL format
+	// 1. URL format - use mcp-remote as bridge to SSE
 	if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
 		return {
 			type: 'url',
 			serverName: new URL(trimmed).hostname.replace(/\./g, '-'),
-			mcpUseConfig: null, // SSE not supported by mcp-use yet
-			url: trimmed,
-			error: 'SSE transport (URLs) not yet supported by mcp-use library'
+			mcpUseConfig: {
+				command: 'npx',
+				args: ['-y', 'mcp-remote', trimmed],
+				env: {}
+			},
+			url: trimmed
 		}
 	}
 
