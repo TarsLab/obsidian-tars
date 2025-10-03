@@ -73,10 +73,18 @@ export class MCPServerManager extends EventEmitter<MCPServerManagerEvents> {
 					try {
 						const session = await this.mcpClient.createSession(config.id, true)
 						this.sessions.set(config.id, session)
+
+						// Reset failure count on successful start
+						config.failureCount = 0
+
 						this.emit('server-started', config.id)
 						this.updateHealthStatus(config.id, 'healthy')
 					} catch (error) {
 						logError(`Failed to create session for ${config.id}`, error)
+
+						// Increment failure count on startup failure
+						config.failureCount++
+
 						this.emit('server-failed', config.id, error as Error)
 						this.updateHealthStatus(config.id, 'unhealthy')
 					}
@@ -109,9 +117,16 @@ export class MCPServerManager extends EventEmitter<MCPServerManagerEvents> {
 			// Create session for this server
 			const session = await this.mcpClient.createSession(serverId, true)
 			this.sessions.set(serverId, session)
+
+			// Reset failure count on successful start
+			config.failureCount = 0
+
 			this.emit('server-started', serverId)
 			this.updateHealthStatus(serverId, 'healthy')
 		} catch (error) {
+			// Increment failure count on startup failure
+			config.failureCount++
+
 			this.emit('server-failed', serverId, error as Error)
 			this.updateHealthStatus(serverId, 'unhealthy')
 			throw error
