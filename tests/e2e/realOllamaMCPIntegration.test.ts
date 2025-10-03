@@ -65,16 +65,15 @@ const SKIP_REAL_E2E = process.env.SKIP_REAL_E2E === 'true'
 const OLLAMA_URL = detectOllamaUrl()
 const MODEL = process.env.OLLAMA_MODEL || 'llama3.2:3b'
 
-describe.skipIf(SKIP_REAL_E2E)('Real E2E: Ollama + MCP Memory Server', () => {
+describe.skipIf(SKIP_REAL_E2E)('Real E2E: Ollama + MCP Memory Server', async () => {
 	let manager: MCPServerManager
 	let executor: ToolExecutor
 	let ollama: Ollama
-	let ollamaAvailable = false
+
+	// Check Ollama availability
+	const ollamaAvailable = await isOllamaAvailable(OLLAMA_URL)
 
 	beforeAll(async () => {
-		// Check Ollama availability
-		ollamaAvailable = await isOllamaAvailable(OLLAMA_URL)
-
 		if (!ollamaAvailable) {
 			console.warn(`⚠️  Ollama not available at ${OLLAMA_URL} - skipping E2E tests`)
 			return
@@ -120,208 +119,214 @@ describe.skipIf(SKIP_REAL_E2E)('Real E2E: Ollama + MCP Memory Server', () => {
 		}
 	})
 
-	it('should connect to Ollama and list models', async () => {
-		if (!ollamaAvailable) return
-
-		const response = await ollama.list()
-		expect(response.models).toBeDefined()
-		expect(Array.isArray(response.models)).toBe(true)
-	})
-
-	it('should discover MCP tools from memory server', async () => {
-		if (!ollamaAvailable) return
-
-		// Build tool context
-		const toolContext = await buildAIToolContext(manager, executor)
-
-		// Memory server should provide tools like: store_memory, retrieve_memory, etc.
-		expect(toolContext.tools.length).toBeGreaterThan(0)
-
-		// mcp/memory is a Knowledge Graph server with these tools:
-		// create_entities, create_relations, add_observations, etc.
-		const toolNames = toolContext.tools.map((t) => t.toolName)
-		const hasKnowledgeGraphTools = toolNames.some(
-			(name) => name.includes('entities') || name.includes('relations') || name.includes('observations')
-		)
-		expect(hasKnowledgeGraphTools).toBe(true)
-	})
-
-	it('should convert MCP tools to Ollama format', async () => {
-		if (!ollamaAvailable) return
-
-		const toolContext = await buildAIToolContext(manager, executor)
-
-		// Convert to Ollama tool format
-		const ollamaTools = toolContext.tools.map((tool) => ({
-			type: 'function' as const,
-			function: {
-				name: tool.toolName,
-				description: tool.description,
-				parameters: tool.inputSchema
-			}
-		}))
-
-		expect(ollamaTools.length).toBeGreaterThan(0)
-
-		ollamaTools.forEach((tool) => {
-			expect(tool.type).toBe('function')
-			expect(tool.function.name).toBeDefined()
-			expect(tool.function.description).toBeDefined()
-			expect(tool.function.parameters).toBeDefined()
+	describe.skipIf(!ollamaAvailable)('Ollama + MCP Integration Tests', () => {
+		it('should connect to Ollama and list models', async () => {
+			const response = await ollama.list()
+			expect(response.models).toBeDefined()
+			expect(Array.isArray(response.models)).toBe(true)
 		})
 
-		expect(ollamaTools.length).toBeGreaterThan(0)
-	})
+		it('should discover MCP tools from memory server', async () => {
+			// Build tool context
+			const toolContext = await buildAIToolContext(manager, executor)
 
-	it('should let Ollama call MCP knowledge graph tool', async () => {
-		if (!ollamaAvailable) return
+			// Memory server should provide tools like: store_memory, retrieve_memory, etc.
+			expect(toolContext.tools.length).toBeGreaterThan(0)
 
-		const toolContext = await buildAIToolContext(manager, executor)
+			// mcp/memory is a Knowledge Graph server with these tools:
+			// create_entities, create_relations, add_observations, etc.
+			const toolNames = toolContext.tools.map((t) => t.toolName)
+			const hasKnowledgeGraphTools = toolNames.some(
+				(name) => name.includes('entities') || name.includes('relations') || name.includes('observations')
+			)
+			expect(hasKnowledgeGraphTools).toBe(true)
+		})
 
-		// Convert to Ollama format
-		const ollamaTools = toolContext.tools.map((tool) => ({
-			type: 'function' as const,
-			function: {
-				name: tool.toolName,
-				description: tool.description,
-				parameters: tool.inputSchema
-			}
-		}))
+		it('should convert MCP tools to Ollama format', async () => {
+			const toolContext = await buildAIToolContext(manager, executor)
 
-		// Ask Ollama to read the knowledge graph
-		const response = await ollama.chat({
-			model: MODEL,
-			messages: [
-				{
-					role: 'user',
-					content: 'Read the current knowledge graph to see what data is stored.'
+			// Convert to Ollama tool format
+			const ollamaTools = toolContext.tools.map((tool) => ({
+				type: 'function' as const,
+				function: {
+					name: tool.toolName,
+					description: tool.description,
+					parameters: tool.inputSchema
 				}
-			],
-			tools: ollamaTools,
-			stream: false
+			}))
+
+			expect(ollamaTools.length).toBeGreaterThan(0)
+
+			ollamaTools.forEach((tool) => {
+				expect(tool.type).toBe('function')
+				expect(tool.function.name).toBeDefined()
+				expect(tool.function.description).toBeDefined()
+				expect(tool.function.parameters).toBeDefined()
+			})
+
+			expect(ollamaTools.length).toBeGreaterThan(0)
 		})
 
-		// Check if Ollama called a tool
-		if (response.message.tool_calls && response.message.tool_calls.length > 0) {
-			const toolCall = response.message.tool_calls[0]
+		it('should let Ollama call MCP knowledge graph tool', async () => {
+			const toolContext = await buildAIToolContext(manager, executor)
 
-			// Find the tool in our context
-			const tool = toolContext.tools.find((t) => t.toolName === toolCall.function.name)
-			expect(tool).toBeDefined()
+			// Convert to Ollama format
+			const ollamaTools = toolContext.tools.map((tool) => ({
+				type: 'function' as const,
+				function: {
+					name: tool.toolName,
+					description: tool.description,
+					parameters: tool.inputSchema
+				}
+			}))
 
-			// Execute the tool via our executor (catch errors for incomplete params)
-			try {
-				const result = await executor.executeTool({
-					serverId: tool?.serverId,
-					toolName: toolCall.function.name,
-					parameters: toolCall.function.arguments,
-					source: 'ai-autonomous',
-					documentPath: 'e2e-test.md'
-				})
+			// Ask Ollama to read the knowledge graph
+			const response = await ollama.chat({
+				model: MODEL,
+				messages: [
+					{
+						role: 'user',
+						content: 'Read the current knowledge graph to see what data is stored.'
+					}
+				],
+				tools: ollamaTools,
+				stream: false
+			})
 
-				expect(result.content).toBeDefined()
-			} catch (_error) {
-				// This is OK - the LLM might not provide all required parameters
-			}
-		}
-	}, 60000)
+			// Check if Ollama called a tool
+			if (response.message.tool_calls && response.message.tool_calls.length > 0) {
+				const toolCall = response.message.tool_calls[0]
 
-	it('should complete full conversation loop with tool usage', async () => {
-		if (!ollamaAvailable) return
-
-		const toolContext = await buildAIToolContext(manager, executor)
-		const ollamaTools = toolContext.tools.map((tool) => ({
-			type: 'function' as const,
-			function: {
-				name: tool.toolName,
-				description: tool.description,
-				parameters: tool.inputSchema
-			}
-		}))
-
-		// biome-ignore lint/suspicious/noExplicitAny: conversation history can contain various types
-		const conversation: Array<any> = []
-
-		// Step 1: User asks to store something
-		conversation.push({
-			role: 'user',
-			content: 'Please store the key "user_name" with value "Alice" in memory.'
-		})
-
-		const storeResponse = await ollama.chat({
-			model: MODEL,
-			messages: conversation,
-			tools: ollamaTools,
-			stream: false
-		})
-
-		conversation.push({
-			role: 'assistant',
-			content: storeResponse.message.content || '',
-			tool_calls: storeResponse.message.tool_calls
-		})
-
-		// If tool was called, execute it
-		if (storeResponse.message.tool_calls && storeResponse.message.tool_calls.length > 0) {
-			for (const toolCall of storeResponse.message.tool_calls) {
+				// Find the tool in our context
 				const tool = toolContext.tools.find((t) => t.toolName === toolCall.function.name)
+				expect(tool).toBeDefined()
 
-				if (tool) {
+				// Execute the tool via our executor (catch errors for incomplete params)
+				try {
 					const result = await executor.executeTool({
-						serverId: tool.serverId,
+						serverId: tool?.serverId,
 						toolName: toolCall.function.name,
 						parameters: toolCall.function.arguments,
 						source: 'ai-autonomous',
 						documentPath: 'e2e-test.md'
 					})
 
-					// Add tool result to conversation
-					conversation.push({
-						role: 'tool',
-						content: JSON.stringify(result.content),
-						tool_name: toolCall.function.name
-					})
+					expect(result.content).toBeDefined()
+				} catch (_error) {
+					// This is OK - the LLM might not provide all required parameters
 				}
 			}
+		}, 60000)
 
-			// Step 2: Get final response from LLM
-			const finalResponse = await ollama.chat({
+		it('should complete full conversation loop with tool usage', async () => {
+			const toolContext = await buildAIToolContext(manager, executor)
+			const ollamaTools = toolContext.tools.map((tool) => ({
+				type: 'function' as const,
+				function: {
+					name: tool.toolName,
+					description: tool.description,
+					parameters: tool.inputSchema
+				}
+			}))
+
+			// biome-ignore lint/suspicious/noExplicitAny: conversation history can contain various types
+			const conversation: Array<any> = []
+
+			// Step 1: User asks to store something
+			conversation.push({
+				role: 'user',
+				content: [
+					'You have access to an MCP memory server.',
+					'Call the tool named "create_entities" exactly once.',
+					'Pass the following JSON object as arguments (do not wrap it in quotes):',
+					'{"entities":[{"name":"user_name","entityType":"key-value","observations":["Alice"]}]}',
+					'Do not call any other tools. After the tool succeeds, acknowledge that "user_name" now maps to Alice.'
+				].join(' ')
+			})
+
+			const storeResponse = await ollama.chat({
 				model: MODEL,
 				messages: conversation,
 				tools: ollamaTools,
 				stream: false
 			})
 
-			expect(finalResponse.message.content).toBeDefined()
-			expect(finalResponse.message.content.length).toBeGreaterThan(0)
-		}
-	}, 90000)
-
-	it('should handle errors gracefully', async () => {
-		if (!ollamaAvailable) return
-
-		const toolContext = await buildAIToolContext(manager, executor)
-
-		// Try to execute a tool with invalid parameters
-		const invalidTool = toolContext.tools[0]
-
-		await expect(
-			executor.executeTool({
-				serverId: invalidTool.serverId,
-				toolName: 'non_existent_tool',
-				parameters: {},
-				source: 'user-codeblock',
-				documentPath: 'test.md'
+			conversation.push({
+				role: 'assistant',
+				content: storeResponse.message.content || '',
+				tool_calls: storeResponse.message.tool_calls
 			})
-		).rejects.toThrow()
-	})
 
-	it('should maintain execution statistics', async () => {
-		if (!ollamaAvailable) return
+			// If tool was called, execute it
+			if (storeResponse.message.tool_calls && storeResponse.message.tool_calls.length > 0) {
+				for (const toolCall of storeResponse.message.tool_calls) {
+					const tool = toolContext.tools.find((t) => t.toolName === toolCall.function.name)
 
-		const stats = executor.getStats()
-		expect(stats.totalExecuted).toBeGreaterThanOrEqual(0)
-		expect(stats.activeExecutions).toBe(0)
-		expect(stats.sessionLimit).toBeDefined()
+					if (tool) {
+						const normalizedArgs = { ...toolCall.function.arguments }
+						if (typeof normalizedArgs.entities === 'string') {
+							try {
+								const parsedEntities = JSON.parse(normalizedArgs.entities)
+								normalizedArgs.entities = Array.isArray(parsedEntities)
+									? parsedEntities
+									: parsedEntities?.entities ?? parsedEntities
+							} catch (parseError) {
+								console.warn('Failed to parse entities string from tool call:', parseError)
+							}
+						}
+
+						const result = await executor.executeTool({
+							serverId: tool.serverId,
+							toolName: toolCall.function.name,
+							parameters: normalizedArgs,
+							source: 'ai-autonomous',
+							documentPath: 'e2e-test.md'
+						})
+
+						// Add tool result to conversation
+						conversation.push({
+							role: 'tool',
+							content: JSON.stringify(result.content),
+							tool_name: toolCall.function.name
+						})
+					}
+				}
+
+				// Step 2: Get final response from LLM
+				const finalResponse = await ollama.chat({
+					model: MODEL,
+					messages: conversation,
+					tools: ollamaTools,
+					stream: false
+				})
+
+				expect(finalResponse.message.content).toBeDefined()
+				expect(finalResponse.message.content.length).toBeGreaterThan(0)
+			}
+		}, 90000)
+
+		it('should handle errors gracefully', async () => {
+			const toolContext = await buildAIToolContext(manager, executor)
+
+			// Try to execute a tool with invalid parameters
+			const invalidTool = toolContext.tools[0]
+
+			await expect(
+				executor.executeTool({
+					serverId: invalidTool.serverId,
+					toolName: 'non_existent_tool',
+					parameters: {},
+					source: 'user-codeblock',
+					documentPath: 'test.md'
+				})
+			).rejects.toThrow()
+		})
+
+		it('should maintain execution statistics', async () => {
+			const stats = executor.getStats()
+			expect(stats.totalExecuted).toBeGreaterThanOrEqual(0)
+			expect(stats.activeExecutions).toBe(0)
+			expect(stats.sessionLimit).toBeDefined()
+		})
 	})
 })

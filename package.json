@@ -11,9 +11,8 @@
 		"format": "biome format --write .",
 		"check": "biome check --write .",
 		"test": "vitest",
-		"test:e2e": "vitest run tests/e2e",
-		"test:integration": "vitest run tests/integration",
-		"test:unit": "vitest run tests/mcp tests/providers"
+		"test:coverage": "vitest run --coverage",
+		"test:watch": "vitest --ui --coverage --watch"
 	},
 	"keywords": [],
 	"author": "C Jack<https://github.com/ae86jack>",
@@ -24,6 +23,8 @@
 		"@google/generative-ai": "^0.24.1",
 		"@types/node": "^24.6.1",
 		"@types/ws": "^8.18.1",
+		"@vitest/coverage-v8": "^3.2.4",
+		"@vitest/ui": "^3.2.4",
 		"axios": "^1.8.3",
 		"builtin-modules": "3.3.0",
 		"esbuild": "^0.25.10",

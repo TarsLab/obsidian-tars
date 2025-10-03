@@ -125,7 +125,11 @@ describe('Integration - OpenAI SDK Compatibility', () => {
 		expect(mcp.OpenAIProviderAdapter).toBeDefined()
 
 		// Verify adapter can be instantiated with minimal params
-		const mockMcpManager = { listServers: vi.fn().mockReturnValue([]) }
+		const mockMcpManager = {
+			listServers: vi.fn().mockReturnValue([]),
+			getClient: vi.fn(),
+			on: vi.fn()
+		}
 		const mockMcpExecutor = { executeTool: vi.fn(), canExecute: vi.fn() }
 		const mockClient = {
 			chat: {

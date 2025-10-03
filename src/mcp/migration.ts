@@ -5,6 +5,40 @@
 
 import type { MCPServerConfig } from './types'
 
+function buildDockerRunCommand(config: {
+	image?: string
+	containerName?: string
+	command?: string[]
+	env?: Record<string, string>
+}): string | null {
+	const { image, containerName, command = [], env = {} } = config
+	if (!image) {
+		return null
+	}
+
+	const args: string[] = ['docker', 'run', '-i', '--rm']
+
+	if (containerName) {
+		args.push('--name', containerName)
+	}
+
+	for (const [key, value] of Object.entries(env)) {
+		if (value === undefined) {
+			continue
+		}
+		const needsQuoting = /\s/.test(value)
+		const formattedValue = needsQuoting
+			? `"${value.replace(/"/g, '\\"')}"`
+			: value
+		args.push('-e', `${key}=${formattedValue}`)
+	}
+
+	args.push(image)
+	args.push(...command)
+
+	return args.join(' ')
+}
+
 /**
  * Legacy config interface (supports all old formats)
  */
@@ -57,23 +91,18 @@ export function migrateServerConfig(config: LegacyMCPServerConfig): MCPServerCon
 
 	// Migrate from dockerConfig (old format 2)
 	if (config.dockerConfig) {
-		const { image, containerName, command = [], env = {} } = config.dockerConfig as {
+		const dockerCommand = buildDockerRunCommand(config.dockerConfig as {
 			image?: string
 			containerName?: string
 			command?: string[]
 			env?: Record<string, string>
-		}
+		})
 
-		if (image) {
-			// Simple command format
-			const cmd = image.startsWith('npx') || image.startsWith('uvx')
-				? `${image} ${command.join(' ')}`.trim()
-				: image
-
+		if (dockerCommand) {
 			return {
 				id: config.id,
 				name: config.name,
-				configInput: cmd,
+				configInput: dockerCommand,
 				enabled: config.enabled,
 				failureCount: config.failureCount || 0,
 				autoDisabled: config.autoDisabled || false,

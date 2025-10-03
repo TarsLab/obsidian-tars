@@ -29,3 +29,6 @@ archive/
 
 # exclude MCP file from commit, it can contain secrets
 mcp.json
+
+# code coverage
+coverage/

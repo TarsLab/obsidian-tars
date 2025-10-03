@@ -1,6 +1,10 @@
 # Mise configuration - Task orchestrator for Obsidian Tars plugin
 # See: https://mise.jdx.dev/tasks/
 
+[env]
+OLLAMA_URL = "http://localhost:11434"
+OLLAMA_MODEL = "llama3.2:latest"
+
 # ============================================================================
 # Quick Commands (Most Common)
 # ============================================================================

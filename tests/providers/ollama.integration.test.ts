@@ -66,7 +66,8 @@ describe('Ollama Provider Integration - Tool Calling', () => {
 		// Mock dependencies
 		const mockMcpManager = {
 			listServers: vi.fn().mockReturnValue([]),
-			getClient: vi.fn()
+			getClient: vi.fn(),
+			on: vi.fn()
 		}
 		const mockMcpExecutor = {
 			executeTool: vi.fn(),

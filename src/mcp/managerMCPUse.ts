@@ -10,6 +10,7 @@
 import { EventEmitter } from 'node:events'
 import { MCPClient, type MCPSession } from 'mcp-use'
 import { ServerNotAvailableError } from './errors'
+import { migrateServerConfigs } from './migration'
 import { partitionConfigs, toMCPUseConfig } from './mcpUseAdapter'
 import type { MCPServerConfig, ServerHealthStatus, ToolDefinition } from './types'
 import { ConnectionState } from './types'
@@ -35,14 +36,19 @@ export class MCPServerManager extends EventEmitter<MCPServerManagerEvents> {
 	 * Initialize manager with server configurations
 	 */
 	async initialize(configs: MCPServerConfig[]): Promise<void> {
+		const normalizedConfigs = migrateServerConfigs(
+			configs as unknown as Parameters<typeof migrateServerConfigs>[0]
+		)
+
 		// Store server configurations
 		this.servers.clear()
-		for (const config of configs) {
+		for (const config of normalizedConfigs) {
 			this.servers.set(config.id, config)
 		}
+		this.sessions.clear()
 
 		// Partition configs: mcp-use supported vs custom handling needed
-		const { mcpUseConfigs, customConfigs } = partitionConfigs(configs)
+		const { mcpUseConfigs, customConfigs } = partitionConfigs(normalizedConfigs)
 
 		// Warn about unsupported configs (skip in test environment)
 		if (process.env.NODE_ENV !== 'test' && process.env.VITEST !== 'true') {
