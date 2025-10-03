@@ -41,5 +41,8 @@
 	"dependencies": {
 		"@modelcontextprotocol/sdk": "^1.18.2",
 		"mcp-use": "^0.1.0"
+	},
+	"volta": {
+		"node": "22.20.0"
 	}
 }

@@ -145,3 +145,6 @@ run = """
 docker ps --filter 'name=tars-mcp' --format '{{.Names}}' | xargs -r docker stop
 echo "✅ Stopped all tars-mcp* containers"
 """
+
+[tools]
+node = "22"

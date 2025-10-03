@@ -9,6 +9,8 @@
  * 5. Continue until LLM generates final text response
  */
 
+import type { Editor } from 'obsidian'
+
 import type { ToolExecutor } from './executor'
 import type { ToolCall, ToolResponseParser } from './toolResponseParser'
 
@@ -70,6 +72,33 @@ export interface GenerateOptions {
 	documentPath?: string
 	onToolCall?: (toolName: string) => void
 	onToolResult?: (toolName: string, duration: number) => void
+	editor?: Editor
+}
+
+function insertToolCallMarkdown(editor: Editor, toolName: string, serverId: string, parameters: Record<string, unknown>): void {
+	const markdown = `\n\n[🔧 Tool: ${toolName}](mcp://${serverId}/${toolName})\n\`\`\`json\n${JSON.stringify(parameters, null, 2)}\n\`\`\`\n`
+	editor.replaceRange(markdown, editor.getCursor())
+}
+
+function formatResultContent(result: ToolExecutionResult): string {
+	const { content, contentType } = result
+	switch (contentType) {
+		case 'json':
+			return `\`\`\`json\n${JSON.stringify(content, null, 2)}\n\`\`\``
+		case 'markdown':
+			return typeof content === 'string' ? content : String(content)
+		case 'image':
+			return typeof content === 'string' ? `![Tool Result](${content})` : String(content)
+		case 'text':
+		default:
+			return `\`\`\`text\n${String(content)}\n\`\`\``
+	}
+}
+
+function insertToolResultMarkdown(editor: Editor, result: ToolExecutionResult): void {
+	const formattedContent = formatResultContent(result)
+	const markdown = `\n**Result** (${result.executionDuration}ms):\n<details>\n<summary>View Result</summary>\n\n${formattedContent}\n</details>\n`
+	editor.replaceRange(markdown, editor.getCursor())
 }
 
 // ============================================================================
@@ -89,9 +118,9 @@ export class ToolCallingCoordinator {
 		executor: ToolExecutor,
 		options: GenerateOptions = {}
 	): AsyncGenerator<string> {
-		const { maxTurns = 10, documentPath = '', onToolCall, onToolResult } = options
+		const { maxTurns = 10, documentPath = '', onToolCall, onToolResult, editor } = options
 
-		let conversation = [...messages]
+		const conversation = [...messages]
 
 		for (let turn = 0; turn < maxTurns; turn++) {
 			const parser = adapter.getParser()
@@ -123,6 +152,9 @@ export class ToolCallingCoordinator {
 
 					// Notify about tool execution
 					onToolCall?.(toolCall.name)
+					if (editor) {
+						insertToolCallMarkdown(editor, toolCall.name, serverId, toolCall.arguments)
+					}
 
 					try {
 						// Execute the tool
@@ -136,12 +168,14 @@ export class ToolCallingCoordinator {
 
 						// Notify about tool result
 						onToolResult?.(toolCall.name, result.executionDuration)
+						if (editor) {
+							insertToolResultMarkdown(editor, result)
+						}
 
 						// Add tool result to conversation
 						const toolMessage = adapter.formatToolResult(toolCall.id, result)
 						conversation.push(toolMessage)
 					} catch (error) {
-						console.error(`Tool execution failed for ${toolCall.name}:`, error)
 						// Add error message to conversation so LLM knows tool failed
 						const errorMessage = adapter.formatToolResult(
 							toolCall.id,
