@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import {
-	ToolCallingCoordinator,
 	type Message,
 	type ProviderAdapter,
+	ToolCallingCoordinator,
 	type ToolExecutionResult
 } from '../../src/mcp/toolCallingCoordinator'
 import type { ToolCall, ToolResponseParser } from '../../src/mcp/toolResponseParser'
@@ -37,7 +37,7 @@ class MockEditor {
 }
 
 describe('ToolCallingCoordinator integration: markdown persistence', () => {
-	it('should (currently failing) persist tool call markdown into editor', async () => {
+	it('should persist tool call markdown into editor', async () => {
 		const toolCall: ToolCall = {
 			id: 'call_1',
 			name: 'getWeather',

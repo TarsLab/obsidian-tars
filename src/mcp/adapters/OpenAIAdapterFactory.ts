@@ -1,0 +1,73 @@
+import type { ToolExecutor } from '../executor'
+import type { MCPServerManager } from '../managerMCPUse'
+import type { Message, ProviderAdapter, ToolExecutionResult } from '../toolCallingCoordinator'
+import { OpenAIToolResponseParser } from '../toolResponseParser'
+import type { OpenAIAdapterConfig } from './OpenAIProviderAdapter'
+import { buildToolServerMapping } from './toolMapping'
+
+export interface OpenAIAdapterConfigSimple {
+	mcpManager: MCPServerManager
+	mcpExecutor: ToolExecutor
+}
+
+export function createOpenAIAdapter(config: OpenAIAdapterConfig): Pick<ProviderAdapter, 'getParser' | 'findServerId' | 'formatToolResult'> {
+	const { mcpManager } = config
+
+	return {
+		getParser: () => new OpenAIToolResponseParser(),
+
+		findServerId: (toolName: string): string | null => {
+			const servers = mcpManager.listServers()
+
+			for (const server of servers) {
+				if (!server.enabled) continue
+
+				const client = mcpManager.getClient(server.id)
+				if (!client) continue
+
+				try {
+					return server.id
+				} catch (error) {
+					console.debug(`Error checking tools for ${server.id}:`, error)
+				}
+			}
+
+			return null
+		},
+
+		formatToolResult: (toolCallId: string, result: ToolExecutionResult): Message => {
+			return {
+				role: 'tool',
+				tool_call_id: toolCallId,
+				content: typeof result.content === 'string'
+					? result.content
+					: JSON.stringify(result.content)
+			}
+		}
+	}
+}
+
+export async function createOpenAIAdapterWithMapping(
+	config: OpenAIAdapterConfig
+): Promise<Pick<ProviderAdapter, 'getParser' | 'findServerId' | 'formatToolResult'>> {
+	const { mcpManager } = config
+	const toolMapping = await buildToolServerMapping(mcpManager)
+
+	return {
+		getParser: () => new OpenAIToolResponseParser(),
+
+		findServerId: (toolName: string): string | null => {
+			return toolMapping.get(toolName) || null
+		},
+
+		formatToolResult: (toolCallId: string, result: ToolExecutionResult): Message => {
+			return {
+				role: 'tool',
+				tool_call_id: toolCallId,
+				content: typeof result.content === 'string'
+					? result.content
+					: JSON.stringify(result.content)
+			}
+		}
+	}
+}

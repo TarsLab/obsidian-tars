@@ -22,11 +22,9 @@ import {
 	buildAIToolContext,
 	createMCPManager,
 	createToolExecutor,
-	DeploymentType,
 	type MCPServerConfig,
 	type MCPServerManager,
-	type ToolExecutor,
-	TransportProtocol
+	type ToolExecutor
 } from '../../src/mcp'
 
 // Detect Ollama URL (WSL2-aware)
@@ -89,18 +87,10 @@ describe.skipIf(SKIP_REAL_E2E)('Real E2E: Ollama + MCP Memory Server', async () 
 		const serverConfig: MCPServerConfig = {
 			id: 'memory-server',
 			name: 'Memory Server',
-			transport: TransportProtocol.STDIO,
-			// deploymentType: DeploymentType.MANAGED, // Removed
-			dockerConfig: {
-				image: 'mcp/memory:latest', // Docker image from hub.docker.com
-				containerName: 'tars-mcp-memory-e2e',
-				command: [] // Default command from image
-			},
+			configInput: 'docker run -i --rm mcp/memory:latest',
 			enabled: true,
 			failureCount: 0,
-			autoDisabled: false,
-			sectionBindings: [],
-			executionCommand: ''
+			autoDisabled: false
 		}
 		// Suppress MCP server startup messages in test environment
 		const originalStderr = process.stderr.write
@@ -204,8 +194,8 @@ describe.skipIf(SKIP_REAL_E2E)('Real E2E: Ollama + MCP Memory Server', async () 
 				// Execute the tool via our executor (catch errors for incomplete params)
 				try {
 					const result = await executor.executeTool({
-						serverId: tool?.serverId,
-						toolName: toolCall.function.name,
+						serverId: tool?.serverId || 'memory-server',
+						toolName: toolCall.function.name || '',
 						parameters: toolCall.function.arguments,
 						source: 'ai-autonomous',
 						documentPath: 'e2e-test.md'
@@ -264,20 +254,57 @@ describe.skipIf(SKIP_REAL_E2E)('Real E2E: Ollama + MCP Memory Server', async () 
 
 					if (tool) {
 						const normalizedArgs = { ...toolCall.function.arguments }
-						if (typeof normalizedArgs.entities === 'string') {
-							try {
-								const parsedEntities = JSON.parse(normalizedArgs.entities)
-								normalizedArgs.entities = Array.isArray(parsedEntities)
-									? parsedEntities
-									: parsedEntities?.entities ?? parsedEntities
-							} catch (parseError) {
-								console.warn('Failed to parse entities string from tool call:', parseError)
+
+						// Handle various ways the LLM might provide the entities parameter
+						if (normalizedArgs.entities) {
+							// Case 1: entities is a string containing JSON
+							if (typeof normalizedArgs.entities === 'string') {
+								try {
+									const parsed = JSON.parse(normalizedArgs.entities)
+									// If parsed result has entities property, use it; otherwise use parsed result directly
+									normalizedArgs.entities = parsed.entities || parsed
+								} catch (parseError) {
+									console.warn('Failed to parse entities string from tool call:', parseError)
+									// If parsing fails, try to use the string as-is if it looks like JSON
+									try {
+										const parsed = JSON.parse(normalizedArgs.entities)
+										normalizedArgs.entities = parsed
+									} catch {
+										// Last resort: leave as string and let the server handle it
+									}
+								}
+							}
+							// Case 2: entities is already an object with entities property
+							else if (typeof normalizedArgs.entities === 'object' && normalizedArgs.entities.entities) {
+								normalizedArgs.entities = normalizedArgs.entities.entities
+							}
+							// Case 3: entities is already the correct array format
+							// (no change needed)
+						}
+
+						// Ensure entities is an array
+						if (!Array.isArray(normalizedArgs.entities)) {
+							console.warn('Entities parameter is not an array, attempting to fix:', normalizedArgs.entities)
+							// Try to extract entities from various formats
+							if (typeof normalizedArgs.entities === 'object' && normalizedArgs.entities.entities) {
+								normalizedArgs.entities = normalizedArgs.entities.entities
+							} else if (typeof normalizedArgs.entities === 'string') {
+								try {
+									const parsed = JSON.parse(normalizedArgs.entities)
+									normalizedArgs.entities = Array.isArray(parsed) ? parsed : parsed.entities || [parsed]
+								} catch {
+									// Convert to array with single item as last resort
+									normalizedArgs.entities = [normalizedArgs.entities]
+								}
+							} else {
+								// Wrap in array as last resort
+								normalizedArgs.entities = [normalizedArgs.entities]
 							}
 						}
 
 						const result = await executor.executeTool({
-							serverId: tool.serverId,
-							toolName: toolCall.function.name,
+							serverId: tool?.serverId || 'memory-server',
+							toolName: toolCall.function.name || '',
 							parameters: normalizedArgs,
 							source: 'ai-autonomous',
 							documentPath: 'e2e-test.md'
@@ -313,7 +340,7 @@ describe.skipIf(SKIP_REAL_E2E)('Real E2E: Ollama + MCP Memory Server', async () 
 
 			await expect(
 				executor.executeTool({
-					serverId: invalidTool.serverId,
+					serverId: invalidTool?.serverId || 'memory-server',
 					toolName: 'non_existent_tool',
 					parameters: {},
 					source: 'user-codeblock',

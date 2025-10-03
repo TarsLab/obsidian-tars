@@ -34,6 +34,8 @@ export {
 	buildToolServerMapping,
 	createOpenAIAdapter,
 	createOpenAIAdapterWithMapping,
+	type ClaudeAdapterConfig,
+	ClaudeProviderAdapter,
 	type OllamaAdapterConfig,
 	OllamaProviderAdapter,
 	type OpenAIAdapterConfig,

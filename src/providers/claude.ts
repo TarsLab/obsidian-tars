@@ -66,7 +66,7 @@ const formatEmbed = async (embed: EmbedCache, resolveEmbedAsBinary: ResolveEmbed
 
 const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, resolveEmbedAsBinary: ResolveEmbedAsBinary) {
-		const { parameters, ...optionsExcludingParams } = settings
+		const { parameters, mcpManager, mcpExecutor, documentPath, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const {
 			apiKey,
@@ -77,6 +77,7 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 			enableThinking = false,
 			budget_tokens = 1600
 		} = options
+
 		let baseURL = originalBaseURL
 		if (!apiKey) throw new Error(t('API key is required'))
 
@@ -85,6 +86,56 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 			baseURL = baseURL.slice(0, -'/v1/messages/'.length)
 		} else if (baseURL.endsWith('/v1/messages')) {
 			baseURL = baseURL.slice(0, -'/v1/messages'.length)
+		}
+
+		// Tool-aware path: Use coordinator for autonomous tool calling
+		if (mcpManager && mcpExecutor) {
+			try {
+				const { ToolCallingCoordinator, ClaudeProviderAdapter } = await import('../mcp/index.js')
+				// biome-ignore lint/suspicious/noExplicitAny: MCP types are optional dependencies
+				const mcpMgr = mcpManager as any
+				// biome-ignore lint/suspicious/noExplicitAny: MCP types are optional dependencies
+				const mcpExec = mcpExecutor as any
+
+				const client = new Anthropic({
+					apiKey,
+					baseURL,
+					fetch: globalThis.fetch,
+					dangerouslyAllowBrowser: true
+				})
+
+				const adapter = new ClaudeProviderAdapter({
+					mcpManager: mcpMgr,
+					anthropicClient: client,
+					controller,
+					model,
+					maxTokens: max_tokens,
+					system: undefined // Could be extracted from messages if needed
+				})
+
+				await adapter.initialize()
+
+				const coordinator = new ToolCallingCoordinator()
+
+				// Convert messages to coordinator format
+				const formattedMessages = messages.map((msg) => ({
+					role: msg.role,
+					content: msg.content,
+					embeds: msg.embeds
+				}))
+
+				const editor = (settings as any).editor
+
+				yield* coordinator.generateWithTools(formattedMessages, adapter, mcpExec, {
+					documentPath: documentPath || 'unknown.md',
+					editor
+				})
+
+				return
+			} catch (error) {
+				console.warn('Failed to use tool-aware path for Claude, falling back to original:', error)
+				// Fall through to original path
+			}
 		}
 
 		const [system_msg, messagesWithoutSys] =
