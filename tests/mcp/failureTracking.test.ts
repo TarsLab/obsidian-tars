@@ -181,4 +181,140 @@ describe('MCP Server Failure Tracking', () => {
 			expect(healthStatus?.connectionState).toBe('error')
 		})
 	})
+
+	describe('Auto-Disable Logic', () => {
+		it('should auto-disable server after reaching failure threshold', async () => {
+			// GIVEN: A server with custom threshold and event listener
+			const autoDisabledEvents: string[] = []
+			manager.on('server-auto-disabled', (serverId) => {
+				autoDisabledEvents.push(serverId)
+			})
+
+			const config: MCPServerConfig = {
+				id: 'threshold-test-server',
+				name: 'Threshold Test Server',
+				configInput: 'npx @modelcontextprotocol/server-invalid',
+				enabled: true,
+				failureCount: 0,
+				autoDisabled: false
+			}
+
+			await manager.initialize([config], { failureThreshold: 3 })
+
+			// WHEN: Server fails 3 times
+			for (let i = 0; i < 3; i++) {
+				try {
+					await manager.startServer('threshold-test-server')
+				} catch {
+					// Expected to fail
+				}
+			}
+
+			// THEN: Server should be auto-disabled
+			const servers = manager.listServers()
+			const server = servers.find((s) => s.id === 'threshold-test-server')
+			expect(server?.enabled).toBe(false)
+			expect(server?.autoDisabled).toBe(true)
+			expect(autoDisabledEvents).toContain('threshold-test-server')
+		})
+
+		it('should not auto-disable server below threshold', async () => {
+			// GIVEN: A server with threshold of 5
+			const config: MCPServerConfig = {
+				id: 'below-threshold-server',
+				name: 'Below Threshold Server',
+				configInput: 'npx @modelcontextprotocol/server-invalid',
+				enabled: true,
+				failureCount: 0,
+				autoDisabled: false
+			}
+
+			await manager.initialize([config], { failureThreshold: 5 })
+
+			// WHEN: Server fails 2 more times (total 3 failures: 1 from init + 2 explicit)
+			for (let i = 0; i < 2; i++) {
+				try {
+					await manager.startServer('below-threshold-server')
+				} catch {
+					// Expected to fail
+				}
+			}
+
+			// THEN: Server should still be enabled (3 < 5 threshold)
+			const servers = manager.listServers()
+			const server = servers.find((s) => s.id === 'below-threshold-server')
+			expect(server?.enabled).toBe(true)
+			expect(server?.autoDisabled).toBe(false)
+			expect(server?.failureCount).toBe(3)
+		})
+
+		it('should emit server-auto-disabled event only once', async () => {
+			// GIVEN: Event listener tracking auto-disable events
+			const autoDisabledEvents: string[] = []
+			manager.on('server-auto-disabled', (serverId) => {
+				autoDisabledEvents.push(serverId)
+			})
+
+			const config: MCPServerConfig = {
+				id: 'once-disable-server',
+				name: 'Once Disable Server',
+				configInput: 'npx @modelcontextprotocol/server-invalid',
+				enabled: true,
+				failureCount: 0,
+				autoDisabled: false
+			}
+
+			await manager.initialize([config], { failureThreshold: 2 })
+
+			// WHEN: Server fails 4 times (2x threshold)
+			for (let i = 0; i < 4; i++) {
+				try {
+					await manager.startServer('once-disable-server')
+				} catch {
+					// Expected to fail
+				}
+			}
+
+			// THEN: Event should be emitted only once
+			expect(autoDisabledEvents.filter((id) => id === 'once-disable-server')).toHaveLength(1)
+		})
+
+		it('should allow re-enabling auto-disabled server', async () => {
+			// GIVEN: A server that gets auto-disabled
+			const config: MCPServerConfig = {
+				id: 'reenable-test-server',
+				name: 'Re-enable Test Server',
+				configInput: 'npx @modelcontextprotocol/server-invalid',
+				enabled: true,
+				failureCount: 0,
+				autoDisabled: false
+			}
+
+			await manager.initialize([config], { failureThreshold: 2 })
+
+			// Fail until auto-disabled
+			for (let i = 0; i < 2; i++) {
+				try {
+					await manager.startServer('reenable-test-server')
+				} catch {
+					// Expected to fail
+				}
+			}
+
+			// Verify it's disabled
+			let servers = manager.listServers()
+			let server = servers.find((s) => s.id === 'reenable-test-server')
+			expect(server?.enabled).toBe(false)
+			expect(server?.autoDisabled).toBe(true)
+
+			// WHEN: Server is manually re-enabled
+			await manager.reenableServer('reenable-test-server')
+
+			// THEN: Server should be enabled again
+			servers = manager.listServers()
+			server = servers.find((s) => s.id === 'reenable-test-server')
+			expect(server?.enabled).toBe(true)
+			expect(server?.autoDisabled).toBe(false)
+		})
+	})
 })

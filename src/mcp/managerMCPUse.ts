@@ -31,11 +31,16 @@ export class MCPServerManager extends EventEmitter<MCPServerManagerEvents> {
 	private servers: Map<string, MCPServerConfig> = new Map()
 	private sessions: Map<string, MCPSession> = new Map()
 	private healthStatuses: Map<string, ServerHealthStatus> = new Map()
+	private failureThreshold: number = 3
 
 	/**
 	 * Initialize manager with server configurations
 	 */
-	async initialize(configs: MCPServerConfig[]): Promise<void> {
+	async initialize(configs: MCPServerConfig[], options?: { failureThreshold?: number }): Promise<void> {
+		// Set failure threshold from options or use default
+		if (options?.failureThreshold !== undefined) {
+			this.failureThreshold = options.failureThreshold
+		}
 		const normalizedConfigs = migrateServerConfigs(
 			configs as unknown as Parameters<typeof migrateServerConfigs>[0]
 		)
@@ -85,6 +90,9 @@ export class MCPServerManager extends EventEmitter<MCPServerManagerEvents> {
 						// Increment failure count on startup failure
 						config.failureCount++
 
+						// Check if threshold exceeded and auto-disable
+						this.checkAndAutoDisable(config)
+
 						this.emit('server-failed', config.id, error as Error)
 						this.updateHealthStatus(config.id, 'unhealthy')
 					}
@@ -126,6 +134,9 @@ export class MCPServerManager extends EventEmitter<MCPServerManagerEvents> {
 		} catch (error) {
 			// Increment failure count on startup failure
 			config.failureCount++
+
+			// Check if threshold exceeded and auto-disable
+			this.checkAndAutoDisable(config)
 
 			this.emit('server-failed', serverId, error as Error)
 			this.updateHealthStatus(serverId, 'unhealthy')
@@ -234,6 +245,27 @@ export class MCPServerManager extends EventEmitter<MCPServerManagerEvents> {
 		this.sessions.clear()
 		this.servers.clear()
 		this.healthStatuses.clear()
+	}
+
+	/**
+	 * Check if server has exceeded failure threshold and auto-disable if needed
+	 */
+	private checkAndAutoDisable(config: MCPServerConfig): void {
+		if (config.failureCount >= this.failureThreshold && config.enabled && !config.autoDisabled) {
+			// Disable the server
+			config.enabled = false
+			config.autoDisabled = true
+
+			// Emit auto-disabled event
+			this.emit('server-auto-disabled', config.id)
+
+			// Log warning (skip in test environment)
+			if (process.env.NODE_ENV !== 'test' && process.env.VITEST !== 'true') {
+				console.warn(
+					`[MCP Manager] Server ${config.id} auto-disabled after ${config.failureCount} consecutive failures`
+				)
+			}
+		}
 	}
 
 	/**

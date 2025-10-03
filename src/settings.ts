@@ -52,6 +52,7 @@ export interface PluginSettings {
 	mcpGlobalTimeout: number
 	mcpConcurrentLimit: number
 	mcpSessionLimit: number
+	mcpFailureThreshold: number
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -82,7 +83,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	mcpServers: [],
 	mcpGlobalTimeout: 30000,
 	mcpConcurrentLimit: 3,
-	mcpSessionLimit: 25
+	mcpSessionLimit: 25,
+	mcpFailureThreshold: 3
 }
 
 export const availableVendors: Vendor[] = [

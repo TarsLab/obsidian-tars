@@ -42,7 +42,9 @@ export default class TarsPlugin extends Plugin {
 		if (this.settings.mcpServers && this.settings.mcpServers.length > 0) {
 			try {
 				this.mcpManager = new MCPServerManager()
-				await this.mcpManager.initialize(this.settings.mcpServers)
+				await this.mcpManager.initialize(this.settings.mcpServers, {
+					failureThreshold: this.settings.mcpFailureThreshold
+				})
 
 				// Create tool executor with settings
 				this.mcpExecutor = createToolExecutor(this.mcpManager, {
