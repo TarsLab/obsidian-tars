@@ -36,6 +36,7 @@ export class OpenAIProviderAdapter implements ProviderAdapter<OpenAI.ChatComplet
 	private client: OpenAI
 	private controller: AbortController
 	private toolMapping: Map<string, string> | null = null
+	private cachedTools: OpenAI.ChatCompletionTool[] | null = null
 	private resolveEmbedAsBinary?: (embed: EmbedCache) => Promise<ArrayBuffer>
 
 	constructor(config: OpenAIAdapterConfig) {
@@ -44,13 +45,27 @@ export class OpenAIProviderAdapter implements ProviderAdapter<OpenAI.ChatComplet
 		this.client = config.openaiClient
 		this.controller = config.controller
 		this.resolveEmbedAsBinary = config.resolveEmbedAsBinary
+
+		// Listen for server changes to invalidate cache
+		this.mcpManager.on('server-started', () => this.invalidateCache())
+		this.mcpManager.on('server-stopped', () => this.invalidateCache())
+		this.mcpManager.on('server-failed', () => this.invalidateCache())
 	}
 
 	/**
-	 * Initialize adapter (build tool mapping)
+	 * Initialize adapter (build tool mapping and cache tools)
 	 */
 	async initialize(): Promise<void> {
 		this.toolMapping = await buildToolServerMapping(this.mcpManager)
+		this.cachedTools = await this.buildTools()
+	}
+
+	/**
+	 * Invalidate tool cache when servers change
+	 */
+	private invalidateCache(): void {
+		this.cachedTools = null
+		this.toolMapping = null
 	}
 
 	/**
@@ -107,9 +122,14 @@ export class OpenAIProviderAdapter implements ProviderAdapter<OpenAI.ChatComplet
 	}
 
 	/**
-	 * Build OpenAI tools array from MCP servers
+	 * Build OpenAI tools array from MCP servers (cached)
 	 */
 	private async buildTools(): Promise<OpenAI.ChatCompletionTool[]> {
+		// Return cached tools if available
+		if (this.cachedTools) {
+			return this.cachedTools
+		}
+
 		const tools: OpenAI.ChatCompletionTool[] = []
 		const servers = this.mcpManager.listServers()
 
@@ -346,6 +366,7 @@ export class OllamaProviderAdapter implements ProviderAdapter<OllamaChunk> {
 	private controller: AbortController
 	private model: string
 	private toolMapping: Map<string, string> | null = null
+	private cachedTools: Array<{ type: 'function'; function: { name: string; description?: string; parameters?: unknown } }> | null = null
 	private parser: OllamaToolResponseParser
 
 	constructor(config: OllamaAdapterConfig) {
@@ -355,10 +376,24 @@ export class OllamaProviderAdapter implements ProviderAdapter<OllamaChunk> {
 		this.controller = config.controller
 		this.model = config.model
 		this.parser = new OllamaToolResponseParser()
+
+		// Listen for server changes to invalidate cache
+		this.mcpManager.on('server-started', () => this.invalidateCache())
+		this.mcpManager.on('server-stopped', () => this.invalidateCache())
+		this.mcpManager.on('server-failed', () => this.invalidateCache())
 	}
 
 	async initialize(): Promise<void> {
 		this.toolMapping = await buildToolServerMapping(this.mcpManager)
+		this.cachedTools = await this.buildTools()
+	}
+
+	/**
+	 * Invalidate tool cache when servers change
+	 */
+	private invalidateCache(): void {
+		this.cachedTools = null
+		this.toolMapping = null
 	}
 
 	getParser(): OllamaToolResponseParser {
@@ -410,9 +445,14 @@ export class OllamaProviderAdapter implements ProviderAdapter<OllamaChunk> {
 	}
 
 	/**
-	 * Build tools array for Ollama from MCP servers
+	 * Build tools array for Ollama from MCP servers (cached)
 	 */
 	private async buildTools(): Promise<Array<{ type: 'function'; function: { name: string; description?: string; parameters?: unknown } }>> {
+		// Return cached tools if available
+		if (this.cachedTools) {
+			return this.cachedTools
+		}
+
 		const tools: Array<{ type: 'function'; function: { name: string; description?: string; parameters?: unknown } }> = []
 
 		const servers = this.mcpManager.listServers()

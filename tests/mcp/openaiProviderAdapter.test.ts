@@ -28,7 +28,8 @@ const mockMCPManager = {
 				inputSchema: { type: 'object', properties: {} }
 			}
 		])
-	})
+	}),
+	on: vi.fn() // Mock EventEmitter on method
 }
 
 // Mock executor

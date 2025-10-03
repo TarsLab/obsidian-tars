@@ -6,6 +6,8 @@
  * for OpenAI, Claude, Ollama, etc.
  */
 
+import OpenAI from 'openai'
+
 // ============================================================================
 // Common Types
 // ============================================================================
@@ -65,7 +67,7 @@ export interface ToolResponseParser<TProviderChunk = unknown> {
 interface OpenAIChunk {
 	choices: Array<{
 		delta?: {
-			content?: string
+			content?: string | null
 			tool_calls?: Array<{
 				index: number
 				id?: string
@@ -86,11 +88,11 @@ interface AccumulatedToolCall {
 	arguments: string
 }
 
-export class OpenAIToolResponseParser implements ToolResponseParser<OpenAIChunk> {
+export class OpenAIToolResponseParser implements ToolResponseParser<OpenAI.ChatCompletionChunk> {
 	private toolCalls: Map<number, AccumulatedToolCall> = new Map()
 	private finishedToolCalls: ToolCall[] = []
 
-	parseChunk(chunk: OpenAIChunk): StreamChunk | null {
+	parseChunk(chunk: OpenAI.ChatCompletionChunk): StreamChunk | null {
 		const choice = chunk.choices?.[0]
 		if (!choice?.delta) {
 			return null
@@ -99,7 +101,7 @@ export class OpenAIToolResponseParser implements ToolResponseParser<OpenAIChunk>
 		const { content, tool_calls } = choice.delta
 
 		// Handle text content
-		if (content) {
+		if (content !== undefined && content !== null) {
 			return {
 				type: 'text',
 				content

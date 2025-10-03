@@ -74,17 +74,17 @@ export function createMCPManager(): MCPServerManager {
 	return new MCPServerManager()
 }
 
-export function createToolExecutor(manager: MCPServerManager): ToolExecutor {
+export function createToolExecutor(manager: MCPServerManager, options?: { timeout?: number; concurrentLimit?: number; sessionLimit?: number }): ToolExecutor {
 	const tracker = {
-		concurrentLimit: 3,
-		sessionLimit: 25,
+		concurrentLimit: options?.concurrentLimit ?? DEFAULT_CONCURRENT_LIMIT,
+		sessionLimit: options?.sessionLimit ?? DEFAULT_SESSION_LIMIT,
 		activeExecutions: new Set<string>(),
 		totalExecuted: 0,
 		stopped: false,
 		executionHistory: []
 	}
 
-	return new ToolExecutor(manager, tracker)
+	return new ToolExecutor(manager, tracker, { timeout: options?.timeout ?? DEFAULT_MCP_TIMEOUT })
 }
 
 export function createCodeBlockProcessor(): CodeBlockProcessor {

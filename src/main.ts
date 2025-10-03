@@ -13,7 +13,7 @@ import {
 import { getMCPCommands } from './commands/mcpCommands'
 import type { RequestController } from './editor'
 import { t } from './lang/helper'
-import { CodeBlockProcessor, createToolExecutor, MCPServerManager, migrateServerConfigs, type ToolExecutor } from './mcp'
+import { CodeBlockProcessor, createToolExecutor, HEALTH_CHECK_INTERVAL, MCPServerManager, migrateServerConfigs, type ToolExecutor } from './mcp'
 import { getTitleFromCmdId, loadTemplateFileCommand, promptTemplateCmd, templateToCmdId } from './prompt'
 import { DEFAULT_SETTINGS, type PluginSettings } from './settings'
 import { TarsSettingTab } from './settingTab'
@@ -31,6 +31,7 @@ export default class TarsPlugin extends Plugin {
 	mcpManager: MCPServerManager | null = null
 	mcpExecutor: ToolExecutor | null = null
 	mcpCodeBlockProcessor: CodeBlockProcessor | null = null
+	mcpHealthCheckInterval: NodeJS.Timeout | null = null
 
 	async onload() {
 		await this.loadSettings()
@@ -43,8 +44,12 @@ export default class TarsPlugin extends Plugin {
 				this.mcpManager = new MCPServerManager()
 				await this.mcpManager.initialize(this.settings.mcpServers)
 
-				// Create tool executor
-				this.mcpExecutor = createToolExecutor(this.mcpManager)
+				// Create tool executor with settings
+				this.mcpExecutor = createToolExecutor(this.mcpManager, {
+					timeout: this.settings.mcpGlobalTimeout,
+					concurrentLimit: this.settings.mcpConcurrentLimit,
+					sessionLimit: this.settings.mcpSessionLimit
+				})
 
 				// Create code block processor
 				this.mcpCodeBlockProcessor = new CodeBlockProcessor()
@@ -93,6 +98,18 @@ export default class TarsPlugin extends Plugin {
 				// Register MCP commands
 				const mcpCommands = getMCPCommands(this.mcpExecutor)
 				mcpCommands.forEach((cmd) => this.addCommand(cmd))
+
+				// Start health check timer
+				this.mcpHealthCheckInterval = setInterval(async () => {
+					if (this.mcpManager) {
+						try {
+							await this.mcpManager.performHealthCheck()
+							this.updateMCPStatus()
+						} catch (error) {
+							console.debug('Health check failed:', error)
+						}
+					}
+				}, HEALTH_CHECK_INTERVAL)
 
 				console.debug('MCP integration initialized with', this.settings.mcpServers.length, 'servers')
 			} catch (error) {
@@ -164,6 +181,12 @@ export default class TarsPlugin extends Plugin {
 
 	async onunload() {
 		this.statusBarManager?.dispose()
+
+		// Clear health check timer
+		if (this.mcpHealthCheckInterval) {
+			clearInterval(this.mcpHealthCheckInterval)
+			this.mcpHealthCheckInterval = null
+		}
 
 		// Shutdown MCP manager
 		if (this.mcpManager) {

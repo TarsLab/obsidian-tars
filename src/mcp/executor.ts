@@ -16,13 +16,19 @@ export interface ToolExecutionRequest {
 	sectionLine?: number
 }
 
+export interface ToolExecutorOptions {
+	timeout?: number
+}
+
 export class ToolExecutor {
 	private readonly manager: MCPServerManager
 	private readonly tracker: ExecutionTracker
+	private readonly options: ToolExecutorOptions
 
-	constructor(manager: MCPServerManager, tracker: ExecutionTracker) {
+	constructor(manager: MCPServerManager, tracker: ExecutionTracker, options: ToolExecutorOptions = {}) {
 		this.manager = manager
 		this.tracker = tracker
+		this.options = { timeout: 30000, ...options }
 	}
 
 	/**
@@ -51,7 +57,7 @@ export class ToolExecutor {
 			const result = await client.callTool(
 				request.toolName,
 				request.parameters,
-				30000 // 30 second timeout
+				this.options.timeout
 			)
 
 			// Update record with success

@@ -4,6 +4,48 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ToolExecutor } from '../../src/mcp/executor'
+import { MCPServerManager } from '../../src/mcp/managerMCPUse'
+
+describe('ToolExecutor', () => {
+	describe('constructor options', () => {
+		it('should use default timeout when no options provided', () => {
+			const manager = new MCPServerManager()
+			const tracker = {
+				concurrentLimit: 3,
+				sessionLimit: 25,
+				activeExecutions: new Set<string>(),
+				totalExecuted: 0,
+				stopped: false,
+				executionHistory: []
+			}
+
+			const executor = new ToolExecutor(manager, tracker)
+
+			// Access private options for testing
+			// biome-ignore lint/suspicious/noExplicitAny: testing private property
+			expect((executor as any).options.timeout).toBe(30000)
+		})
+
+		it('should use custom timeout when provided', () => {
+			const manager = new MCPServerManager()
+			const tracker = {
+				concurrentLimit: 3,
+				sessionLimit: 25,
+				activeExecutions: new Set<string>(),
+				totalExecuted: 0,
+				stopped: false,
+				executionHistory: []
+			}
+
+			const executor = new ToolExecutor(manager, tracker, { timeout: 60000 })
+
+			// Access private options for testing
+			// biome-ignore lint/suspicious/noExplicitAny: testing private property
+			expect((executor as any).options.timeout).toBe(60000)
+		})
+	})
+})
 
 describe('ToolExecutor limits contract tests', () => {
 	beforeEach(() => {

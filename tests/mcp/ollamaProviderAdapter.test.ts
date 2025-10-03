@@ -32,7 +32,8 @@ const createMockMCPManager = (): MCPServerManager => ({
 				}
 			}
 		])
-	})
+	}),
+	on: vi.fn() // Mock EventEmitter on method
 	// biome-ignore lint/suspicious/noExplicitAny: mock
 } as any)
 
