@@ -13,8 +13,9 @@ This report provides a comprehensive review of the Model Context Protocol (MCP) 
 **Key Findings:**
 - ✅ Well-architected separation of concerns
 - ✅ Robust lifecycle management using `mcp-use`
-- ✅ Multi-provider support (OpenAI, Ollama, Claude-ready)
+- ⚠️ Multi-provider coverage is partial (OpenAI, Azure/OpenRouter, Ollama); Claude tooling path still missing
 - ✅ Comprehensive error handling and tracking
+- ❌ `MCPClient.createSession` looks up servers by ID while `mcp-use` config keys use names, so mismatched id/name pairs prevent sessions from starting
 - ⚠️ Sequential tool execution only (no parallel execution)
 - ⚠️ Limited timeout control per tool
 - ⚠️ SSE transport not yet supported
@@ -36,6 +37,8 @@ for (const config of mcpUseConfigs) {
     this.sessions.set(config.id, session)
 }
 ```
+
+⚠️ **ID/name mismatch:** `toMCPUseConfig` registers each server under `config.name`, but the manager still calls `createSession(config.id)`. New servers created via the settings tab get ids like `mcp-server-1738600000` and names like `filesystem`, so `mcp-use` throws “Server '<id>' not found in config”. Aligning the key is required—either change `toMCPUseServerConfig` to use `config.id` as the map key or switch `createSession`/`sessions` to use `config.name`. A pragmatic fix is to keep using friendly names in the UI while persisting `id = name` after validation, then passing that normalized identifier into both the config map and `createSession`.
 
 ### Configuration Formats Supported
 
@@ -179,13 +182,17 @@ async performHealthCheck(): Promise<void> {
 }
 ```
 
+⚠️ **Dormant health checks:** nothing currently calls `performHealthCheck()`, so once sessions are created the status map never refreshes. Spin up a `setInterval` (the `HEALTH_CHECK_INTERVAL` constant in `src/mcp/index.ts` is intended for this) when the manager initializes to call `performHealthCheck` and `updateMCPStatus`, and ensure the timer is cleared during plugin shutdown.
+
 ### Lifecycle Events
 
 The manager emits events for monitoring:
 - `server-started`: Server successfully started
 - `server-stopped`: Server stopped
 - `server-failed`: Server failed to start/connect
-- `server-auto-disabled`: Server auto-disabled after failures
+- `server-auto-disabled`: Server auto-disabled after failures (⚠️ declared but never emitted—auto-disable logic still needs to observe `failureCount` and mark the server)
+
+⚠️ **Auto-disable still TODO:** count consecutive `startServer` failures, flip `config.autoDisabled = true`, emit `server-auto-disabled`, and surface the state in the settings UI so users understand why a server stopped retrying.
 
 ---
 
@@ -273,6 +280,8 @@ export class OllamaProviderAdapter implements ProviderAdapter<OllamaChunk> {
     // Handles Ollama-specific tool format
 }
 ```
+
+⚠️ **Claude path gap:** `src/providers/claude.ts` never injects `mcpManager`/`mcpExecutor`, so Claude streams cannot call MCP tools yet. Mirror the `openAI.ts` implementation by creating a Claude-specific provider adapter that leverages `ClaudeToolResponseParser`, passes tool definitions via `buildClaudeTools`, and routes streaming chunks through `ToolCallingCoordinator` before falling back to the legacy path.
 
 ### Tool Format Conversion
 
@@ -645,7 +654,7 @@ const result = await client.callTool(
 )
 ```
 
-**Limitation:** The timeout is hardcoded to 30 seconds and cannot be configured per-tool or per-server.
+**Limitation:** The timeout is hardcoded to 30 seconds and cannot be configured per-tool or per-server. ⚠️ The settings tab already captures `mcpGlobalTimeout`, but the executor never reads it—thread that value into `createToolExecutor` and fallback to per-server overrides before invoking `client.callTool`.
 
 ### Execution Tracking
 
@@ -667,18 +676,20 @@ this.tracker.executionHistory.push(executionRecord)
 
 ```typescript
 canExecute(): boolean {
-    // Check concurrent limit (default: 1)
+    // Check concurrent limit (default: 3 via createToolExecutor)
     if (this.tracker.activeExecutions.size >= this.tracker.concurrentLimit) {
         return false
     }
     
-    // Check session limit (default: -1 = unlimited)
+    // Check session limit (default: 25 via createToolExecutor)
     if (this.tracker.sessionLimit !== -1 && 
         this.tracker.totalExecuted >= this.tracker.sessionLimit) {
         return false
     }
 }
 ```
+
+⚠️ The settings UI persists `mcpConcurrentLimit` and `mcpSessionLimit`, but `createToolExecutor` hardcodes 3/25 and never reads the stored values. Pass the user-configured limits into the executor (or expose a setter on `ToolExecutor`) so the guardrails reflect the actual configuration.
 
 ### Cancellation Support
 
@@ -735,7 +746,7 @@ if (this.tracker.activeExecutions.size >= this.tracker.concurrentLimit) {
 }
 ```
 
-**Default Value:** `concurrentLimit = 1` (from tracker initialization)
+**Default Value:** `concurrentLimit = 3` (hardcoded in `createToolExecutor`; sequential behavior still occurs because `ToolCallingCoordinator` awaits each call)
 
 ### Implications
 
