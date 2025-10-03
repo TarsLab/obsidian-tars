@@ -37,8 +37,8 @@ export function toMCPUseServerConfig(config: MCPServerConfig): Record<string, MC
 		)
 	}
 
-	// Use config.name as server key (fallback to parsed name)
-	const serverKey = config.name || mcpUse.serverName
+	// Use config.id as server key for consistency with session management
+	const serverKey = config.id
 
 	return {
 		[serverKey]: {
