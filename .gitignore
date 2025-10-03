@@ -26,3 +26,6 @@ data.json
 quokka.ts
 Makefile
 archive/
+
+# exclude MCP file from commit, it can contain secrets
+mcp.json
