@@ -17,8 +17,10 @@ This report provides a comprehensive review of the Model Context Protocol (MCP) 
 - ✅ Comprehensive error handling and tracking
 - ❌ `MCPClient.createSession` looks up servers by ID while `mcp-use` config keys use names, so mismatched id/name pairs prevent sessions from starting
 - ⚠️ Sequential tool execution only (no parallel execution)
-- ⚠️ Limited timeout control per tool
-- ⚠️ SSE transport not yet supported
+- ⚠️ Limited timeout control per tool (hardcoded 30s, settings ignored)
+- ⚠️ Execution limits hardcoded (settings UI values ignored)
+- ⚠️ Health monitoring not active (interval defined but not started)
+- ⚠️ SSE transport not yet supported (but `mcp-remote` bridge available)
 
 ---
 
@@ -64,12 +66,12 @@ The system supports **3 input formats** (parsed in [`src/mcp/config.ts`](src/mcp
    }
    ```
 
-3. **URL Format** (Not Yet Supported)
-   ```
-   http://localhost:3000
-   https://mcp.example.com
-   ```
-   Note: SSE transport is not supported by `mcp-use` v0.1.0
+3. **URL Format** (Supported via `mcp-remote` bridge)
+    ```
+    http://localhost:3000
+    https://mcp.example.com
+    ```
+    Note: SSE transport supported through `mcp-remote` package as stdio bridge
 
 ### Adapter Layer
 
@@ -182,7 +184,7 @@ async performHealthCheck(): Promise<void> {
 }
 ```
 
-⚠️ **Dormant health checks:** nothing currently calls `performHealthCheck()`, so once sessions are created the status map never refreshes. Spin up a `setInterval` (the `HEALTH_CHECK_INTERVAL` constant in `src/mcp/index.ts` is intended for this) when the manager initializes to call `performHealthCheck` and `updateMCPStatus`, and ensure the timer is cleared during plugin shutdown.
+⚠️ **Dormant health checks:** nothing currently calls `performHealthCheck()`, so once sessions are created the status map never refreshes. The `HEALTH_CHECK_INTERVAL` constant (30000ms) is defined in `src/mcp/index.ts` but never used. Spin up a `setInterval` when the manager initializes in `main.ts` to call `performHealthCheck` and `updateMCPStatus`, and ensure the timer is cleared during plugin shutdown in `onunload`.
 
 ### Lifecycle Events
 
@@ -192,7 +194,7 @@ The manager emits events for monitoring:
 - `server-failed`: Server failed to start/connect
 - `server-auto-disabled`: Server auto-disabled after failures (⚠️ declared but never emitted—auto-disable logic still needs to observe `failureCount` and mark the server)
 
-⚠️ **Auto-disable still TODO:** count consecutive `startServer` failures, flip `config.autoDisabled = true`, emit `server-auto-disabled`, and surface the state in the settings UI so users understand why a server stopped retrying.
+⚠️ **Auto-disable still TODO:** Implement failure counting in `MCPServerManager.startServer()`. Track consecutive failures in server config, after 3-5 failures set `config.autoDisabled = true`, emit `server-auto-disabled` event, and update settings UI to show disabled state with reason. Add "Re-enable" button in settings to reset failure count. Use exponential backoff for retry attempts.
 
 ---
 
@@ -281,7 +283,7 @@ export class OllamaProviderAdapter implements ProviderAdapter<OllamaChunk> {
 }
 ```
 
-⚠️ **Claude path gap:** `src/providers/claude.ts` never injects `mcpManager`/`mcpExecutor`, so Claude streams cannot call MCP tools yet. Mirror the `openAI.ts` implementation by creating a Claude-specific provider adapter that leverages `ClaudeToolResponseParser`, passes tool definitions via `buildClaudeTools`, and routes streaming chunks through `ToolCallingCoordinator` before falling back to the legacy path.
+⚠️ **Claude path gap:** `src/providers/claude.ts` never injects `mcpManager`/`mcpExecutor`, so Claude streams cannot call MCP tools yet. To implement: 1) Modify `sendRequestFunc` in `claude.ts` to accept optional `mcpManager` and `mcpExecutor` parameters like `ollama.ts`; 2) Create `ClaudeProviderAdapter` in `src/mcp/providerAdapters.ts` implementing `ProviderAdapter<Anthropic.MessageStreamEvent>`; 3) Use `ClaudeToolResponseParser` for parsing tool calls; 4) Route through `ToolCallingCoordinator` for autonomous tool execution; 5) Update `src/providers/index.ts` to pass MCP objects to Claude provider. Use `buildClaudeTools` from `providerToolIntegration.ts` for tool format conversion.
 
 ### Tool Format Conversion
 
@@ -654,7 +656,7 @@ const result = await client.callTool(
 )
 ```
 
-**Limitation:** The timeout is hardcoded to 30 seconds and cannot be configured per-tool or per-server. ⚠️ The settings tab already captures `mcpGlobalTimeout`, but the executor never reads it—thread that value into `createToolExecutor` and fallback to per-server overrides before invoking `client.callTool`.
+**Limitation:** The timeout is hardcoded to 30 seconds in `src/mcp/executor.ts:54` and cannot be configured per-tool or per-server. The settings UI captures `mcpGlobalTimeout` in `src/settingTab.ts`, but `createToolExecutor` in `src/mcp/index.ts` hardcodes the tracker limits and doesn't pass timeout settings. Thread the global timeout value into `createToolExecutor` and allow per-server overrides before invoking `client.callTool`.
 
 ### Execution Tracking
 
@@ -689,7 +691,7 @@ canExecute(): boolean {
 }
 ```
 
-⚠️ The settings UI persists `mcpConcurrentLimit` and `mcpSessionLimit`, but `createToolExecutor` hardcodes 3/25 and never reads the stored values. Pass the user-configured limits into the executor (or expose a setter on `ToolExecutor`) so the guardrails reflect the actual configuration.
+⚠️ The settings UI in `src/settingTab.ts` persists `mcpConcurrentLimit` and `mcpSessionLimit`, but `createToolExecutor` in `src/mcp/index.ts` hardcodes 3/25 and never reads the stored values. Modify `createToolExecutor` to accept optional limit parameters and pass the user-configured values from `this.settings` in `main.ts`, or expose setters on `ToolExecutor` to update limits after creation.
 
 ### Cancellation Support
 
@@ -869,9 +871,22 @@ const result = await client.callTool(toolName, parameters, timeout)
 - Depends on `mcp-use` library support
 
 **Recommendation:**
-- Monitor `mcp-use` library for SSE support
-- Consider implementing custom SSE client if needed
-- Document limitation clearly for users
+- **Use `mcp-remote` package as bridge:** Install `mcp-remote` (npm i mcp-remote) and modify `toMCPUseFormat()` in `src/mcp/config.ts` to convert URL configs to stdio commands
+- **Implementation:**
+  ```typescript
+  // In toMCPUseFormat() for URL configs:
+  if (parsed.type === 'url') {
+    return {
+      serverName: config.name || parsed.serverName,
+      command: 'npx',
+      args: ['mcp-remote', parsed.url],
+      env: {} // Add auth headers support later
+    }
+  }
+  ```
+- **Remove error in `validateConfigInput()`** for URL configs
+- **Add authorization support:** Extend config to include headers for authenticated remote servers
+- **Benefits:** Immediate SSE support without waiting for `mcp-use` updates, works with existing infrastructure
 
 ---
 
@@ -880,26 +895,34 @@ const result = await client.callTool(toolName, parameters, timeout)
 ### High Priority
 
 1. **Configurable Timeouts**
-   - Add timeout configuration per server
-   - Add timeout configuration per tool type
-   - Add global default timeout setting
+    - Add timeout configuration per server
+    - Add timeout configuration per tool type
+    - Add global default timeout setting
 
 2. **Better Cancellation**
-   - Implement proper abort signal propagation
-   - Add cleanup for cancelled executions
-   - Test cancellation edge cases
+    - Implement proper abort signal propagation
+    - Add cleanup for cancelled executions
+    - Test cancellation edge cases
 
-3. **Documentation**
-   - Add inline documentation for complex flows
-   - Create architecture diagrams
-   - Document configuration options
+3. **Persist Tool Results in Documents**
+    - Modify `ToolCallingCoordinator` to insert tool calls and results as markdown during streaming
+    - Add collapsible sections for tool outputs using `<details>` tags
+    - Enable result caching by storing tool call hashes and outputs
+    - Update `src/editor.ts` to handle tool result insertion alongside LLM text streaming
+
+4. **Documentation**
+    - Add inline documentation for complex flows
+    - Create architecture diagrams
+    - Document configuration options
 
 ### Medium Priority
 
 4. **Parallel Execution**
-   - Add configurable concurrent limit
-   - Implement parallel tool execution
-   - Add proper synchronization
+    - Modify `ToolCallingCoordinator.generateWithTools()` to use `Promise.all()` for concurrent tool execution
+    - Add configurable `concurrentLimit` (default 3) to prevent resource exhaustion
+    - Implement result ordering to maintain conversation flow
+    - Add error aggregation for partial failures
+    - Use `AbortController` for cancelling all parallel operations
 
 5. **Monitoring & Metrics**
    - Add execution time metrics
@@ -913,15 +936,22 @@ const result = await client.callTool(toolName, parameters, timeout)
 
 ### Low Priority
 
-7. **SSE Support**
-   - Wait for `mcp-use` library support
-   - Or implement custom SSE client
-   - Add remote server configuration UI
+7. **Tool Discovery and Auto-Complete**
+    - Create `ToolBrowserModal` in `src/mcp/` with server/tool tree view
+    - Implement `MCPToolSuggest` extending `EditorSuggest` for code block auto-complete
+    - Add parameter suggestions using JSON schema validation
+    - Command palette integration: "Browse MCP Tools" and "Insert MCP Tool Call"
+    - Use `fuse.js` for fuzzy search and `ajv` for schema validation
 
-8. **Performance Optimization**
-   - Cache tool listings
-   - Optimize tool-to-server mapping
-   - Reduce redundant API calls
+8. **SSE Support**
+    - Wait for `mcp-use` library support
+    - Or implement custom SSE client using `eventsource`
+    - Add remote server configuration UI
+
+9. **Performance Optimization**
+    - Cache tool listings
+    - Optimize tool-to-server mapping
+    - Reduce redundant API calls
 
 ---
 
@@ -1381,9 +1411,15 @@ The MCP integration in Obsidian TARS is **well-architected and production-ready*
 **Areas for Improvement:**
 - **Critical:** Make tool calls and results visible in documents
 - **Critical:** Persist tool results for caching and audit trails
-- Configurable timeouts
+- **Critical:** Fix ID/name mismatch preventing server initialization
+- **High:** Implement Claude provider adapter for tool calling
+- **High:** Add tool discovery UI and auto-complete
+- Configurable timeouts (settings ignored)
+- Execution limits (settings ignored)
+- Health monitoring (interval not started)
 - Parallel tool execution
 - Better cancellation support
+- Auto-disable failed servers
 - Improved manual tool invocation UX
 - SSE transport support (when available)
 
@@ -1418,9 +1454,9 @@ Overall, the integration demonstrates solid software engineering practices and p
 
 ---
 
-**Report Generated:** 2025-10-03T08:02:47Z  
-**Review Scope:** Complete MCP integration architecture  
-**Status:** ✅ Review Complete
+**Report Generated:** 2025-10-03T09:28:00Z
+**Review Scope:** Complete MCP integration architecture
+**Status:** ✅ Review Complete - Updated with SSE support via mcp-remote
 
 ---
 
@@ -2545,31 +2581,33 @@ The MCP integration in Obsidian TARS demonstrates **solid engineering** with **r
 ### Recommendations Priority
 
 **Immediate (Next Sprint):**
-1. Add tool browser modal
-2. Implement tool name auto-complete
-3. Persist tool results in documents
+1. Fix ID/name mismatch in server initialization
+2. Implement health check timer in main.ts
+3. Use configured timeout and limits in executor
 
 **Short Term (Next Month):**
-4. Add parameter auto-complete
-5. Enhance test button to show all tools
-6. Extract UI logic for better testability
+4. Add Claude provider adapter for tool calling
+5. Persist tool results in documents
+6. Add tool browser modal and auto-complete
+7. Implement auto-disable for failed servers
 
 **Long Term (Next Quarter):**
-7. Implement Playwright E2E tests
-8. Add execution history viewer
-9. Build tool documentation system
+8. Enable parallel tool execution
+9. Implement Playwright E2E tests
+10. Add execution history viewer
+11. Build comprehensive tool documentation system
 
 ### Final Assessment
 
-**Production Readiness:** ✅ Yes, for technical users
+**Production Readiness:** ⚠️ Partially ready - critical bugs need fixing first
 **User Friendliness:** ⚠️ Needs improvement for general users
 **Maintainability:** ✅ Excellent architecture
 **Extensibility:** ✅ Easy to add new features
 
-The integration is **technically sound** but needs **UX polish** to be truly user-friendly. The lack of tool discovery and auto-completion makes it challenging for users to leverage MCP capabilities without reading external documentation.
+The integration has **strong technical foundations** but requires **immediate bug fixes** (ID/name mismatch, ignored settings) before being production-ready. Once stable, UX enhancements will make it truly user-friendly for leveraging MCP capabilities.
 
 ---
 
-**Report Generated:** 2025-10-03T08:25:00Z  
-**Review Scope:** Complete MCP integration architecture, UI, testing, and UX  
-**Status:** ✅ Comprehensive Review Complete
+**Report Generated:** 2025-10-03T09:16:51Z
+**Review Scope:** Complete MCP integration architecture, UI, testing, and UX
+**Status:** ✅ Comprehensive Review Complete - Updated with current code verification
