@@ -37,6 +37,159 @@ summary.tars-setting-h4 {
 	width: 100%;
 }
 
+/* Tool Browser Modal Styles */
+.mcp-tool-browser-modal {
+	padding: var(--size-4-4);
+}
+
+.mcp-tool-browser-modal h2 {
+	margin-bottom: var(--size-4-4);
+}
+
+.mcp-tool-browser-filters {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2);
+	margin-bottom: var(--size-4-4);
+	padding: var(--size-4-3);
+	background-color: var(--background-secondary);
+	border-radius: var(--radius-m);
+}
+
+.mcp-search-container,
+.mcp-server-filter-container {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+}
+
+.mcp-search-label,
+.mcp-server-filter-label {
+	min-width: 60px;
+	font-weight: var(--font-semibold);
+}
+
+.mcp-search-input {
+	flex: 1;
+	padding: var(--size-2-2) var(--size-4-2);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background-color: var(--background-primary);
+}
+
+.mcp-server-filter {
+	flex: 1;
+	padding: var(--size-2-2) var(--size-4-2);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background-color: var(--background-primary);
+}
+
+.mcp-tool-count {
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+	text-align: right;
+}
+
+.mcp-tools-container {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-3);
+	max-height: 60vh;
+	overflow-y: auto;
+	padding: var(--size-2-1);
+}
+
+.mcp-tool-card {
+	padding: var(--size-4-3);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background-color: var(--background-primary);
+	transition: border-color 0.2s;
+}
+
+.mcp-tool-card:hover {
+	border-color: var(--background-modifier-border-hover);
+}
+
+.mcp-tool-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: var(--size-4-2);
+}
+
+.mcp-tool-name {
+	margin: 0;
+	font-size: var(--font-ui-medium);
+	color: var(--text-normal);
+}
+
+.mcp-tool-server-badge {
+	padding: var(--size-2-1) var(--size-2-3);
+	font-size: var(--font-ui-smaller);
+	background-color: var(--background-modifier-border);
+	color: var(--text-muted);
+	border-radius: var(--radius-s);
+}
+
+.mcp-tool-description {
+	margin: 0 0 var(--size-4-2) 0;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.mcp-tool-params {
+	margin-bottom: var(--size-4-2);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	padding: var(--size-4-2);
+	background-color: var(--background-secondary);
+}
+
+.mcp-tool-params summary {
+	cursor: pointer;
+	font-weight: var(--font-semibold);
+	user-select: none;
+}
+
+.mcp-params-list {
+	margin: var(--size-4-2) 0 0 0;
+	padding-left: var(--size-4-4);
+}
+
+.mcp-param-item {
+	margin-bottom: var(--size-2-3);
+}
+
+.mcp-param-required {
+	color: var(--text-error);
+}
+
+.mcp-param-details {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+.mcp-param-description {
+	margin-top: var(--size-2-1);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-faint);
+	font-style: italic;
+}
+
+.mcp-insert-btn {
+	width: 100%;
+	margin-top: var(--size-2-2);
+}
+
+.mcp-no-tools {
+	text-align: center;
+	color: var(--text-muted);
+	padding: var(--size-4-8);
+	font-style: italic;
+}
+
 /* Generation Stats Modal Styles */
 .generation-stats {
 	display: flex;

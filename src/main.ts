@@ -148,6 +148,16 @@ export default class TarsPlugin extends Plugin {
 				const mcpCommands = getMCPCommands(this.mcpExecutor)
 				mcpCommands.forEach((cmd) => this.addCommand(cmd))
 
+				// Register Tool Browser command
+				this.addCommand({
+					id: 'browse-mcp-tools',
+					name: 'Browse MCP Tools',
+					editorCallback: (editor) => {
+						const { ToolBrowserModal } = require('./modals/toolBrowserModal')
+						new ToolBrowserModal(this.app, this.mcpManager, editor).open()
+					}
+				})
+
 				// Start health check timer
 				this.mcpHealthCheckInterval = setInterval(async () => {
 					if (this.mcpManager) {
