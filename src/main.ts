@@ -13,7 +13,14 @@ import {
 import { getMCPCommands } from './commands/mcpCommands'
 import type { RequestController } from './editor'
 import { t } from './lang/helper'
-import { CodeBlockProcessor, createToolExecutor, HEALTH_CHECK_INTERVAL, MCPServerManager, migrateServerConfigs, type ToolExecutor } from './mcp'
+import {
+	CodeBlockProcessor,
+	createToolExecutor,
+	HEALTH_CHECK_INTERVAL,
+	MCPServerManager,
+	migrateServerConfigs,
+	type ToolExecutor
+} from './mcp'
 import { getTitleFromCmdId, loadTemplateFileCommand, promptTemplateCmd, templateToCmdId } from './prompt'
 import { DEFAULT_SETTINGS, type PluginSettings } from './settings'
 import { TarsSettingTab } from './settingTab'
@@ -43,7 +50,25 @@ export default class TarsPlugin extends Plugin {
 			try {
 				this.mcpManager = new MCPServerManager()
 				await this.mcpManager.initialize(this.settings.mcpServers, {
-					failureThreshold: this.settings.mcpFailureThreshold
+					failureThreshold: this.settings.mcpFailureThreshold,
+					retryPolicy: {
+						maxAttempts: this.settings.mcpRetryMaxAttempts,
+						initialDelay: this.settings.mcpRetryInitialDelay,
+						maxDelay: this.settings.mcpRetryMaxDelay,
+						backoffMultiplier: this.settings.mcpRetryBackoffMultiplier,
+						jitter: this.settings.mcpRetryJitter,
+						transientErrorCodes: [
+							'ECONNREFUSED',
+							'ECONNRESET',
+							'ETIMEDOUT',
+							'ENOTFOUND',
+							'ECONNABORTED',
+							'EPIPE',
+							'ECONNREFUSED',
+							'ENETUNREACH',
+							'EHOSTUNREACH'
+						]
+					}
 				})
 
 				// Create tool executor with settings
@@ -215,7 +240,15 @@ export default class TarsPlugin extends Plugin {
 				break
 			case 'assistant':
 				this.addCommand(
-					asstTagCmd(tagCmdMeta, this.app, this.settings, this.statusBarManager, this.getRequestController(), this.mcpManager, this.mcpExecutor)
+					asstTagCmd(
+						tagCmdMeta,
+						this.app,
+						this.settings,
+						this.statusBarManager,
+						this.getRequestController(),
+						this.mcpManager,
+						this.mcpExecutor
+					)
 				)
 				break
 			default:
@@ -326,6 +359,7 @@ export default class TarsPlugin extends Plugin {
 		const serverDetailsPromises = servers.map(async (server) => {
 			const client = this.mcpManager?.getClient(server.id)
 			const isConnected = client?.isConnected() ?? false
+			const healthStatus = this.mcpManager?.getHealthStatus(server.id)
 
 			let toolCount = 0
 			if (isConnected && client) {
@@ -342,7 +376,10 @@ export default class TarsPlugin extends Plugin {
 				name: server.name,
 				enabled: server.enabled,
 				isConnected,
-				toolCount
+				toolCount,
+				isRetrying: healthStatus?.retryState?.isRetrying ?? false,
+				retryAttempt: healthStatus?.retryState?.currentAttempt ?? 0,
+				nextRetryAt: healthStatus?.retryState?.nextRetryAt
 			}
 		})
 
@@ -351,11 +388,13 @@ export default class TarsPlugin extends Plugin {
 		const runningServers = serverDetails.filter((s) => s.isConnected).length
 		const totalServers = servers.length
 		const availableTools = serverDetails.reduce((sum, s) => sum + s.toolCount, 0)
+		const retryingServers = serverDetails.filter((s) => s.isRetrying).length
 
 		this.statusBarManager.setMCPStatus({
 			runningServers,
 			totalServers,
 			availableTools,
+			retryingServers,
 			servers: serverDetails
 		})
 	}

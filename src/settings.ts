@@ -53,6 +53,11 @@ export interface PluginSettings {
 	mcpConcurrentLimit: number
 	mcpSessionLimit: number
 	mcpFailureThreshold: number
+	mcpRetryMaxAttempts: number
+	mcpRetryInitialDelay: number
+	mcpRetryMaxDelay: number
+	mcpRetryBackoffMultiplier: number
+	mcpRetryJitter: boolean
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -84,7 +89,12 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	mcpGlobalTimeout: 30000,
 	mcpConcurrentLimit: 3,
 	mcpSessionLimit: 25,
-	mcpFailureThreshold: 3
+	mcpFailureThreshold: 3,
+	mcpRetryMaxAttempts: 5,
+	mcpRetryInitialDelay: 1000,
+	mcpRetryMaxDelay: 30000,
+	mcpRetryBackoffMultiplier: 2,
+	mcpRetryJitter: true
 }
 
 export const availableVendors: Vendor[] = [

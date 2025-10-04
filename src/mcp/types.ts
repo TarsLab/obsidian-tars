@@ -94,6 +94,24 @@ export interface ErrorInfo {
 	timestamp: number
 }
 
+// Retry Policy Types
+export interface RetryPolicy {
+	maxAttempts: number
+	initialDelay: number // milliseconds
+	maxDelay: number // milliseconds
+	backoffMultiplier: number
+	jitter: boolean // add randomness to prevent thundering herd
+	transientErrorCodes: string[] // error codes that should be retried
+}
+
+export interface RetryState {
+	isRetrying: boolean
+	currentAttempt: number
+	nextRetryAt?: number
+	backoffIntervals: number[]
+	lastError?: Error
+}
+
 // Health Monitoring Types
 export interface ServerHealthStatus {
 	serverId: string
@@ -101,12 +119,7 @@ export interface ServerHealthStatus {
 	lastPingAt?: number
 	pingLatency?: number
 	consecutiveFailures: number
-	retryState: {
-		isRetrying: boolean
-		currentAttempt: number
-		nextRetryAt?: number
-		backoffIntervals: number[]
-	}
+	retryState: RetryState
 	autoDisabledAt?: number
 }
 

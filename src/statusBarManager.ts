@@ -37,12 +37,16 @@ export interface MCPStatusInfo {
 	runningServers: number
 	totalServers: number
 	availableTools: number
+	retryingServers: number
 	servers: Array<{
 		id: string
 		name: string
 		enabled: boolean
 		isConnected: boolean
 		toolCount: number
+		isRetrying?: boolean
+		retryAttempt?: number
+		nextRetryAt?: number
 	}>
 }
 
@@ -65,6 +69,12 @@ class MCPStatusModal extends Modal {
 		summary.createEl('p', {
 			text: `Running: ${this.mcpStatus.runningServers} / ${this.mcpStatus.totalServers} servers`
 		})
+		if (this.mcpStatus.retryingServers > 0) {
+			summary.createEl('p', {
+				text: `Retrying: ${this.mcpStatus.retryingServers} servers`,
+				cls: 'mcp-retrying'
+			})
+		}
 		summary.createEl('p', {
 			text: `Available Tools: ${this.mcpStatus.availableTools}`
 		})
@@ -78,8 +88,17 @@ class MCPStatusModal extends Modal {
 			for (const server of this.mcpStatus.servers) {
 				const serverItem = serverList.createDiv({ cls: 'mcp-server-item' })
 
-				const statusIcon = server.isConnected ? '✅' : (server.enabled ? '🔴' : '⚪')
-				const statusText = server.isConnected ? 'Connected' : (server.enabled ? 'Disconnected' : 'Disabled')
+				let statusIcon = server.isConnected ? '✅' : server.enabled ? '🔴' : '⚪'
+				let statusText = server.isConnected ? 'Connected' : server.enabled ? 'Disconnected' : 'Disabled'
+
+				if (server.isRetrying) {
+					statusIcon = '🔄'
+					statusText = `Retrying (attempt ${server.retryAttempt || 0})`
+					if (server.nextRetryAt) {
+						const nextRetryIn = Math.max(0, Math.round((server.nextRetryAt - Date.now()) / 1000))
+						statusText += ` in ${nextRetryIn}s`
+					}
+				}
 
 				serverItem.createEl('div', {
 					text: `${statusIcon} ${server.name}`,
@@ -276,14 +295,24 @@ export class StatusBarManager {
 		let baseText = 'Tars'
 		if (mcpStatus.totalServers > 0) {
 			baseText += ` | MCP: ${mcpStatus.runningServers}/${mcpStatus.totalServers}`
-			if (mcpStatus.availableTools > 0) {
+			if (mcpStatus.retryingServers > 0) {
+				baseText += ` (${mcpStatus.retryingServers} retrying)`
+			} else if (mcpStatus.availableTools > 0) {
 				baseText += ` (${mcpStatus.availableTools} tools)`
 			}
 		}
 
-		const tooltip = mcpStatus.totalServers > 0
-			? `MCP: ${mcpStatus.runningServers} of ${mcpStatus.totalServers} servers running, ${mcpStatus.availableTools} tools available. Click for details.`
-			: t('Tars AI assistant is ready')
+		let tooltip = t('Tars AI assistant is ready')
+		if (mcpStatus.totalServers > 0) {
+			tooltip = `MCP: ${mcpStatus.runningServers} of ${mcpStatus.totalServers} servers running`
+			if (mcpStatus.retryingServers > 0) {
+				tooltip += `, ${mcpStatus.retryingServers} retrying`
+			}
+			if (mcpStatus.availableTools > 0) {
+				tooltip += `, ${mcpStatus.availableTools} tools available`
+			}
+			tooltip += '. Click for details.'
+		}
 
 		this.updateState({
 			content: {

@@ -10,9 +10,10 @@
 import { EventEmitter } from 'node:events'
 import { MCPClient, type MCPSession } from 'mcp-use'
 import { ServerNotAvailableError } from './errors'
-import { migrateServerConfigs } from './migration'
 import { partitionConfigs, toMCPUseConfig } from './mcpUseAdapter'
-import type { MCPServerConfig, ServerHealthStatus, ToolDefinition } from './types'
+import { migrateServerConfigs } from './migration'
+import { DEFAULT_RETRY_POLICY, withRetry } from './retryUtils'
+import type { MCPServerConfig, RetryPolicy, ServerHealthStatus, ToolDefinition } from './types'
 import { ConnectionState } from './types'
 import { logError, logWarning } from './utils'
 
@@ -21,6 +22,7 @@ export interface MCPServerManagerEvents {
 	'server-stopped': [serverId: string]
 	'server-failed': [serverId: string, error: Error]
 	'server-auto-disabled': [serverId: string]
+	'server-retry': [serverId: string, attempt: number, nextRetryIn: number, error: Error]
 }
 
 /**
@@ -32,18 +34,25 @@ export class MCPServerManager extends EventEmitter<MCPServerManagerEvents> {
 	private sessions: Map<string, MCPSession> = new Map()
 	private healthStatuses: Map<string, ServerHealthStatus> = new Map()
 	private failureThreshold: number = 3
+	private retryPolicy: RetryPolicy = DEFAULT_RETRY_POLICY
 
 	/**
 	 * Initialize manager with server configurations
 	 */
-	async initialize(configs: MCPServerConfig[], options?: { failureThreshold?: number }): Promise<void> {
+	async initialize(
+		configs: MCPServerConfig[],
+		options?: { failureThreshold?: number; retryPolicy?: RetryPolicy }
+	): Promise<void> {
 		// Set failure threshold from options or use default
 		if (options?.failureThreshold !== undefined) {
 			this.failureThreshold = options.failureThreshold
 		}
-		const normalizedConfigs = migrateServerConfigs(
-			configs as unknown as Parameters<typeof migrateServerConfigs>[0]
-		)
+
+		// Set retry policy from options or use default
+		if (options?.retryPolicy) {
+			this.retryPolicy = options.retryPolicy
+		}
+		const normalizedConfigs = migrateServerConfigs(configs as unknown as Parameters<typeof migrateServerConfigs>[0])
 
 		// Store server configurations
 		this.servers.clear()
@@ -105,7 +114,7 @@ export class MCPServerManager extends EventEmitter<MCPServerManagerEvents> {
 	}
 
 	/**
-	 * Start a specific MCP server
+	 * Start a specific MCP server with retry logic
 	 */
 	async startServer(serverId: string): Promise<void> {
 		const config = this.servers.get(serverId)
@@ -121,18 +130,43 @@ export class MCPServerManager extends EventEmitter<MCPServerManagerEvents> {
 			throw new Error('MCP client not initialized')
 		}
 
+		// Update health status to show retry in progress
+		this.updateHealthStatus(serverId, 'retrying')
+
 		try {
-			// Create session for this server
-			const session = await this.mcpClient.createSession(serverId, true)
-			this.sessions.set(serverId, session)
+			// Use retry logic with exponential backoff
+			await withRetry(
+				async () => {
+					// Create session for this server
+					const session = await this.mcpClient?.createSession(serverId, true)
+					if (!session) {
+						throw new Error(`Failed to create session for server ${serverId}`)
+					}
+					this.sessions.set(serverId, session)
+				},
+				this.retryPolicy,
+				(attempt: number, error: Error, nextRetryIn: number) => {
+					// Update retry status in health
+					this.updateRetryStatus(serverId, attempt, nextRetryIn, error)
 
-			// Reset failure count on successful start
+					// Emit retry event for UI updates
+					this.emit('server-retry', serverId, attempt, nextRetryIn, error)
+
+					// Log retry attempt (skip in test environment)
+					if (process.env.NODE_ENV !== 'test' && process.env.VITEST !== 'true') {
+						console.warn(
+							`[MCP Manager] Retrying server ${serverId} (attempt ${attempt}/${this.retryPolicy.maxAttempts}) in ${Math.round(nextRetryIn / 1000)}s: ${error.message}`
+						)
+					}
+				}
+			)
+
+			// Success - reset failure count and update status
 			config.failureCount = 0
-
 			this.emit('server-started', serverId)
 			this.updateHealthStatus(serverId, 'healthy')
 		} catch (error) {
-			// Increment failure count on startup failure
+			// All retries failed - increment failure count
 			config.failureCount++
 
 			// Check if threshold exceeded and auto-disable
@@ -269,29 +303,59 @@ export class MCPServerManager extends EventEmitter<MCPServerManagerEvents> {
 	}
 
 	/**
+	 * Update retry status for a server
+	 */
+	private updateRetryStatus(serverId: string, attempt: number, nextRetryIn: number, error: Error): void {
+		const current = this.healthStatuses.get(serverId)
+		if (!current) return
+
+		this.healthStatuses.set(serverId, {
+			...current,
+			retryState: {
+				isRetrying: true,
+				currentAttempt: attempt,
+				nextRetryAt: Date.now() + nextRetryIn,
+				backoffIntervals: [...(current.retryState?.backoffIntervals || []), nextRetryIn],
+				lastError: error
+			}
+		})
+	}
+
+	/**
 	 * Update health status for a server
 	 */
-	private updateHealthStatus(serverId: string, state: 'healthy' | 'unhealthy' | 'stopped'): void {
+	private updateHealthStatus(serverId: string, state: 'healthy' | 'unhealthy' | 'stopped' | 'retrying'): void {
 		const current = this.healthStatuses.get(serverId)
 
 		// Map our simple states to ConnectionState enum
-		const connectionState =
-			state === 'healthy'
-				? ConnectionState.CONNECTED
-				: state === 'stopped'
-					? ConnectionState.DISCONNECTED
-					: ConnectionState.ERROR
+		let connectionState: ConnectionState
+		if (state === 'healthy') {
+			connectionState = ConnectionState.CONNECTED
+		} else if (state === 'stopped') {
+			connectionState = ConnectionState.DISCONNECTED
+		} else if (state === 'retrying') {
+			connectionState = ConnectionState.CONNECTING
+		} else {
+			connectionState = ConnectionState.ERROR
+		}
 
 		this.healthStatuses.set(serverId, {
 			serverId,
 			connectionState,
 			lastPingAt: Date.now(),
 			consecutiveFailures: state === 'unhealthy' ? (current?.consecutiveFailures || 0) + 1 : 0,
-			retryState: {
-				isRetrying: false,
-				currentAttempt: 0,
-				backoffIntervals: []
-			}
+			retryState:
+				state === 'retrying'
+					? current?.retryState || {
+							isRetrying: true,
+							currentAttempt: 0,
+							backoffIntervals: []
+						}
+					: {
+							isRetrying: false,
+							currentAttempt: 0,
+							backoffIntervals: []
+						}
 		})
 	}
 }
@@ -305,7 +369,7 @@ class MCPClientWrapper {
 		private serverId: string
 	) {}
 
-		async listTools(): Promise<ToolDefinition[]> {
+	async listTools(): Promise<ToolDefinition[]> {
 		if (!this.session.isConnected) {
 			throw new Error(`Session for ${this.serverId} not connected`)
 		}
