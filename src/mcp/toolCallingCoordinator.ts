@@ -125,35 +125,81 @@ export class ToolCallingCoordinator {
 	): AsyncGenerator<string> {
 		const { maxTurns = 10, documentPath = '', onToolCall, onToolResult, editor, statusBarManager } = options
 
+		console.debug(`[Tool Coordinator] Starting generation with ${messages.length} messages`)
+		console.debug(`[Tool Coordinator] Max turns: ${maxTurns}, Document: ${documentPath}`)
+
 		const conversation = [...messages]
 
 		for (let turn = 0; turn < maxTurns; turn++) {
+			console.debug(`[Tool Coordinator] Turn ${turn + 1}/${maxTurns}`)
 			const parser = adapter.getParser()
 			parser.reset()
 
 			let hasTextOutput = false
+			let chunkCount = 0
+			let textChunkCount = 0
 
 			// Stream response and parse for tool calls
-			for await (const chunk of adapter.sendRequest(conversation)) {
-				const parsed = parser.parseChunk(chunk)
+			try {
+				for await (const chunk of adapter.sendRequest(conversation)) {
+					chunkCount++
+					console.debug(`[Tool Coordinator] Processing chunk ${chunkCount}`)
 
-				if (parsed?.type === 'text') {
-					hasTextOutput = true
-					yield parsed.content
+					const parsed = parser.parseChunk(chunk)
+					console.debug(`[Tool Coordinator] Parsed chunk ${chunkCount}:`, {
+						type: parsed?.type,
+						hasContent: parsed?.type === 'text' && !!parsed?.content,
+						contentLength: parsed?.type === 'text' ? parsed?.content?.length || 0 : 0
+					})
+
+					if (parsed?.type === 'text') {
+						hasTextOutput = true
+						textChunkCount++
+						console.debug(`[Tool Coordinator] Yielding text chunk ${textChunkCount}:`, {
+							contentLength: parsed.content.length,
+							contentPreview: parsed.content.substring(0, 100)
+						})
+						yield parsed.content
+					}
 				}
+			} catch (error) {
+				console.error(`[Tool Coordinator] Error during streaming on turn ${turn + 1}:`, error)
+				throw error
 			}
 
+			const hasToolCalls = parser.hasCompleteToolCalls()
+			console.debug(`[Tool Coordinator] Turn ${turn + 1} complete:`, {
+				chunkCount,
+				textChunkCount,
+				hasTextOutput,
+				hasToolCalls
+			})
+
 			// Check if LLM wants to call tools
-			if (parser.hasCompleteToolCalls()) {
+			if (hasToolCalls) {
 				const toolCalls = parser.getToolCalls()
+				console.debug(
+					`[Tool Coordinator] Found ${toolCalls.length} complete tool calls:`,
+					toolCalls.map((tc) => tc.name)
+				)
+
+				// Record assistant tool call message for conversation history
+				conversation.push({
+					role: 'assistant',
+					content: '',
+					tool_calls: toolCalls
+				})
 
 				// Execute each tool call
 				for (const toolCall of toolCalls) {
+					console.debug(`[Tool Coordinator] Executing tool: ${toolCall.name}`, toolCall.arguments)
 					const serverId = adapter.findServerId(toolCall.name)
 					if (!serverId) {
-						console.warn(`No server found for tool: ${toolCall.name}`)
+						console.warn(`[Tool Coordinator] No server found for tool: ${toolCall.name}`)
 						continue
 					}
+
+					console.debug(`[Tool Coordinator] Found server for tool ${toolCall.name}: ${serverId}`)
 
 					// Notify about tool execution
 					onToolCall?.(toolCall.name)
@@ -162,6 +208,7 @@ export class ToolCallingCoordinator {
 					}
 
 					try {
+						console.debug(`[Tool Coordinator] Calling executor for tool ${toolCall.name}...`)
 						// Execute the tool
 						const result = await executor.executeTool({
 							serverId,
@@ -169,6 +216,13 @@ export class ToolCallingCoordinator {
 							parameters: toolCall.arguments,
 							source: 'ai-autonomous',
 							documentPath
+						})
+
+						console.debug(`[Tool Coordinator] Tool ${toolCall.name} executed successfully:`, {
+							executionDuration: result.executionDuration,
+							contentType: result.contentType,
+							contentLength:
+								typeof result.content === 'string' ? result.content.length : JSON.stringify(result.content).length
 						})
 
 						// Notify about tool result
@@ -181,6 +235,7 @@ export class ToolCallingCoordinator {
 						const toolMessage = adapter.formatToolResult(toolCall.id, result)
 						conversation.push(toolMessage)
 					} catch (error) {
+						console.error(`[Tool Coordinator] Tool execution failed for ${toolCall.name}:`, error)
 						// Log to status bar error buffer
 						statusBarManager?.logError(
 							'tool',
@@ -204,16 +259,21 @@ export class ToolCallingCoordinator {
 					}
 				}
 
+				console.debug(`[Tool Coordinator] Tool execution complete, continuing conversation loop`)
 				// Continue loop - LLM will see tool results and generate final response
 				continue
+			} else {
+				console.debug(`[Tool Coordinator] No complete tool calls found`)
 			}
 
 			// No tool calls - if we have text, we're done
 			if (hasTextOutput) {
+				console.debug(`[Tool Coordinator] No tool calls, but we have text output - ending generation`)
 				break
 			}
 
 			// No text and no tool calls - something wrong, stop
+			console.warn(`[Tool Coordinator] No text output and no tool calls - ending generation after ${turn + 1} turns`)
 			break
 		}
 	}

@@ -34,7 +34,10 @@ export class OllamaProviderAdapter implements ProviderAdapter<OllamaChunk> {
 	private readonly controller: AbortController
 	private readonly model: string
 	private toolMapping: Map<string, string> | null = null
-	private cachedTools: Array<{ type: 'function'; function: { name: string; description?: string; parameters?: unknown } }> | null = null
+	private cachedTools: Array<{
+		type: 'function'
+		function: { name: string; description?: string; parameters?: unknown }
+	}> | null = null
 	private readonly parser = new OllamaToolResponseParser()
 
 	constructor(config: OllamaAdapterConfig) {
@@ -50,8 +53,22 @@ export class OllamaProviderAdapter implements ProviderAdapter<OllamaChunk> {
 	}
 
 	async initialize(): Promise<void> {
-		this.toolMapping = await buildToolServerMapping(this.mcpManager)
-		this.cachedTools = await this.buildTools()
+		console.debug(`[Ollama MCP Adapter] Initializing adapter...`)
+
+		try {
+			console.debug(`[Ollama MCP Adapter] Building tool server mapping...`)
+			this.toolMapping = await buildToolServerMapping(this.mcpManager)
+			console.debug(`[Ollama MCP Adapter] Tool mapping built:`, Array.from(this.toolMapping.entries()))
+
+			console.debug(`[Ollama MCP Adapter] Building tools...`)
+			this.cachedTools = await this.buildTools()
+			console.debug(`[Ollama MCP Adapter] Tools built: ${this.cachedTools?.length || 0} tools`)
+
+			console.debug(`[Ollama MCP Adapter] Initialization complete`)
+		} catch (error) {
+			console.error(`[Ollama MCP Adapter] Initialization failed:`, error)
+			throw error
+		}
 	}
 
 	private invalidateCache(): void {
@@ -71,8 +88,13 @@ export class OllamaProviderAdapter implements ProviderAdapter<OllamaChunk> {
 	}
 
 	async *sendRequest(messages: Message[]): AsyncGenerator<OllamaChunk> {
+		console.debug(`[Ollama MCP Adapter] Starting sendRequest with ${messages.length} messages`)
+
 		const tools = await this.buildTools()
 		const formattedMessages = await this.formatMessages(messages)
+
+		console.debug(`[Ollama MCP Adapter] Formatted ${messages.length} messages`)
+		console.debug(`[Ollama MCP Adapter] Available tools: ${tools.length}`)
 
 		const requestParams = {
 			model: this.model,
@@ -81,41 +103,105 @@ export class OllamaProviderAdapter implements ProviderAdapter<OllamaChunk> {
 			tools: tools.length > 0 ? tools : undefined
 		}
 
-		// biome-ignore lint/suspicious/noExplicitAny: Chat API expects loosely typed params
-		const response = (await this.client.chat(requestParams as any)) as unknown as AsyncIterable<OllamaChunk>
+		console.debug(`[Ollama MCP Adapter] Request params:`, {
+			model: this.model,
+			messageCount: formattedMessages.length,
+			toolCount: tools.length,
+			stream: true
+		})
 
-		for await (const chunk of response) {
-			if (this.controller.signal.aborted) {
-				this.client.abort()
-				break
+		try {
+			// biome-ignore lint/suspicious/noExplicitAny: Chat API expects loosely typed params
+			const response = (await this.client.chat(requestParams as any)) as unknown as AsyncIterable<OllamaChunk>
+
+			let chunkCount = 0
+			try {
+				for await (const chunk of response) {
+					chunkCount++
+					console.debug(`[Ollama MCP Adapter] Raw chunk ${chunkCount}:`, chunk)
+					if (this.controller.signal.aborted) {
+						console.debug(`[Ollama MCP Adapter] Request aborted after ${chunkCount} chunks`)
+						this.client.abort()
+						break
+					}
+
+					console.debug(`[Ollama MCP Adapter] Chunk ${chunkCount}:`, {
+						hasMessage: !!chunk.message,
+						contentLength: chunk.message?.content?.length || 0,
+						hasToolCalls: !!chunk.message?.tool_calls?.length,
+						toolCallCount: chunk.message?.tool_calls?.length || 0,
+						done: chunk.done
+					})
+
+					if (!chunk.message?.content && !chunk.message?.tool_calls?.length) {
+						console.debug(`[Ollama MCP Adapter] Chunk ${chunkCount} has no content or tool calls`, {
+							done: chunk.done
+						})
+					}
+
+					yield chunk
+				}
+			} catch (streamError) {
+				console.error(`[Ollama MCP Adapter] Error during streaming:`, streamError)
+				throw streamError
 			}
-			yield chunk
+
+			console.debug(`[Ollama MCP Adapter] Streaming completed after ${chunkCount} chunks`)
+		} catch (connectionError) {
+			console.error(`[Ollama MCP Adapter] Failed to connect to Ollama:`, connectionError)
+			throw new Error(
+				`Ollama connection failed: ${connectionError instanceof Error ? connectionError.message : String(connectionError)}`
+			)
 		}
 	}
 
 	formatToolResult(_toolCallId: string, result: ToolExecutionResult): Message {
 		return {
-			role: 'assistant',
+			role: 'tool',
+			tool_call_id: _toolCallId,
 			content: typeof result.content === 'string' ? result.content : JSON.stringify(result.content)
 		}
 	}
 
-	private async buildTools(): Promise<Array<{ type: 'function'; function: { name: string; description?: string; parameters?: unknown } }>> {
+	private async buildTools(): Promise<
+		Array<{ type: 'function'; function: { name: string; description?: string; parameters?: unknown } }>
+	> {
 		if (this.cachedTools) {
+			console.debug(`[Ollama MCP Adapter] Using cached tools: ${this.cachedTools.length} tools`)
 			return this.cachedTools
 		}
 
-		const tools: Array<{ type: 'function'; function: { name: string; description?: string; parameters?: unknown } }> = []
+		console.debug(`[Ollama MCP Adapter] Building tools from MCP servers...`)
+		const tools: Array<{ type: 'function'; function: { name: string; description?: string; parameters?: unknown } }> =
+			[]
 		const servers = this.mcpManager.listServers()
 
-		for (const server of servers) {
-			if (!server.enabled) continue
+		console.debug(
+			`[Ollama MCP Adapter] Found ${servers.length} MCP servers:`,
+			servers.map((s) => ({ id: s.id, enabled: s.enabled }))
+		)
 
+		for (const server of servers) {
+			if (!server.enabled) {
+				console.debug(`[Ollama MCP Adapter] Skipping disabled server: ${server.id}`)
+				continue
+			}
+
+			console.debug(`[Ollama MCP Adapter] Processing server: ${server.id}`)
 			const client = this.mcpManager.getClient(server.id)
-			if (!client) continue
+			if (!client) {
+				console.warn(`[Ollama MCP Adapter] No client found for server: ${server.id}`)
+				continue
+			}
 
 			try {
+				console.debug(`[Ollama MCP Adapter] Listing tools for server: ${server.id}`)
 				const serverTools = await client.listTools()
+				console.debug(
+					`[Ollama MCP Adapter] Server ${server.id} has ${serverTools.length} tools:`,
+					serverTools.map((t) => t.name)
+				)
+
 				for (const tool of serverTools) {
 					tools.push({
 						type: 'function',
@@ -126,19 +212,49 @@ export class OllamaProviderAdapter implements ProviderAdapter<OllamaChunk> {
 						}
 					})
 				}
+				console.debug(`[Ollama MCP Adapter] Added ${serverTools.length} tools from server ${server.id}`)
 			} catch (error) {
-				console.error(`Failed to list tools from Ollama server ${server.id}:`, error)
+				console.error(`[Ollama MCP Adapter] Failed to list tools from server ${server.id}:`, error)
 			}
 		}
 
+		console.debug(`[Ollama MCP Adapter] Total tools built: ${tools.length}`)
 		this.cachedTools = tools
 		return tools
 	}
 
-	private async formatMessages(messages: Message[]): Promise<Array<{ role: string; content: string }>> {
-		return messages.map((msg) => ({
-			role: msg.role === 'tool' ? 'assistant' : msg.role,
-			content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
-		}))
+	private async formatMessages(messages: Message[]): Promise<Array<Record<string, unknown>>> {
+		return messages.map((msg) => {
+			if (msg.tool_calls && msg.tool_calls.length > 0) {
+				return {
+					role: 'assistant',
+					content: msg.content ?? '',
+					tool_calls: msg.tool_calls.map((toolCall) => ({
+						id: toolCall.id,
+						type: 'function',
+						function: {
+							name: toolCall.name,
+							arguments: toolCall.arguments
+						}
+					}))
+				}
+			}
+
+			if (msg.role === 'tool') {
+				return {
+					role: 'tool',
+					tool_call_id: msg.tool_call_id,
+					content:
+						typeof msg.content === 'string'
+							? msg.content
+							: JSON.stringify(msg.content)
+				}
+			}
+
+			return {
+				role: msg.role,
+				content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+			}
+		})
 	}
 }

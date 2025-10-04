@@ -509,12 +509,39 @@ export const generate = async (
 
 		let lastEditPos: EditorPosition | null = null
 		let startPos: EditorPosition | null = null
-		for await (const text of sendRequest(messages, controller, env.resolveEmbed, env.saveAttachment)) {
-			if (startPos == null) startPos = editor.getCursor('to')
-			lastEditPos = insertText(editor, text, editorStatus, lastEditPos)
-			llmResponse += text
-			statusBarManager.updateGeneratingProgress(llmResponse.length)
+		let chunkCount = 0
+		let totalTextLength = 0
+
+		console.debug(`[Ollama Debug] Starting generation with ${messages.length} messages`)
+		console.debug(`[Ollama Debug] Last message:`, lastMsg)
+
+		try {
+			for await (const text of sendRequest(messages, controller, env.resolveEmbed, env.saveAttachment)) {
+				chunkCount++
+				totalTextLength += text?.length || 0
+
+				console.debug(`[Ollama Debug] Received chunk ${chunkCount}:`, {
+					textLength: text?.length || 0,
+					textPreview: text?.substring(0, 100) || 'EMPTY',
+					totalResponseLength: totalTextLength
+				})
+
+				if (startPos == null) startPos = editor.getCursor('to')
+				lastEditPos = insertText(editor, text, editorStatus, lastEditPos)
+				llmResponse += text
+				statusBarManager.updateGeneratingProgress(llmResponse.length)
+			}
+		} catch (error) {
+			console.error(`[Ollama Debug] Error during streaming:`, error)
+			throw error
 		}
+
+		console.debug(`[Ollama Debug] Streaming complete:`, {
+			chunkCount,
+			totalTextLength,
+			llmResponseLength: llmResponse.length,
+			llmResponsePreview: llmResponse.substring(0, 200)
+		})
 
 		const endTime = new Date()
 		const duration = formatDuration(endTime.getTime() - startTime.getTime())

@@ -343,8 +343,17 @@ export class OllamaToolResponseParser implements ToolResponseParser<OllamaChunk>
 	private toolCalls: ToolCall[] = []
 
 	parseChunk(chunk: OllamaChunk): StreamChunk | null {
+		console.debug('[Ollama Tool Parser] Received chunk:', {
+			hasMessage: !!chunk.message,
+			contentPreview: chunk.message?.content?.slice(0, 80) ?? null,
+			hasToolCalls: !!chunk.message?.tool_calls?.length,
+			done: chunk.done
+		})
 		// Handle text content
 		if (chunk.message?.content) {
+			console.debug('[Ollama Tool Parser] Emitting text chunk', {
+				length: chunk.message.content.length
+			})
 			return {
 				type: 'text',
 				content: chunk.message.content
@@ -355,12 +364,20 @@ export class OllamaToolResponseParser implements ToolResponseParser<OllamaChunk>
 		// Note: Ollama sends complete tool calls, not streamed
 		if (chunk.message?.tool_calls && chunk.message.tool_calls.length > 0) {
 			for (const toolCall of chunk.message.tool_calls) {
+				console.debug('[Ollama Tool Parser] Processing tool call', {
+					name: toolCall.function.name,
+					argumentKeys: Object.keys(toolCall.function.arguments || {})
+				})
 				this.toolCalls.push({
 					id: `ollama_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
 					name: toolCall.function.name,
-					arguments: toolCall.function.arguments
+					arguments: this.normalizeArguments(toolCall.function.arguments)
 				})
 			}
+		}
+
+		if (!chunk.message && chunk.done) {
+			console.debug('[Ollama Tool Parser] Chunk indicates done without message content')
 		}
 
 		return null
@@ -376,5 +393,39 @@ export class OllamaToolResponseParser implements ToolResponseParser<OllamaChunk>
 
 	reset(): void {
 		this.toolCalls = []
+	}
+
+	private normalizeArguments(args: Record<string, unknown>): Record<string, unknown> {
+		const normalized: Record<string, unknown> = {}
+		for (const [key, value] of Object.entries(args)) {
+			normalized[key] = this.normalizeValue(value)
+		}
+		return normalized
+	}
+
+	private normalizeValue(value: unknown): unknown {
+		if (typeof value === 'string') {
+			const trimmed = value.trim()
+			if (trimmed === '') {
+				return value
+			}
+			if (trimmed === 'true') return true
+			if (trimmed === 'false') return false
+			if (trimmed === 'null') return null
+			if (/^-?\d+(\.\d+)?$/.test(trimmed)) {
+				return trimmed.includes('.') ? parseFloat(trimmed) : Number(trimmed)
+			}
+			return value
+		}
+
+		if (Array.isArray(value)) {
+			return value.map((item) => this.normalizeValue(item))
+		}
+
+		if (value && typeof value === 'object') {
+			return this.normalizeArguments(value as Record<string, unknown>)
+		}
+
+		return value
 	}
 }

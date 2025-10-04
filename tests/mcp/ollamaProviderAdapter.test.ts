@@ -132,7 +132,7 @@ describe('OllamaProviderAdapter', () => {
 	})
 
 	describe('Message Formatting', () => {
-		it('should format tool results as assistant role', async () => {
+		it('should format tool results as tool messages', async () => {
 			// GIVEN: Tool execution result
 			const result = {
 				content: { temperature: 72, condition: 'sunny' },
@@ -143,8 +143,9 @@ describe('OllamaProviderAdapter', () => {
 			// WHEN: Formatting tool result
 			const formattedMessage = adapter.formatToolResult('call_123', result)
 
-			// THEN: Should use assistant role (Ollama convention)
-			expect(formattedMessage.role).toBe('assistant')
+			// THEN: Should produce tool role with tool_call_id
+			expect(formattedMessage.role).toBe('tool')
+			expect(formattedMessage.tool_call_id).toBe('call_123')
 			expect(formattedMessage.content).toBe('{"temperature":72,"condition":"sunny"}')
 		})
 
@@ -160,6 +161,8 @@ describe('OllamaProviderAdapter', () => {
 			const formattedMessage = adapter.formatToolResult('call_456', result)
 
 			// THEN: Should preserve string content
+			expect(formattedMessage.role).toBe('tool')
+			expect(formattedMessage.tool_call_id).toBe('call_456')
 			expect(formattedMessage.content).toBe('The weather is sunny')
 		})
 	})
@@ -197,11 +200,11 @@ describe('OllamaProviderAdapter', () => {
 			await adapter.initialize()
 
 			const mockStream = (async function* () {
-				yield { message: { content: 'Start' }, done: false }
-				// Signal abort after first chunk
-				controller.abort()
-				yield { message: { content: 'Should not see this' }, done: false }
-			})()
+		yield { message: { content: 'Start' }, done: false }
+			// Signal abort after first chunk
+			controller.abort()
+		yield { message: { content: 'Should not see this' }, done: false }
+		})()
 
 			// biome-ignore lint/suspicious/noExplicitAny: mock
 			vi.mocked(mockOllamaClient.chat as any).mockResolvedValue(mockStream)
@@ -256,6 +259,27 @@ describe('OllamaProviderAdapter', () => {
 			expect(toolCalls).toHaveLength(1)
 			expect(toolCalls[0].name).toBe('get_weather')
 			expect(toolCalls[0].arguments).toEqual({ location: 'London' })
+		})
+
+		it('should coerce numeric string arguments to numbers', () => {
+			const parser = adapter.getParser()
+
+			const chunk = {
+				message: {
+					tool_calls: [{
+						function: {
+							name: 'get_code_context_exa',
+							arguments: { query: 'test', tokensNum: '1000' }
+						}
+					}]
+				}
+			}
+
+			parser.parseChunk(chunk)
+
+			expect(parser.hasCompleteToolCalls()).toBe(true)
+			const [toolCall] = parser.getToolCalls()
+			expect(toolCall.arguments.tokensNum).toBe(1000)
 		})
 	})
 })
