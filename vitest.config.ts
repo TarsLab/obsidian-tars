@@ -9,7 +9,7 @@ export default defineConfig({
 		// Include all test files in the tests directory
 		include: ['tests/**/*.{test,spec}.ts'],
 		// Environment for tests
-		environment: 'node',
+		environment: 'jsdom',
 		// Setup files if needed (can be added later)
 		// setupFiles: [],
 		// Coverage configuration
