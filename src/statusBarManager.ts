@@ -65,7 +65,9 @@ export interface MCPStatusInfo {
 class MCPStatusModal extends Modal {
 	constructor(
 		app: App,
-		private mcpStatus: MCPStatusInfo
+		private mcpStatus: MCPStatusInfo,
+		private errorLog: ErrorLogEntry[] = [],
+		private onClearLogs?: () => void
 	) {
 		super(app)
 	}
@@ -73,6 +75,25 @@ class MCPStatusModal extends Modal {
 	onOpen() {
 		const { contentEl } = this
 		contentEl.createEl('h2', { text: 'MCP Server Status' })
+
+		// Action buttons at top
+		if (this.errorLog.length > 0) {
+			const actionButtons = contentEl.createDiv({ cls: 'modal-action-buttons' })
+			const viewLogsBtn = actionButtons.createEl('button', {
+				text: `View ${this.errorLog.length} Error Log${this.errorLog.length === 1 ? '' : 's'}`,
+				cls: 'mod-warning'
+			})
+			viewLogsBtn.onclick = () => {
+				this.close()
+				const currentError = {
+					message: this.errorLog[0]?.message || 'No current error',
+					name: this.errorLog[0]?.name,
+					stack: this.errorLog[0]?.stack,
+					timestamp: this.errorLog[0]?.timestamp || new Date()
+				}
+				new ErrorDetailModal(this.app, currentError, this.errorLog, this.onClearLogs).open()
+			}
+		}
 
 		const statusContainer = contentEl.createDiv({ cls: 'mcp-status-modal' })
 
@@ -133,7 +154,9 @@ class MCPStatusModal extends Modal {
 class GenerationStatsModal extends Modal {
 	constructor(
 		app: App,
-		private stats: GenerationStats
+		private stats: GenerationStats,
+		private errorLog: ErrorLogEntry[] = [],
+		private onClearLogs?: () => void
 	) {
 		super(app)
 	}
@@ -141,6 +164,25 @@ class GenerationStatsModal extends Modal {
 	onOpen() {
 		const { contentEl } = this
 		contentEl.createEl('h2', { text: t('AI Generation Details') })
+
+		// Action buttons at top
+		if (this.errorLog.length > 0) {
+			const actionButtons = contentEl.createDiv({ cls: 'modal-action-buttons' })
+			const viewLogsBtn = actionButtons.createEl('button', {
+				text: `View ${this.errorLog.length} Error Log${this.errorLog.length === 1 ? '' : 's'}`,
+				cls: 'mod-warning'
+			})
+			viewLogsBtn.onclick = () => {
+				this.close()
+				const currentError = {
+					message: this.errorLog[0]?.message || 'No current error',
+					name: this.errorLog[0]?.name,
+					stack: this.errorLog[0]?.stack,
+					timestamp: this.errorLog[0]?.timestamp || new Date()
+				}
+				new ErrorDetailModal(this.app, currentError, this.errorLog, this.onClearLogs).open()
+			}
+		}
 
 		const statsContainer = contentEl.createDiv({ cls: 'generation-stats' })
 
@@ -163,7 +205,8 @@ class ErrorDetailModal extends Modal {
 	constructor(
 		app: App,
 		private currentError: ErrorInfo,
-		private errorLog: ErrorLogEntry[] = []
+		private errorLog: ErrorLogEntry[] = [],
+		private onClearLogs?: () => void
 	) {
 		super(app)
 	}
@@ -192,7 +235,7 @@ class ErrorDetailModal extends Modal {
 					cls: 'mod-warning'
 				})
 				copyAllBtn.onclick = () => {
-					const allErrors = this.errorLog.map(e => ({
+					const allErrors = this.errorLog.map((e) => ({
 						timestamp: e.timestamp.toISOString(),
 						type: e.type,
 						name: e.name || 'Error',
@@ -202,6 +245,16 @@ class ErrorDetailModal extends Modal {
 					}))
 					navigator.clipboard.writeText(JSON.stringify(allErrors, null, 2))
 					new Notice(`Copied ${allErrors.length} errors to clipboard`)
+				}
+
+				const clearLogsBtn = topButtons.createEl('button', {
+					text: 'Clear All Logs',
+					cls: 'mod-destructive'
+				})
+				clearLogsBtn.onclick = () => {
+					this.onClearLogs?.()
+					new Notice('Error log cleared')
+					this.close()
 				}
 			}
 		}
@@ -266,14 +319,20 @@ class ErrorDetailModal extends Modal {
 						cls: 'error-copy-btn'
 					})
 					copyBtn.onclick = () => {
-						navigator.clipboard.writeText(JSON.stringify({
-							timestamp: error.timestamp.toISOString(),
-							type: error.type,
-							name: error.name,
-							message: error.message,
-							stack: error.stack,
-							context: error.context
-						}, null, 2))
+						navigator.clipboard.writeText(
+							JSON.stringify(
+								{
+									timestamp: error.timestamp.toISOString(),
+									type: error.type,
+									name: error.name,
+									message: error.message,
+									stack: error.stack,
+									context: error.context
+								},
+								null,
+								2
+							)
+						)
 						new Notice('Error copied to clipboard')
 					}
 				}
@@ -283,11 +342,16 @@ class ErrorDetailModal extends Modal {
 
 	private getErrorTypeIcon(type: ErrorLogType): string {
 		switch (type) {
-			case 'generation': return '🤖'
-			case 'mcp': return '🔌'
-			case 'tool': return '🔧'
-			case 'system': return '⚙️'
-			default: return '❌'
+			case 'generation':
+				return '🤖'
+			case 'mcp':
+				return '🔌'
+			case 'tool':
+				return '🔧'
+			case 'system':
+				return '⚙️'
+			default:
+				return '❌'
 		}
 	}
 
@@ -324,16 +388,28 @@ export class StatusBarManager {
 		this.statusBarItem.addEventListener('click', () => {
 			// MCP status takes priority
 			if (this.state.mcpStatus) {
-				new MCPStatusModal(this.app, this.state.mcpStatus).open()
+				new MCPStatusModal(this.app, this.state.mcpStatus, this.errorLog, () => this.clearErrorLog()).open()
 				return
 			}
 
-			if (!this.state.data) return
+			if (!this.state.data) {
+				// Show error log if available even when idle
+				if (this.errorLog.length > 0) {
+					const currentError = {
+						message: 'No active generation',
+						timestamp: new Date()
+					}
+					new ErrorDetailModal(this.app, currentError, this.errorLog, () => this.clearErrorLog()).open()
+				}
+				return
+			}
 
 			if (this.state.type === 'error') {
-				new ErrorDetailModal(this.app, this.state.data as ErrorInfo, this.errorLog).open()
+				new ErrorDetailModal(this.app, this.state.data as ErrorInfo, this.errorLog, () => this.clearErrorLog()).open()
 			} else if (this.state.type === 'success') {
-				new GenerationStatsModal(this.app, this.state.data as GenerationStats).open()
+				new GenerationStatsModal(this.app, this.state.data as GenerationStats, this.errorLog, () =>
+					this.clearErrorLog()
+				).open()
 			}
 		})
 

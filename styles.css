@@ -326,19 +326,19 @@ summary.tars-setting-h4 {
 	border-left-color: var(--interactive-accent);
 }
 
-.error-log-item[data-error-type='generation'] {
+.error-log-item[data-error-type="generation"] {
 	border-left-color: var(--text-error);
 }
 
-.error-log-item[data-error-type='mcp'] {
+.error-log-item[data-error-type="mcp"] {
 	border-left-color: var(--text-warning);
 }
 
-.error-log-item[data-error-type='tool'] {
+.error-log-item[data-error-type="tool"] {
 	border-left-color: var(--text-accent);
 }
 
-.error-log-item[data-error-type='system'] {
+.error-log-item[data-error-type="system"] {
 	border-left-color: var(--text-muted);
 }
 
@@ -526,4 +526,78 @@ summary.tars-setting-h4 {
 
 .mcp-error-copy-btn:hover {
 	background-color: rgba(255, 255, 255, 0.2);
+
+	/* Modal Action Buttons */
+	.modal-action-buttons {
+		display: flex;
+		gap: var(--size-4-2);
+		margin-bottom: var(--size-4-3);
+		justify-content: flex-start;
+	}
+
+	.modal-action-buttons button {
+		padding: var(--size-2-2) var(--size-4-3);
+	}
+
+	/* Tabbed Modal Styles */
+	.tabbed-modal .tab-nav {
+		display: flex;
+		gap: var(--size-2-1);
+		margin-bottom: var(--size-4-4);
+		border-bottom: 2px solid var(--background-modifier-border);
+		padding-bottom: var(--size-2-1);
+	}
+
+	.tabbed-modal .tab-button {
+		padding: var(--size-2-2) var(--size-4-3);
+		border: none;
+		background-color: transparent;
+		color: var(--text-muted);
+		cursor: pointer;
+		font-size: var(--font-ui-medium);
+		font-weight: var(--font-semibold);
+		border-bottom: 2px solid transparent;
+		margin-bottom: -2px;
+		transition: all 0.2s;
+	}
+
+	.tabbed-modal .tab-button:hover {
+		color: var(--text-normal);
+		background-color: var(--background-modifier-hover);
+	}
+
+	.tabbed-modal .tab-button.tab-active {
+		color: var(--interactive-accent);
+		border-bottom-color: var(--interactive-accent);
+	}
+
+	.tabbed-modal .tab-content {
+		display: block;
+	}
+
+	.tabbed-modal .tab-content.tab-hidden {
+		display: none;
+	}
+
+	.tabbed-modal .tab-content.tab-active {
+		display: block;
+	}
+
+	.tabbed-modal .no-errors-message {
+		text-align: center;
+		color: var(--text-muted);
+		padding: var(--size-4-8);
+		font-style: italic;
+	}
+
+	.tabbed-modal .log-buttons {
+		display: flex;
+		gap: var(--size-4-2);
+		margin-bottom: var(--size-4-3);
+		justify-content: flex-start;
+	}
+
+	.tabbed-modal .log-buttons button {
+		padding: var(--size-2-2) var(--size-4-3);
+	}
 }
