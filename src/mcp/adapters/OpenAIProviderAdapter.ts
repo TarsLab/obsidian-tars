@@ -4,6 +4,7 @@ import type { EmbedCache } from 'obsidian'
 import type { ToolExecutor } from '../executor'
 import type { MCPServerManager } from '../managerMCPUse'
 import type { Message, ProviderAdapter, ToolExecutionResult } from '../toolCallingCoordinator'
+import type { ToolServerInfo } from '../types'
 import { OpenAIToolResponseParser } from '../toolResponseParser'
 import { buildToolServerMapping } from './toolMapping'
 
@@ -20,7 +21,7 @@ export class OpenAIProviderAdapter implements ProviderAdapter<OpenAI.ChatComplet
 	private readonly mcpExecutor: ToolExecutor
 	private readonly client: OpenAI
 	private readonly controller: AbortController
-	private toolMapping: Map<string, string> | null = null
+	private toolMapping: Map<string, ToolServerInfo> | null = null
 	private cachedTools: OpenAI.ChatCompletionTool[] | null = null
 	private readonly resolveEmbedAsBinary?: (embed: EmbedCache) => Promise<ArrayBuffer>
 
@@ -68,7 +69,7 @@ export class OpenAIProviderAdapter implements ProviderAdapter<OpenAI.ChatComplet
 		return new OpenAIToolResponseParser()
 	}
 
-	findServerId(toolName: string): string | null {
+	findServer(toolName: string): ToolServerInfo | null {
 		if (this.toolMapping) {
 			return this.toolMapping.get(toolName) ?? null
 		}
@@ -76,11 +77,14 @@ export class OpenAIProviderAdapter implements ProviderAdapter<OpenAI.ChatComplet
 		const servers = this.mcpManager.listServers()
 		for (const server of servers) {
 			if (server.enabled && this.mcpManager.getClient(server.id)) {
-				return server.id
+				return {
+					id: server.id,
+					name: server.name
+				}
 			}
 		}
 		return null
-	}
+}
 
 	formatToolResult(toolCallId: string, result: ToolExecutionResult): Message {
 		return {

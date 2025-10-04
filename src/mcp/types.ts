@@ -87,6 +87,11 @@ export interface ToolExecutionResult {
 	displayFormat?: 'inline' | 'block' | 'collapsed'
 }
 
+export interface ToolServerInfo {
+	id: string
+	name: string
+}
+
 export interface ErrorInfo {
 	message: string
 	code?: string

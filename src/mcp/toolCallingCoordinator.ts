@@ -13,6 +13,7 @@ import type { Editor } from 'obsidian'
 import type { StatusBarManager } from '../statusBarManager'
 import type { ToolExecutor } from './executor'
 import type { ToolCall, ToolResponseParser } from './toolResponseParser'
+import type { ToolServerInfo } from './types'
 
 // ============================================================================
 // Types
@@ -59,7 +60,7 @@ export interface ProviderAdapter<TChunk = unknown> {
 	/**
 	 * Find which server provides a tool
 	 */
-	findServerId(toolName: string): string | null
+	findServer(toolName: string): ToolServerInfo | null
 
 	/**
 	 * Format tool result as message for this provider
@@ -79,17 +80,51 @@ export interface GenerateOptions {
 function insertToolCallMarkdown(
 	editor: Editor,
 	toolName: string,
-	serverId: string,
+	server: ToolServerInfo,
 	parameters: Record<string, unknown>
 ): void {
-	const markdown = `\n\n[🔧 Tool: ${toolName}](mcp://${serverId}/${toolName})\n\`\`\`json\n${JSON.stringify(parameters, null, 2)}\n\`\`\`\n`
-	editor.replaceRange(markdown, editor.getCursor())
+	const cursor = editor.getCursor()
+	const paramsJson = JSON.stringify(parameters, null, 2)
+	const bodyLines = [
+		`Tool: ${toolName}`,
+		`Server Name: ${server.name}`,
+		`Server ID: ${server.id}`,
+		'```json',
+		...paramsJson.split('\n'),
+		'```'
+	]
+	const calloutLines = [`> [!tool]- Tool Call (${server.name}: ${toolName})`, ...bodyLines.map((line) => `> ${line}`)]
+	const markdown = `\n${calloutLines.join('\n')}\n`
+	editor.replaceRange(markdown, cursor)
+
+	const lines = markdown.split('\n')
+	const newCursor = {
+		line: cursor.line + lines.length - 1,
+		ch: lines.length === 1 ? cursor.ch + markdown.length : lines[lines.length - 1].length
+	}
+	editor.setCursor(newCursor)
 }
 
 function formatResultContent(result: ToolExecutionResult): string {
 	const { content, contentType } = result
 	switch (contentType) {
 		case 'json':
+			if (Array.isArray(content) && content.length === 1 && 'type' in content[0] && 'text' === content[0].type) {
+				/**
+				 * We converting this to markdown
+				 * [
+				 *  {
+				 * 	"type": "text",
+				 * 	"text": "## TypeScript vs JavaScript: The ONLY Guide You Need!\n\nhttps://dev.to/codeparrot/typescript-vs-javascript-the-only-guide-you-need-1pi\n\n```\ninterface Product {\n id: number;\n"
+				 * 	}
+				 * ]
+				 */
+				const escapedContent = String(content[0].text)
+				// conver \n to \n
+				const formattedContent = escapedContent.replace(/\\n/g, '\n').trim()
+				return `${formattedContent}\n\n`
+			}
+
 			return `\`\`\`json\n${JSON.stringify(content, null, 2)}\n\`\`\``
 		case 'markdown':
 			return typeof content === 'string' ? content : String(content)
@@ -101,9 +136,22 @@ function formatResultContent(result: ToolExecutionResult): string {
 }
 
 function insertToolResultMarkdown(editor: Editor, result: ToolExecutionResult): void {
+	const cursor = editor.getCursor()
 	const formattedContent = formatResultContent(result)
-	const markdown = `\n**Result** (${result.executionDuration}ms):\n<details>\n<summary>View Result</summary>\n\n${formattedContent}\n</details>\n`
-	editor.replaceRange(markdown, editor.getCursor())
+	const bodyLines = formattedContent.split('\n')
+	const calloutLines = [
+		`> [!tool]- Tool Result (${result.executionDuration}ms)`,
+		...bodyLines.map((line) => `> ${line}`)
+	]
+	const markdown = `\n${calloutLines.join('\n')}\n`
+	editor.replaceRange(markdown, cursor)
+
+	const lines = markdown.split('\n')
+	const newCursor = {
+		line: cursor.line + lines.length - 1,
+		ch: lines.length === 1 ? cursor.ch + markdown.length : lines[lines.length - 1].length
+	}
+	editor.setCursor(newCursor)
 }
 
 // ============================================================================
@@ -193,25 +241,27 @@ export class ToolCallingCoordinator {
 				// Execute each tool call
 				for (const toolCall of toolCalls) {
 					console.debug(`[Tool Coordinator] Executing tool: ${toolCall.name}`, toolCall.arguments)
-					const serverId = adapter.findServerId(toolCall.name)
-					if (!serverId) {
+					const serverInfo = adapter.findServer(toolCall.name)
+					if (!serverInfo) {
 						console.warn(`[Tool Coordinator] No server found for tool: ${toolCall.name}`)
 						continue
 					}
 
-					console.debug(`[Tool Coordinator] Found server for tool ${toolCall.name}: ${serverId}`)
+					console.debug(
+						`[Tool Coordinator] Found server for tool ${toolCall.name}: ${serverInfo.id} (${serverInfo.name})`
+					)
 
 					// Notify about tool execution
 					onToolCall?.(toolCall.name)
 					if (editor) {
-						insertToolCallMarkdown(editor, toolCall.name, serverId, toolCall.arguments)
+						insertToolCallMarkdown(editor, toolCall.name, serverInfo, toolCall.arguments)
 					}
 
 					try {
 						console.debug(`[Tool Coordinator] Calling executor for tool ${toolCall.name}...`)
 						// Execute the tool
 						const result = await executor.executeTool({
-							serverId,
+							serverId: serverInfo.id,
 							toolName: toolCall.name,
 							parameters: toolCall.arguments,
 							source: 'ai-autonomous',
@@ -243,7 +293,8 @@ export class ToolCallingCoordinator {
 							error as Error,
 							{
 								toolName: toolCall.name,
-								serverId,
+								serverId: serverInfo.id,
+								serverName: serverInfo.name,
 								documentPath,
 								source: 'ai-autonomous'
 							}

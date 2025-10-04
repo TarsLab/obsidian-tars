@@ -93,7 +93,7 @@ describe('Ollama Provider Integration - Tool Calling', () => {
 		// THEN: Should instantiate successfully
 		expect(adapter).toBeDefined()
 		expect(adapter.getParser).toBeDefined()
-		expect(adapter.findServerId).toBeDefined()
+		expect(adapter.findServer).toBeDefined()
 		expect(adapter.formatToolResult).toBeDefined()
 	})
 })

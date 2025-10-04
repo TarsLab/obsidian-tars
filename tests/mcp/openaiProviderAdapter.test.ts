@@ -18,7 +18,7 @@ const mockOpenAI = {
 // Mock MCP manager
 const mockMCPManager = {
 	listServers: vi.fn().mockReturnValue([
-		{ id: 'server1', name: 'Test Server', enabled: true }
+		{ id: 'server1', name: 'Server 1', enabled: true }
 	]),
 	getClient: vi.fn().mockReturnValue({
 		listTools: vi.fn().mockResolvedValue([
@@ -73,15 +73,15 @@ describe('OpenAIProviderAdapter', () => {
 	})
 
 	describe('Tool operations', () => {
-		it('should find server ID for tool', async () => {
+		it('should find server info for tool', async () => {
 			// GIVEN: Initialized adapter
 			await adapter.initialize()
 
 			// WHEN: Finding server for tool
-			const serverId = adapter.findServerId('test_tool')
+			const serverInfo = adapter.findServer('test_tool')
 
 			// THEN: Should return correct server ID
-			expect(serverId).toBe('server1')
+			expect(serverInfo).toEqual({ id: 'server1', name: 'Server 1' })
 		})
 
 		it('should format tool result correctly', () => {

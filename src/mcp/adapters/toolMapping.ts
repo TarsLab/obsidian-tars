@@ -1,7 +1,8 @@
 import type { MCPServerManager } from '../managerMCPUse'
+import type { ToolServerInfo } from '../types'
 
-export async function buildToolServerMapping(manager: MCPServerManager): Promise<Map<string, string>> {
-	const mapping = new Map<string, string>()
+export async function buildToolServerMapping(manager: MCPServerManager): Promise<Map<string, ToolServerInfo>> {
+	const mapping = new Map<string, ToolServerInfo>()
 	const servers = manager.listServers()
 
 	for (const server of servers) {
@@ -14,7 +15,10 @@ export async function buildToolServerMapping(manager: MCPServerManager): Promise
 			const tools = await client.listTools()
 			for (const tool of tools) {
 				if (!mapping.has(tool.name)) {
-					mapping.set(tool.name, server.id)
+					mapping.set(tool.name, {
+						id: server.id,
+						name: server.name
+					})
 				}
 			}
 		} catch (error) {

@@ -3,7 +3,15 @@ import type { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } 
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, _resolveEmbedAsBinary: ResolveEmbedAsBinary) {
-		const { parameters, mcpManager, mcpExecutor, documentPath, statusBarManager, ...optionsExcludingParams } = settings
+		const {
+			parameters,
+			mcpManager,
+			mcpExecutor,
+			documentPath,
+			statusBarManager,
+			editor,
+			...optionsExcludingParams
+		} = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { baseURL, model, ...remains } = options
 
@@ -39,7 +47,8 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 
 				yield* coordinator.generateWithTools(formattedMessages, adapter, mcpExec, {
 					documentPath: documentPath || 'unknown.md',
-					statusBarManager: statusBarManager as any
+					statusBarManager: statusBarManager as any,
+					editor: editor as any
 				})
 
 				return

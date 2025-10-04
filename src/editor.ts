@@ -477,6 +477,8 @@ export const generate = async (
 			provider.options.statusBarManager = statusBarManager
 		}
 
+		provider.options.editor = editor
+
 		const conversation = await extractConversation(env, 0, endOffset)
 		const messages = conversation.map((c) =>
 			c.embeds ? { role: c.role, content: c.content, embeds: c.embeds } : { role: c.role, content: c.content }

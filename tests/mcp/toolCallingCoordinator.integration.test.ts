@@ -60,7 +60,7 @@ describe('ToolCallingCoordinator integration: markdown persistence', () => {
 				}
 			},
 			getParser: () => mockParser,
-			findServerId: () => 'server-weather',
+			findServer: () => ({ id: 'server-weather', name: 'Weather Server' }),
 			formatToolResult: vi.fn().mockImplementation(() => ({
 				role: 'tool',
 				content: JSON.stringify({ forecast: 'Sunny' }),
@@ -94,10 +94,13 @@ describe('ToolCallingCoordinator integration: markdown persistence', () => {
 			// consume generator
 		}
 
-		expect(editor.content).toContain('[🔧 Tool: getWeather]')
-		expect(editor.content).toContain('```json')
-		expect(editor.content).toContain('"city": "London"')
-		expect(editor.content).toContain('**Result** (1234ms):')
-		expect(editor.content).toContain('"forecast": "Sunny"')
+	expect(editor.content).toContain('> [!tool]- Tool Call (Weather Server: getWeather)')
+	expect(editor.content).toContain('> Tool: getWeather')
+	expect(editor.content).toContain('> Server Name: Weather Server')
+	expect(editor.content).toContain('> Server ID: server-weather')
+	expect(editor.content).toContain('> ```json')
+	expect(editor.content).toContain('>   "city": "London"')
+	expect(editor.content).toContain('> [!tool]- Tool Result (1234ms)')
+	expect(editor.content).toContain('>   "forecast": "Sunny"')
 	})
 })

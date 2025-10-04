@@ -69,7 +69,7 @@ describe('ClaudeProviderAdapter', () => {
 		})
 	})
 
-	describe('findServerId', () => {
+	describe('findServer', () => {
 		it('should return server ID for known tool', async () => {
 			const mockServer: MCPServerConfig = {
 				id: 'test-server',
@@ -94,19 +94,19 @@ describe('ClaudeProviderAdapter', () => {
 
 			await adapter.initialize()
 
-			const serverId = adapter.findServerId('test_tool')
-			expect(serverId).toBe('test-server')
+			const serverInfo = adapter.findServer('test_tool')
+			expect(serverInfo).toEqual({ id: 'test-server', name: 'Test Server' })
 		})
 
 		it('should return null for unknown tool', async () => {
 			await adapter.initialize()
 
-			const serverId = adapter.findServerId('unknown_tool')
-			expect(serverId).toBeNull()
+			const serverInfo = adapter.findServer('unknown_tool')
+			expect(serverInfo).toBeNull()
 		})
 
 		it('should throw error if not initialized', () => {
-			expect(() => adapter.findServerId('test_tool')).toThrow('ClaudeProviderAdapter not initialized')
+			expect(() => adapter.findServer('test_tool')).toThrow('ClaudeProviderAdapter not initialized')
 		})
 	})
 

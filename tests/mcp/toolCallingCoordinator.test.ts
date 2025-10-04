@@ -54,7 +54,7 @@ interface ProviderAdapter<TChunk = unknown> {
 	/**
 	 * Find which server provides a tool
 	 */
-	findServerId(toolName: string): string | null
+	findServer(toolName: string): { id: string; name: string } | null
 
 	/**
 	 * Format tool result as message
@@ -112,7 +112,7 @@ describe('ToolCallingCoordinator', () => {
 					yield { content: ' world' }
 				},
 				getParser: () => mockParser,
-				findServerId: () => null,
+				findServer: () => null,
 				formatToolResult: () => ({ role: 'tool', content: '' })
 			}
 
@@ -179,7 +179,7 @@ describe('ToolCallingCoordinator', () => {
 					getToolCalls: vi.fn(() => parserHasToolCalls ? [mockToolCall] : []),
 					reset: vi.fn()
 				}),
-				findServerId: (_toolName: string) => 'weather-server',
+				findServer: (_toolName: string) => ({ id: 'weather-server', name: 'Weather Server' }),
 				formatToolResult: (toolCallId: string, result: ToolExecutionResult) => ({
 					role: 'tool',
 					tool_call_id: toolCallId,
@@ -254,7 +254,7 @@ describe('ToolCallingCoordinator', () => {
 					getToolCalls: vi.fn(() => (requestCount === 1 ? [toolCall1] : requestCount === 2 ? [toolCall2] : [])),
 					reset: vi.fn()
 				}),
-				findServerId: () => 'test-server',
+				findServer: () => ({ id: 'test-server', name: 'Test Server' }),
 				formatToolResult: () => ({ role: 'tool', content: '{}' })
 			}
 
@@ -288,7 +288,7 @@ describe('ToolCallingCoordinator', () => {
 					getToolCalls: vi.fn().mockReturnValue([{ id: 'call_1', name: 'tool', arguments: {} }]),
 					reset: vi.fn()
 				}),
-				findServerId: () => 'test-server',
+				findServer: () => ({ id: 'test-server', name: 'Test Server' }),
 				formatToolResult: () => ({ role: 'tool', content: '{}' })
 			}
 
@@ -332,7 +332,7 @@ describe('ToolCallingCoordinator', () => {
 					getToolCalls: vi.fn().mockReturnValue([{ id: 'call_1', name: 'tool', arguments: {} }]),
 					reset: vi.fn()
 				}),
-				findServerId: () => 'test-server',
+				findServer: () => ({ id: 'test-server', name: 'Test Server' }),
 				formatToolResult: () => ({ role: 'tool', content: '' })
 			}
 

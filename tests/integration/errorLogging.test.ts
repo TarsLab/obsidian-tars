@@ -282,7 +282,7 @@ describe('Error Logging Integration', () => {
 						}
 					])
 				})),
-				findServerId: vi.fn(() => 'test-server'),
+				findServer: vi.fn(() => ({ id: 'test-server', name: 'Test Server' })),
 				formatToolResult: vi.fn((id, result) => ({
 					role: 'tool',
 					content: JSON.stringify(result.content),

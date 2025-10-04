@@ -1,6 +1,7 @@
 import type { ToolExecutor } from '../executor'
 import type { MCPServerManager } from '../managerMCPUse'
 import type { Message, ProviderAdapter, ToolExecutionResult } from '../toolCallingCoordinator'
+import type { ToolServerInfo } from '../types'
 import { OpenAIToolResponseParser } from '../toolResponseParser'
 import type { OpenAIAdapterConfig } from './OpenAIProviderAdapter'
 import { buildToolServerMapping } from './toolMapping'
@@ -10,13 +11,13 @@ export interface OpenAIAdapterConfigSimple {
 	mcpExecutor: ToolExecutor
 }
 
-export function createOpenAIAdapter(config: OpenAIAdapterConfig): Pick<ProviderAdapter, 'getParser' | 'findServerId' | 'formatToolResult'> {
+export function createOpenAIAdapter(config: OpenAIAdapterConfig): Pick<ProviderAdapter, 'getParser' | 'findServer' | 'formatToolResult'> {
 	const { mcpManager } = config
 
 	return {
 		getParser: () => new OpenAIToolResponseParser(),
 
-		findServerId: (toolName: string): string | null => {
+		findServer: (_toolName: string): ToolServerInfo | null => {
 			const servers = mcpManager.listServers()
 
 			for (const server of servers) {
@@ -26,7 +27,10 @@ export function createOpenAIAdapter(config: OpenAIAdapterConfig): Pick<ProviderA
 				if (!client) continue
 
 				try {
-					return server.id
+					return {
+						id: server.id,
+						name: server.name
+					}
 				} catch (error) {
 					console.debug(`Error checking tools for ${server.id}:`, error)
 				}
@@ -49,14 +53,14 @@ export function createOpenAIAdapter(config: OpenAIAdapterConfig): Pick<ProviderA
 
 export async function createOpenAIAdapterWithMapping(
 	config: OpenAIAdapterConfig
-): Promise<Pick<ProviderAdapter, 'getParser' | 'findServerId' | 'formatToolResult'>> {
+): Promise<Pick<ProviderAdapter, 'getParser' | 'findServer' | 'formatToolResult'>> {
 	const { mcpManager } = config
 	const toolMapping = await buildToolServerMapping(mcpManager)
 
 	return {
 		getParser: () => new OpenAIToolResponseParser(),
 
-		findServerId: (toolName: string): string | null => {
+		findServer: (toolName: string): ToolServerInfo | null => {
 			return toolMapping.get(toolName) || null
 		},
 

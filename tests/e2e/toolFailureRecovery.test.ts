@@ -52,7 +52,7 @@ describe('Tool Failure Recovery E2E', () => {
 						}
 					}
 				}),
-				findServerId: vi.fn(() => 'test-server'),
+				findServer: vi.fn(() => ({ id: 'test-server', name: 'test-server' })),
 				formatToolResult: vi.fn((id, result) => ({
 					role: 'tool',
 					content: JSON.stringify(result.content),
@@ -124,7 +124,7 @@ describe('Tool Failure Recovery E2E', () => {
 							: []
 					)
 				})),
-				findServerId: vi.fn(() => 'test-server'),
+				findServer: vi.fn(() => ({ id: 'test-server', name: 'test-server' })),
 				formatToolResult: vi.fn((id, result) => ({
 					role: 'tool',
 					content: JSON.stringify(result.content),
@@ -192,7 +192,7 @@ describe('Tool Failure Recovery E2E', () => {
 							: []
 					)
 				})),
-				findServerId: vi.fn(() => 'remote-server'),
+				findServer: vi.fn(() => ({ id: 'remote-server', name: 'remote-server' })),
 				formatToolResult: vi.fn((id, result) => ({
 					role: 'tool',
 					content: JSON.stringify(result.content),
@@ -274,7 +274,7 @@ describe('Tool Failure Recovery E2E', () => {
 						return []
 					})
 				})),
-				findServerId: vi.fn(() => 'fs-server'),
+				findServer: vi.fn(() => ({ id: 'fs-server', name: 'fs-server' })),
 				formatToolResult: vi.fn((id, result) => ({
 					role: 'tool',
 					content: JSON.stringify(result.content),
@@ -348,13 +348,13 @@ describe('Tool Failure Recovery E2E', () => {
 						}
 					])
 				})),
-				findServerId: vi.fn(() => null), // Server not found
+				findServer: vi.fn(() => null), // Server not found
 				formatToolResult: vi.fn()
 			} as any
 
 			const coordinator = new ToolCallingCoordinator()
 
-			// When: Tool server not found (findServerId returns null)
+			// When: Tool server not found (findServer returns null)
 			const results: string[] = []
 			for await (const text of coordinator.generateWithTools(
 				[{ role: 'user', content: 'Use missing tool' }],
@@ -399,7 +399,7 @@ describe('Tool Failure Recovery E2E', () => {
 						}
 					])
 				})),
-				findServerId: vi.fn(() => 'db-server'),
+				findServer: vi.fn(() => ({ id: 'db-server', name: 'db-server' })),
 				formatToolResult: vi.fn((id, result) => ({
 					role: 'tool',
 					content: JSON.stringify(result.content),
@@ -481,7 +481,7 @@ describe('Tool Failure Recovery E2E', () => {
 						return []
 					})
 				})),
-				findServerId: vi.fn(() => 'test-server'),
+				findServer: vi.fn(() => ({ id: 'test-server', name: 'test-server' })),
 				formatToolResult: vi.fn((id, result) => ({
 					role: 'tool',
 					content: JSON.stringify(result.content),
@@ -553,7 +553,7 @@ describe('Tool Failure Recovery E2E', () => {
 							: []
 					)
 				})),
-				findServerId: vi.fn(() => 'failing-server'),
+				findServer: vi.fn(() => ({ id: 'failing-server', name: 'failing-server' })),
 				formatToolResult: vi.fn((id, result) => ({
 					role: 'tool',
 					content: JSON.stringify(result.content),
@@ -608,7 +608,7 @@ describe('Tool Failure Recovery E2E', () => {
 						}
 					])
 				})),
-				findServerId: vi.fn(() => 'test-server'),
+				findServer: vi.fn(() => ({ id: 'test-server', name: 'test-server' })),
 				formatToolResult: vi.fn((id, result) => ({
 					role: 'tool',
 					content: JSON.stringify(result.content),

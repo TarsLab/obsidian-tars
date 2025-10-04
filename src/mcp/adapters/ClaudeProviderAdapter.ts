@@ -11,6 +11,7 @@ import type { Message, ProviderAdapter, ToolExecutionResult } from '../toolCalli
 import type { MCPServerManager } from '../managerMCPUse'
 import { ClaudeToolResponseParser } from '../toolResponseParser'
 import { buildToolServerMapping } from './toolMapping'
+import type { ToolServerInfo } from '../types'
 
 export interface ClaudeAdapterConfig {
 	mcpManager: MCPServerManager
@@ -30,7 +31,7 @@ export class ClaudeProviderAdapter implements ProviderAdapter<ClaudeStreamEvent>
 	private readonly model: string
 	private readonly maxTokens: number
 	private readonly system?: string
-	private toolMapping: Map<string, string> | null = null
+	private toolMapping: Map<string, ToolServerInfo> | null = null
 	private cachedTools: AnthropicTool[] | null = null
 	private readonly parser = new ClaudeToolResponseParser()
 
@@ -61,7 +62,7 @@ export class ClaudeProviderAdapter implements ProviderAdapter<ClaudeStreamEvent>
 		return this.parser
 	}
 
-	findServerId(toolName: string): string | null {
+	findServer(toolName: string): ToolServerInfo | null {
 		if (!this.toolMapping) {
 			throw new Error('ClaudeProviderAdapter not initialized - call initialize() first')
 		}

@@ -78,20 +78,20 @@ describe('OllamaProviderAdapter', () => {
 			expect(mockMCPManager.getClient).toHaveBeenCalledWith('test-server')
 		})
 
-		it('should find server ID for tool after initialization', async () => {
+		it('should find server info for tool after initialization', async () => {
 			// GIVEN: Initialized adapter
 			await adapter.initialize()
 
-			// WHEN: Finding server ID
-			const serverId = adapter.findServerId('get_weather')
+			// WHEN: Finding server info
+			const serverInfo = adapter.findServer('get_weather')
 
 			// THEN: Should return correct server ID
-			expect(serverId).toBe('test-server')
+			expect(serverInfo).toEqual({ id: 'test-server', name: 'Test Server' })
 		})
 
-		it('should throw if findServerId called before initialization', () => {
-			// WHEN/THEN: Calling findServerId before initialize
-			expect(() => adapter.findServerId('get_weather')).toThrow('not initialized')
+		it('should throw if findServer called before initialization', () => {
+			// WHEN/THEN: Calling findServer before initialize
+			expect(() => adapter.findServer('get_weather')).toThrow('not initialized')
 		})
 	})
 

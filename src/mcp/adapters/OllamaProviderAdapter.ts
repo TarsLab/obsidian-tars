@@ -3,6 +3,7 @@ import type { Ollama } from 'ollama/browser'
 import type { ToolExecutor } from '../executor'
 import type { MCPServerManager } from '../managerMCPUse'
 import type { Message, ProviderAdapter, ToolExecutionResult } from '../toolCallingCoordinator'
+import type { ToolServerInfo } from '../types'
 import { OllamaToolResponseParser } from '../toolResponseParser'
 import { buildToolServerMapping } from './toolMapping'
 
@@ -33,7 +34,7 @@ export class OllamaProviderAdapter implements ProviderAdapter<OllamaChunk> {
 	private readonly client: Ollama
 	private readonly controller: AbortController
 	private readonly model: string
-	private toolMapping: Map<string, string> | null = null
+	private toolMapping: Map<string, ToolServerInfo> | null = null
 	private cachedTools: Array<{
 		type: 'function'
 		function: { name: string; description?: string; parameters?: unknown }
@@ -80,12 +81,12 @@ export class OllamaProviderAdapter implements ProviderAdapter<OllamaChunk> {
 		return this.parser
 	}
 
-	findServerId(toolName: string): string | null {
+	findServer(toolName: string): ToolServerInfo | null {
 		if (!this.toolMapping) {
 			throw new Error('OllamaProviderAdapter not initialized - call initialize() first')
 		}
 		return this.toolMapping.get(toolName) ?? null
-	}
+}
 
 	async *sendRequest(messages: Message[]): AsyncGenerator<OllamaChunk> {
 		console.debug(`[Ollama MCP Adapter] Starting sendRequest with ${messages.length} messages`)

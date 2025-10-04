@@ -51,6 +51,7 @@ export interface BaseOptions {
 	mcpExecutor?: unknown // ToolExecutor from mcp module
 	documentPath?: string // Current document path for tool execution context
 	statusBarManager?: unknown // StatusBarManager for error logging
+	editor?: unknown // Active Obsidian editor for markdown persistence
 }
 
 export interface ProviderSettings {
