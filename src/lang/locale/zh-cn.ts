@@ -227,6 +227,8 @@ export default {
 	'Start Time': '开始时间',
 	'End Time': '结束时间',
 	'Error Details': '错误详情',
+	'No current error': '当前无错误',
+	'No recent errors': '暂无最近错误',
 	'Error Type': '错误类型',
 	'Error Message': '错误信息',
 	'Occurrence Time': '发生时间',

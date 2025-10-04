@@ -230,6 +230,8 @@ Translate the following content into English：{{s}}
 	'Start Time': 'Start Time',
 	'End Time': 'End Time',
 	'Error Details': 'Error Details',
+	'No current error': 'No current error',
+	'No recent errors': 'No recent errors',
 	'Error Type': 'Error Type',
 	'Error Message': 'Error Message',
 	'Occurrence Time': 'Occurrence Time',
