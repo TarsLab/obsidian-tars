@@ -270,6 +270,158 @@ summary.tars-setting-h4 {
 	background-color: var(--interactive-active);
 }
 
+/* Enhanced Error Detail Modal Styles */
+.error-detail-modal {
+	max-width: 800px;
+}
+
+.error-modal-top-buttons {
+	display: flex;
+	gap: var(--size-4-2);
+	margin-bottom: var(--size-4-4);
+	justify-content: flex-end;
+}
+
+.error-modal-top-buttons button {
+	padding: var(--size-2-2) var(--size-4-3);
+}
+
+.error-current-section {
+	margin-bottom: var(--size-4-6);
+	padding-bottom: var(--size-4-4);
+	border-bottom: 2px solid var(--background-modifier-border);
+}
+
+.error-current-section h3 {
+	margin: 0 0 var(--size-4-3) 0;
+	color: var(--text-error);
+}
+
+.error-log-section {
+	margin-top: var(--size-4-4);
+}
+
+.error-log-section h3 {
+	margin: 0 0 var(--size-4-3) 0;
+	color: var(--text-muted);
+}
+
+.error-log-container {
+	max-height: 400px;
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2);
+}
+
+.error-log-item {
+	padding: var(--size-4-2);
+	background-color: var(--background-secondary);
+	border-left: 3px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	transition: border-color 0.2s;
+}
+
+.error-log-item:hover {
+	border-left-color: var(--interactive-accent);
+}
+
+.error-log-item[data-error-type='generation'] {
+	border-left-color: var(--text-error);
+}
+
+.error-log-item[data-error-type='mcp'] {
+	border-left-color: var(--text-warning);
+}
+
+.error-log-item[data-error-type='tool'] {
+	border-left-color: var(--text-accent);
+}
+
+.error-log-item[data-error-type='system'] {
+	border-left-color: var(--text-muted);
+}
+
+.error-log-header {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	margin-bottom: var(--size-2-2);
+}
+
+.error-type-icon {
+	font-size: var(--font-ui-medium);
+}
+
+.error-name {
+	font-weight: var(--font-semibold);
+	color: var(--text-normal);
+	flex: 1;
+}
+
+.error-timestamp {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-faint);
+	font-family: var(--font-monospace);
+}
+
+.error-message {
+	margin-bottom: var(--size-2-2);
+	padding: var(--size-2-2);
+	background-color: var(--background-primary);
+	border-radius: var(--radius-s);
+	font-family: var(--font-monospace);
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+	word-break: break-word;
+}
+
+.error-context,
+.error-stack {
+	margin-top: var(--size-2-2);
+}
+
+.error-context summary,
+.error-stack summary {
+	cursor: pointer;
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+	user-select: none;
+	padding: var(--size-2-1);
+}
+
+.error-context summary:hover,
+.error-stack summary:hover {
+	color: var(--text-normal);
+}
+
+.error-context pre,
+.error-stack pre {
+	margin: var(--size-2-2) 0 0 0;
+	padding: var(--size-2-2);
+	background-color: var(--background-primary);
+	border-radius: var(--radius-s);
+	font-size: var(--font-ui-smaller);
+	overflow-x: auto;
+	max-height: 150px;
+	overflow-y: auto;
+}
+
+.error-copy-btn {
+	margin-top: var(--size-2-2);
+	padding: var(--size-2-1) var(--size-2-3);
+	font-size: var(--font-ui-smaller);
+	background-color: var(--interactive-normal);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	cursor: pointer;
+	color: var(--text-normal);
+}
+
+.error-copy-btn:hover {
+	background-color: var(--interactive-hover);
+}
+
 /* MCP Settings Styles */
 .mcp-server-section {
 	margin: var(--size-4-2) 0;

@@ -33,6 +33,18 @@ export interface ErrorInfo {
 	timestamp: Date
 }
 
+export type ErrorLogType = 'generation' | 'mcp' | 'tool' | 'system'
+
+export interface ErrorLogEntry {
+	id: string
+	timestamp: Date
+	type: ErrorLogType
+	message: string
+	name?: string
+	stack?: string
+	context?: Record<string, any>
+}
+
 export interface MCPStatusInfo {
 	runningServers: number
 	totalServers: number
@@ -150,35 +162,132 @@ class GenerationStatsModal extends Modal {
 class ErrorDetailModal extends Modal {
 	constructor(
 		app: App,
-		private error: ErrorInfo
+		private currentError: ErrorInfo,
+		private errorLog: ErrorLogEntry[] = []
 	) {
 		super(app)
 	}
 
 	onOpen() {
 		const { contentEl } = this
+		contentEl.addClass('error-detail-modal')
 		contentEl.createEl('h2', { text: t('Error Details') })
 
-		const errorContainer = contentEl.createDiv({ cls: 'error-details' })
+		// Button container at top
+		if (Platform.isDesktopApp) {
+			const topButtons = contentEl.createDiv({ cls: 'error-modal-top-buttons' })
 
-		errorContainer.createEl('p', { text: `${t('Error Type')}: ${this.error.name || t('Unknown Error')}` })
-		errorContainer.createEl('p', { text: `${t('Error Message')}: ${this.error.message}` })
-		errorContainer.createEl('p', { text: `${t('Occurrence Time')}: ${this.error.timestamp.toLocaleString()}` })
+			const copyCurrentBtn = topButtons.createEl('button', {
+				text: 'Copy Current Error',
+				cls: 'mod-cta'
+			})
+			copyCurrentBtn.onclick = () => {
+				navigator.clipboard.writeText(JSON.stringify(this.currentError, null, 2))
+				new Notice('Current error copied to clipboard')
+			}
 
-		if (this.error.stack) {
+			if (this.errorLog.length > 0) {
+				const copyAllBtn = topButtons.createEl('button', {
+					text: 'Copy All Logs',
+					cls: 'mod-warning'
+				})
+				copyAllBtn.onclick = () => {
+					const allErrors = this.errorLog.map(e => ({
+						timestamp: e.timestamp.toISOString(),
+						type: e.type,
+						name: e.name || 'Error',
+						message: e.message,
+						stack: e.stack,
+						context: e.context
+					}))
+					navigator.clipboard.writeText(JSON.stringify(allErrors, null, 2))
+					new Notice(`Copied ${allErrors.length} errors to clipboard`)
+				}
+			}
+		}
+
+		// Current error section
+		const currentSection = contentEl.createDiv({ cls: 'error-current-section' })
+		currentSection.createEl('h3', { text: 'Current Error' })
+
+		const errorContainer = currentSection.createDiv({ cls: 'error-details' })
+		errorContainer.createEl('p', { text: `${t('Error Type')}: ${this.currentError.name || t('Unknown Error')}` })
+		errorContainer.createEl('p', { text: `${t('Error Message')}: ${this.currentError.message}` })
+		errorContainer.createEl('p', { text: `${t('Occurrence Time')}: ${this.currentError.timestamp.toLocaleString()}` })
+
+		if (this.currentError.stack) {
 			const stackSection = errorContainer.createDiv({ cls: 'stack-trace' })
 			stackSection.createEl('h3', { text: t('Stack Trace') })
 			const stackPre = stackSection.createEl('pre', { cls: 'stack-trace-pre' })
-			stackPre.textContent = this.error.stack
+			stackPre.textContent = this.currentError.stack
 		}
 
-		if (Platform.isDesktopApp) {
-			const buttonContainer = contentEl.createDiv({ cls: 'error-modal-buttons' })
-			const copyBtn = buttonContainer.createEl('button', { text: t('Copy Error Info') })
-			copyBtn.onclick = () => {
-				navigator.clipboard.writeText(JSON.stringify(this.error, null, 2))
-				new Notice(t('Error info copied to clipboard'))
+		// Error log section
+		if (this.errorLog.length > 0) {
+			const logSection = contentEl.createDiv({ cls: 'error-log-section' })
+			logSection.createEl('h3', { text: `Recent Errors (${this.errorLog.length})` })
+
+			const logContainer = logSection.createDiv({ cls: 'error-log-container' })
+
+			for (const error of this.errorLog) {
+				const errorItem = logContainer.createDiv({ cls: 'error-log-item' })
+				errorItem.setAttribute('data-error-type', error.type)
+
+				const errorHeader = errorItem.createDiv({ cls: 'error-log-header' })
+
+				const typeIcon = this.getErrorTypeIcon(error.type)
+				errorHeader.createSpan({ text: typeIcon, cls: 'error-type-icon' })
+				errorHeader.createSpan({ text: error.name || 'Error', cls: 'error-name' })
+				errorHeader.createSpan({
+					text: error.timestamp.toLocaleString(),
+					cls: 'error-timestamp'
+				})
+
+				const errorMessage = errorItem.createDiv({ cls: 'error-message' })
+				errorMessage.textContent = error.message
+
+				if (error.context) {
+					const contextDetails = errorItem.createEl('details', { cls: 'error-context' })
+					contextDetails.createEl('summary', { text: 'Context' })
+					const contextPre = contextDetails.createEl('pre')
+					contextPre.textContent = JSON.stringify(error.context, null, 2)
+				}
+
+				if (error.stack) {
+					const stackDetails = errorItem.createEl('details', { cls: 'error-stack' })
+					stackDetails.createEl('summary', { text: t('Stack Trace') })
+					const stackPre = stackDetails.createEl('pre')
+					stackPre.textContent = error.stack
+				}
+
+				if (Platform.isDesktopApp) {
+					const copyBtn = errorItem.createEl('button', {
+						text: 'Copy',
+						cls: 'error-copy-btn'
+					})
+					copyBtn.onclick = () => {
+						navigator.clipboard.writeText(JSON.stringify({
+							timestamp: error.timestamp.toISOString(),
+							type: error.type,
+							name: error.name,
+							message: error.message,
+							stack: error.stack,
+							context: error.context
+						}, null, 2))
+						new Notice('Error copied to clipboard')
+					}
+				}
 			}
+		}
+	}
+
+	private getErrorTypeIcon(type: ErrorLogType): string {
+		switch (type) {
+			case 'generation': return '🤖'
+			case 'mcp': return '🔌'
+			case 'tool': return '🔧'
+			case 'system': return '⚙️'
+			default: return '❌'
 		}
 	}
 
@@ -191,6 +300,8 @@ class ErrorDetailModal extends Modal {
 export class StatusBarManager {
 	private state: StatusBarState
 	private autoHideTimer: NodeJS.Timeout | null = null
+	private errorLog: ErrorLogEntry[] = []
+	private readonly maxErrorLogSize = 50
 
 	constructor(
 		private app: App,
@@ -220,7 +331,7 @@ export class StatusBarManager {
 			if (!this.state.data) return
 
 			if (this.state.type === 'error') {
-				new ErrorDetailModal(this.app, this.state.data as ErrorInfo).open()
+				new ErrorDetailModal(this.app, this.state.data as ErrorInfo, this.errorLog).open()
 			} else if (this.state.type === 'success') {
 				new GenerationStatsModal(this.app, this.state.data as GenerationStats).open()
 			}
@@ -336,6 +447,9 @@ export class StatusBarManager {
 			timestamp: new Date()
 		}
 
+		// Log to error buffer
+		this.logError('generation', error.message, error)
+
 		this.updateState({
 			type: 'error',
 			content: {
@@ -347,6 +461,43 @@ export class StatusBarManager {
 
 		// 2 minutes later, automatically clear the error status
 		this.autoHideTimer = setTimeout(() => this.clearStatus(), 1000 * 60 * 2)
+	}
+
+	/**
+	 * Log an error to the error buffer (ring buffer with max 50 entries)
+	 */
+	logError(type: ErrorLogType, message: string, error?: Error, context?: Record<string, any>) {
+		const logEntry: ErrorLogEntry = {
+			id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+			timestamp: new Date(),
+			type,
+			message,
+			name: error?.name,
+			stack: error?.stack,
+			context
+		}
+
+		// Add to log
+		this.errorLog.unshift(logEntry)
+
+		// Maintain max size (ring buffer)
+		if (this.errorLog.length > this.maxErrorLogSize) {
+			this.errorLog = this.errorLog.slice(0, this.maxErrorLogSize)
+		}
+	}
+
+	/**
+	 * Get all logged errors
+	 */
+	getErrorLog(): ErrorLogEntry[] {
+		return [...this.errorLog]
+	}
+
+	/**
+	 * Clear error log
+	 */
+	clearErrorLog() {
+		this.errorLog = []
 	}
 
 	setCancelledStatus() {
