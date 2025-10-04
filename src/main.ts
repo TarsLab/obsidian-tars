@@ -1,4 +1,5 @@
 import { Notice, Plugin } from 'obsidian'
+
 import {
 	asstTagCmd,
 	exportCmd,
@@ -94,30 +95,51 @@ export default class TarsPlugin extends Plugin {
 							return
 						}
 
-						// Show executing status
-						this.mcpCodeBlockProcessor.renderStatus(el, 'executing')
+						// Create execution request
+						const request = {
+							serverId: invocation.serverId,
+							toolName: invocation.toolName,
+							parameters: invocation.parameters,
+							source: 'user-codeblock' as const,
+							documentPath: ctx.sourcePath
+						}
+
+						// Show executing status with cancel button
+						let currentRequestId: string | null = null
+						this.mcpCodeBlockProcessor.renderStatus(el, 'executing', async () => {
+							if (currentRequestId && this.mcpExecutor) {
+								await this.mcpExecutor.cancelExecution(currentRequestId)
+								// Update status to show cancelled
+								if (this.mcpCodeBlockProcessor) {
+									this.mcpCodeBlockProcessor.renderError(el, {
+										message: 'Tool execution was cancelled by user',
+										timestamp: Date.now()
+									})
+								}
+							}
+						})
 
 						try {
-							// Execute tool
-							const result = await this.mcpExecutor.executeTool({
-								serverId: invocation.serverId,
-								toolName: invocation.toolName,
-								parameters: invocation.parameters,
-								source: 'user-codeblock',
-								documentPath: ctx.sourcePath
-							})
+							// Execute tool and capture request ID for cancellation
+							const resultWithId = await this.mcpExecutor.executeToolWithId(request)
+							currentRequestId = resultWithId.requestId
 
 							// Render result
-							this.mcpCodeBlockProcessor.renderResult(el, result, {
-								showMetadata: true,
-								collapsible: result.contentType === 'json'
-							})
+							if (this.mcpCodeBlockProcessor) {
+								this.mcpCodeBlockProcessor.renderResult(el, resultWithId, {
+									showMetadata: true,
+									collapsible: resultWithId.contentType === 'json'
+								})
+							}
 						} catch (error) {
+							currentRequestId = null // Clear on error
 							// Render error
-							this.mcpCodeBlockProcessor.renderError(el, {
-								message: error instanceof Error ? error.message : String(error),
-								timestamp: Date.now()
-							})
+							if (this.mcpCodeBlockProcessor) {
+								this.mcpCodeBlockProcessor.renderError(el, {
+									message: error instanceof Error ? error.message : String(error),
+									timestamp: Date.now()
+								})
+							}
 						}
 					})
 				})

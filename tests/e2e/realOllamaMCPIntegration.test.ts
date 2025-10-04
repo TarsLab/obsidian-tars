@@ -7,15 +7,37 @@
  * - Full tool discovery, execution, and LLM interaction
  *
  * Prerequisites:
- * - Ollama running with llama3.2:3b model
+ * - Ollama running with any llama3.x model (auto-detects available models)
  * - Docker available for running MCP memory server
  * - Image: docker pull mcp/memory
  *
- * Skip: Set SKIP_REAL_E2E=true to skip this test
+ * Smart Auto-Detection:
+ *
+ * URL Detection (tries in parallel with 3s timeout):
+ * - OLLAMA_CLOUD_URL env var (if set) - highest priority
+ * - OLLAMA_URL env var (if set and accessible)
+ * - WSL2 Windows host IP (auto-detected on WSL2)
+ * - localhost:11434 and 127.0.0.1:11434
+ * - Local network IPs from all network interfaces
+ * - Docker: host.docker.internal:11434
+ * - Docker Compose: ollama:11434
+ *
+ * Model Selection (tries in order):
+ * - OLLAMA_MODEL env var (if set)
+ * - First available from: llama3.2:3b, llama3.2:latest, llama3.2:1b,
+ *   llama3.1:latest, llama3.1:8b, llama3:latest
+ * - Falls back to llama3.2:3b with warning
+ *
+ * Environment Variables:
+ * - SKIP_REAL_E2E=true - Skip all E2E tests
+ * - OLLAMA_URL=<url> - Force specific Ollama endpoint
+ * - OLLAMA_CLOUD_URL=<url> - Priority cloud/remote Ollama
+ * - OLLAMA_MODEL=<model> - Force specific model
  */
 
 import { execSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
+import { networkInterfaces } from 'node:os'
 import { Ollama } from 'ollama'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
@@ -27,46 +49,175 @@ import {
 	type ToolExecutor
 } from '../../src/mcp'
 
-// Detect Ollama URL (WSL2-aware)
-function detectOllamaUrl(): string {
-	const envUrl = process.env.OLLAMA_URL
-	if (envUrl) return envUrl
-
-	// Check if WSL2
-	try {
-		const procVersion = readFileSync('/proc/version', 'utf-8')
-		if (procVersion.toLowerCase().includes('microsoft')) {
-			const hostIp = execSync('bash bin/get-host-ip.sh', { encoding: 'utf-8' }).trim()
-			if (hostIp && hostIp !== '127.0.0.1') {
-				return `http://${hostIp}:11434`
-			}
-		}
-	} catch {
-		// Fall through to localhost
-	}
-
-	return 'http://localhost:11434'
-}
-
-// Check if Ollama is available
+// Check if Ollama is available at a specific URL
 async function isOllamaAvailable(url: string): Promise<boolean> {
 	try {
-		const response = await fetch(`${url}/api/tags`)
+		const response = await fetch(`${url}/api/tags`, {
+			signal: AbortSignal.timeout(3000) // 3 second timeout
+		})
 		return response.ok
 	} catch {
 		return false
 	}
 }
 
+// Get local network IPs from all network interfaces
+function getLocalNetworkIPs(): string[] {
+	const ips: string[] = []
+	const interfaces = networkInterfaces()
+
+	for (const interfaceName in interfaces) {
+		const networkInterface = interfaces[interfaceName]
+		if (!networkInterface) continue
+
+		for (const iface of networkInterface) {
+			// Skip internal (loopback) addresses and IPv6
+			if (iface.internal || iface.family !== 'IPv4') continue
+
+			// Add valid IPv4 addresses
+			if (iface.address && iface.address !== '127.0.0.1') {
+				ips.push(iface.address)
+			}
+		}
+	}
+
+	return ips
+}
+
+// Detect Ollama URL by trying multiple endpoints
+async function detectOllamaUrl(): Promise<string> {
+	// If explicit URL provided, use it
+	const envUrl = process.env.OLLAMA_URL
+	if (envUrl) {
+		const available = await isOllamaAvailable(envUrl)
+		if (available) {
+			return envUrl
+		}
+		console.warn(`⚠️  OLLAMA_URL=${envUrl} not accessible, trying fallback URLs...`)
+	}
+
+	// Build list of candidate URLs (in priority order)
+	const candidateUrls: string[] = []
+
+	// Add WSL2 Windows host IP if on WSL2 (highest priority for WSL environments)
+	try {
+		const procVersion = readFileSync('/proc/version', 'utf-8')
+		if (procVersion.toLowerCase().includes('microsoft')) {
+			// Try to get Windows host IP using the script
+			try {
+				const hostIp = execSync('bash bin/get-host-ip.sh', { encoding: 'utf-8' }).trim()
+				if (hostIp && hostIp !== '127.0.0.1' && hostIp.match(/^\d+\.\d+\.\d+\.\d+$/)) {
+					candidateUrls.push(`http://${hostIp}:11434`)
+				}
+			} catch {
+				// Ignore if script fails
+			}
+
+			// Also try WSL2 default gateway (Windows host IP)
+			try {
+				const gateway = execSync("ip route show default | awk '/default/ {print $3}'", { encoding: 'utf-8' }).trim()
+				if (gateway && gateway !== '127.0.0.1' && gateway.match(/^\d+\.\d+\.\d+\.\d+$/)) {
+					candidateUrls.push(`http://${gateway}:11434`)
+				}
+			} catch {
+				// Ignore if command fails
+			}
+		}
+	} catch {
+		// Not on WSL2 or can't read /proc/version
+	}
+
+	// Add standard localhost URLs
+	candidateUrls.push(
+		'http://localhost:11434',
+		'http://127.0.0.1:11434'
+	)
+
+	// Add local network IPs (for Ollama running on same network)
+	const localIPs = getLocalNetworkIPs()
+	for (const ip of localIPs) {
+		candidateUrls.push(`http://${ip}:11434`)
+	}
+
+	// Add container/cloud URLs
+	candidateUrls.push(
+		'http://host.docker.internal:11434', // Docker Desktop
+		'http://ollama:11434' // Docker Compose service name
+	)
+
+	// Add cloud/remote Ollama URLs if specified via env
+	if (process.env.OLLAMA_CLOUD_URL) {
+		candidateUrls.unshift(process.env.OLLAMA_CLOUD_URL) // Highest priority
+	}
+
+	// Try all URLs in parallel
+	const results = await Promise.allSettled(
+		candidateUrls.map(async (url) => ({
+			url,
+			available: await isOllamaAvailable(url)
+		}))
+	)
+
+	// Find first available URL
+	for (const result of results) {
+		if (result.status === 'fulfilled' && result.value.available) {
+			console.log(`✅ Found Ollama at: ${result.value.url}`)
+			return result.value.url
+		}
+	}
+
+	// No available URL found, return default
+	console.warn(`⚠️  No Ollama instance found. Tried: ${candidateUrls.join(', ')}`)
+	return candidateUrls[0]
+}
+
+// Get available models from Ollama and select from fallback list
+async function selectAvailableModel(url: string, preferredModels: string[]): Promise<string | null> {
+	try {
+		const response = await fetch(`${url}/api/tags`)
+		if (!response.ok) return null
+
+		const data = await response.json()
+		const availableModels = data.models?.map((m: { name: string }) => m.name) || []
+
+		// Try to find first preferred model that's available
+		for (const preferred of preferredModels) {
+			if (availableModels.includes(preferred)) {
+				return preferred
+			}
+		}
+
+		return null
+	} catch {
+		return null
+	}
+}
+
 // Skip if real E2E tests disabled or Ollama not available
 const SKIP_REAL_E2E = process.env.SKIP_REAL_E2E === 'true'
-const OLLAMA_URL = detectOllamaUrl()
-const MODEL = process.env.OLLAMA_MODEL || 'llama3.2:3b'
+
+// Preferred models list (in order of preference) - llama3.2 and llama3.1 support tool calling
+const PREFERRED_MODELS = [
+	'llama3.2:3b',
+	'llama3.2:latest',
+	'llama3.2:1b',
+	'llama3.1:latest',
+	'llama3.1:8b',
+	'llama3:latest'
+]
+
+// Detect Ollama URL and select available model
+const OLLAMA_URL = await detectOllamaUrl()
+const selectedModel = await selectAvailableModel(OLLAMA_URL, PREFERRED_MODELS)
+const MODEL = process.env.OLLAMA_MODEL || selectedModel || 'llama3.2:3b'
+const MODEL_AVAILABLE = !!selectedModel || !!process.env.OLLAMA_MODEL
 
 describe.skipIf(SKIP_REAL_E2E)('Real E2E: Ollama + MCP Memory Server', async () => {
 	let manager: MCPServerManager
 	let executor: ToolExecutor
 	let ollama: Ollama
+	let originalStderrWrite: typeof process.stderr.write
+	let originalStdoutWrite: typeof process.stdout.write
 
 	// Check Ollama availability
 	const ollamaAvailable = await isOllamaAvailable(OLLAMA_URL)
@@ -75,6 +226,35 @@ describe.skipIf(SKIP_REAL_E2E)('Real E2E: Ollama + MCP Memory Server', async () 
 		if (!ollamaAvailable) {
 			console.warn(`⚠️  Ollama not available at ${OLLAMA_URL} - skipping E2E tests`)
 			return
+		}
+
+		if (MODEL_AVAILABLE) {
+			console.log(`✅ Using Ollama model: ${MODEL}`)
+		} else {
+			console.warn(`⚠️  No suitable model found from: ${PREFERRED_MODELS.join(', ')}`)
+			console.warn(`⚠️  Using fallback model: ${MODEL}. Tests may fail if model not available.`)
+		}
+
+		// Suppress MCP server messages for cleaner test output
+		originalStderrWrite = process.stderr.write
+		originalStdoutWrite = process.stdout.write
+
+		process.stderr.write = (chunk: any) => {
+			// Filter out MCP server startup messages
+			const msg = chunk.toString()
+			if (msg.includes('Knowledge Graph') || msg.includes('MCP Server')) {
+				return true
+			}
+			return originalStderrWrite.call(process.stderr, chunk)
+		}
+
+		process.stdout.write = (chunk: any) => {
+			// Filter out MCP server startup messages
+			const msg = chunk.toString()
+			if (msg.includes('Knowledge Graph') || msg.includes('MCP Server running on stdio')) {
+				return true
+			}
+			return originalStdoutWrite.call(process.stdout, chunk)
 		}
 
 		// Initialize Ollama client
@@ -87,29 +267,30 @@ describe.skipIf(SKIP_REAL_E2E)('Real E2E: Ollama + MCP Memory Server', async () 
 		const serverConfig: MCPServerConfig = {
 			id: 'memory-server',
 			name: 'Memory Server',
-			configInput: 'docker run -i --rm mcp/memory:latest',
+			configInput: 'docker run -i --rm mcp/memory:latest 2>/dev/null',
 			enabled: true,
 			failureCount: 0,
 			autoDisabled: false
 		}
-		// Suppress MCP server startup messages in test environment
-		const originalStderr = process.stderr.write
-		process.stderr.write = () => true
 
-		try {
-			await manager.initialize([serverConfig])
-		} finally {
-			process.stderr.write = originalStderr
-		}
+		await manager.initialize([serverConfig])
 	}, 30000)
 
 	afterAll(async () => {
+		// Restore original stderr and stdout
+		if (originalStderrWrite) {
+			process.stderr.write = originalStderrWrite
+		}
+		if (originalStdoutWrite) {
+			process.stdout.write = originalStdoutWrite
+		}
+
 		if (manager) {
 			await manager.shutdown()
 		}
 	})
 
-	describe.skipIf(!ollamaAvailable)('Ollama + MCP Integration Tests', () => {
+	describe.skipIf(!ollamaAvailable || !MODEL_AVAILABLE)('Ollama + MCP Integration Tests', () => {
 		it('should connect to Ollama and list models', async () => {
 			const response = await ollama.list()
 			expect(response.models).toBeDefined()
@@ -264,7 +445,8 @@ describe.skipIf(SKIP_REAL_E2E)('Real E2E: Ollama + MCP Memory Server', async () 
 									// If parsed result has entities property, use it; otherwise use parsed result directly
 									normalizedArgs.entities = parsed.entities || parsed
 								} catch (parseError) {
-									console.warn('Failed to parse entities string from tool call:', parseError)
+									// Skip logging in test environment - this is expected LLM behavior
+									// console.warn('Failed to parse entities string from tool call:', parseError)
 									// If parsing fails, try to use the string as-is if it looks like JSON
 									try {
 										const parsed = JSON.parse(normalizedArgs.entities)
@@ -284,7 +466,8 @@ describe.skipIf(SKIP_REAL_E2E)('Real E2E: Ollama + MCP Memory Server', async () 
 
 						// Ensure entities is an array
 						if (!Array.isArray(normalizedArgs.entities)) {
-							console.warn('Entities parameter is not an array, attempting to fix:', normalizedArgs.entities)
+							// Skip logging in test environment - this is expected LLM behavior
+							// console.warn('Entities parameter is not an array, attempting to fix:', normalizedArgs.entities)
 							// Try to extract entities from various formats
 							if (typeof normalizedArgs.entities === 'object' && normalizedArgs.entities.entities) {
 								normalizedArgs.entities = normalizedArgs.entities.entities

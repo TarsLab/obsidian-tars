@@ -2,7 +2,8 @@
 # See: https://mise.jdx.dev/tasks/
 
 [env]
-OLLAMA_URL = "http://localhost:11434"
+#OLLAMA_URL = "http://localhost:11434"
+OLLAMA_URL = "http://192.168.1.228:11434"
 OLLAMA_MODEL = "llama3.2:latest"
 
 # ============================================================================

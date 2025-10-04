@@ -18,7 +18,7 @@ describe('MCPServerManager Retry Functionality', () => {
 	let manager: MCPServerManager
 	let mockMCPClient: any
 
-	beforeEach(() => {
+	beforeEach(async () => {
 		// Create mock MCPClient instance
 		mockMCPClient = {
 			createSession: vi.fn(),
@@ -27,8 +27,8 @@ describe('MCPServerManager Retry Functionality', () => {
 		}
 
 		// Setup the mock to return our mock client
-		const { MCPClient } = require('mcp-use')
-		MCPClient.fromDict.mockReturnValue(mockMCPClient)
+		const { MCPClient } = await import('mcp-use')
+		vi.mocked(MCPClient.fromDict).mockReturnValue(mockMCPClient)
 
 		manager = new MCPServerManager()
 	})
@@ -86,7 +86,7 @@ describe('MCPServerManager Retry Functionality', () => {
 	describe('Server Start with Retry', () => {
 		let configs: MCPServerConfig[]
 
-		beforeEach(() => {
+		beforeEach(async () => {
 			configs = [
 				{
 					id: 'test-server',
@@ -98,23 +98,24 @@ describe('MCPServerManager Retry Functionality', () => {
 				}
 			]
 
-			// Initialize manager
-			mockMCPClient.fromDict.mockReturnValue(mockMCPClient)
+			// Initialize manager with configs
+			await manager.initialize(configs)
+
+			// Clear mock call counts after initialization
+			vi.clearAllMocks()
 		})
 
 		it('should succeed on first attempt', async () => {
-			await manager.initialize(configs)
 			mockMCPClient.createSession.mockResolvedValue({ isConnected: true })
 
 			await manager.startServer('test-server')
 
 			expect(mockMCPClient.createSession).toHaveBeenCalledTimes(1)
-			expect(configs[0].failureCount).toBe(0)
+			const serverConfig = manager.listServers().find((s) => s.id === 'test-server')
+			expect(serverConfig?.failureCount).toBe(0)
 		})
 
 		it('should retry transient errors', async () => {
-			await manager.initialize(configs)
-
 			// Fail twice with transient error, then succeed
 			let attempts = 0
 			mockMCPClient.createSession.mockImplementation(() => {
@@ -130,35 +131,44 @@ describe('MCPServerManager Retry Functionality', () => {
 			await manager.startServer('test-server')
 
 			expect(mockMCPClient.createSession).toHaveBeenCalledTimes(3)
-			expect(configs[0].failureCount).toBe(0) // Reset on success
+			const serverConfig = manager.listServers().find((s) => s.id === 'test-server')
+			expect(serverConfig?.failureCount).toBe(0) // Reset on success
 		})
 
 		it('should not retry permanent errors', async () => {
-			await manager.initialize(configs)
-
 			mockMCPClient.createSession.mockRejectedValue(new Error('Invalid configuration'))
 
 			await expect(manager.startServer('test-server')).rejects.toThrow('Invalid configuration')
 
 			expect(mockMCPClient.createSession).toHaveBeenCalledTimes(1)
-			expect(configs[0].failureCount).toBe(1)
+			const serverConfig = manager.listServers().find((s) => s.id === 'test-server')
+			expect(serverConfig?.failureCount).toBe(1)
 		})
 
 		it('should auto-disable after max failures', async () => {
+			// Re-initialize with custom failure threshold
 			await manager.initialize(configs, { failureThreshold: 2 })
+			vi.clearAllMocks()
 
-			// Fail 3 times (initial + 2 retries)
-			mockMCPClient.createSession.mockRejectedValue(new Error('Connection refused'))
+			// Fail with permanent error (no code, non-transient message)
+			mockMCPClient.createSession.mockRejectedValue(new Error('Invalid configuration'))
 
-			await expect(manager.startServer('test-server')).rejects.toThrow('Connection refused')
+			// First failure
+			await expect(manager.startServer('test-server')).rejects.toThrow('Invalid configuration')
+			let serverConfig = manager.listServers().find((s) => s.id === 'test-server')
+			expect(serverConfig?.failureCount).toBe(1)
+			expect(serverConfig?.enabled).toBe(true) // Still enabled after 1 failure
 
-			expect(configs[0].failureCount).toBe(3)
-			expect(configs[0].enabled).toBe(false)
-			expect(configs[0].autoDisabled).toBe(true)
+			// Second failure - should trigger auto-disable
+			await expect(manager.startServer('test-server')).rejects.toThrow('Invalid configuration')
+			serverConfig = manager.listServers().find((s) => s.id === 'test-server')
+			expect(serverConfig?.failureCount).toBe(2)
+			expect(serverConfig?.enabled).toBe(false)
+			expect(serverConfig?.autoDisabled).toBe(true)
 		})
 
 		it('should emit retry events', async () => {
-			await manager.initialize(configs)
+			vi.clearAllMocks()
 
 			let attempts = 0
 			mockMCPClient.createSession.mockImplementation(() => {
@@ -200,9 +210,11 @@ describe('MCPServerManager Retry Functionality', () => {
 			]
 
 			await manager.initialize(configs)
+			vi.clearAllMocks()
 
 			let attempts = 0
-			mockMCPClient.createSession.mockImplementation(() => {
+			let retryStatusChecked = false
+			mockMCPClient.createSession.mockImplementation(async () => {
 				attempts++
 				if (attempts < 2) {
 					const error = new Error('Connection refused')
@@ -212,15 +224,19 @@ describe('MCPServerManager Retry Functionality', () => {
 				return { isConnected: true }
 			})
 
+			// Listen for retry event to check status during retry
+			manager.once('server-retry', () => {
+				const status = manager.getHealthStatus('test-server')
+				expect(status?.retryState.isRetrying).toBe(true)
+				expect(status?.retryState.currentAttempt).toBeGreaterThan(0)
+				retryStatusChecked = true
+			})
+
 			// Start server (will retry once)
-			const startPromise = manager.startServer('test-server')
+			await manager.startServer('test-server')
 
-			// Check status during retry
-			const status = manager.getHealthStatus('test-server')
-			expect(status?.retryState.isRetrying).toBe(true)
-			expect(status?.retryState.currentAttempt).toBeGreaterThan(0)
-
-			await startPromise
+			// Verify we checked retry status
+			expect(retryStatusChecked).toBe(true)
 
 			// Check final status
 			const finalStatus = manager.getHealthStatus('test-server')

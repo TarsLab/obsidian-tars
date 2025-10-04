@@ -167,7 +167,7 @@ export class CodeBlockProcessor {
 	/**
 	 * Render pending/executing state in code block element
 	 */
-	renderStatus(el: HTMLElement, status: 'pending' | 'executing'): void {
+	renderStatus(el: HTMLElement, status: 'pending' | 'executing', onCancel?: () => void): void {
 		el.empty()
 
 		const container = el.createDiv({ cls: 'mcp-tool-status' })
@@ -179,6 +179,19 @@ export class CodeBlockProcessor {
 			text: `${indicator} ${message}`,
 			cls: 'mcp-status-indicator'
 		})
+
+		// Add cancel button for executing tools
+		if (status === 'executing' && onCancel) {
+			const cancelButton = container.createEl('button', {
+				text: 'Cancel',
+				cls: 'mcp-cancel-button'
+			})
+			cancelButton.addEventListener('click', (event) => {
+				event.preventDefault()
+				event.stopPropagation()
+				onCancel()
+			})
+		}
 	}
 
 	/**
