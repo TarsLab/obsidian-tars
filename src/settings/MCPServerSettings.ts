@@ -583,8 +583,22 @@ export class MCPServerSettings {
 				btn.setButtonText('+ Exa Search').onClick(async () => {
 					const server: MCPServerConfig = {
 						id: `mcp-exa-${Date.now()}`,
-						name: this.generateUniqueName('exa-search'),
-						configInput: 'npx -y @exa/mcp-server-exa',
+						name: this.generateUniqueName('exa'),
+						configInput: JSON.stringify(
+							{
+								mcpServers: {
+									exa: {
+										command: 'npx',
+										args: ['-y', 'exa-mcp-server'],
+										env: {
+											EXA_API_KEY: '{env:EXA_API_KEY}'
+										}
+									}
+								}
+							},
+							null,
+							2
+						),
 						displayMode: 'command',
 						enabled: false,
 						failureCount: 0,
@@ -592,7 +606,7 @@ export class MCPServerSettings {
 					}
 					this.plugin.settings.mcpServers.push(server)
 					await this.plugin.saveSettings()
-					new Notice('Exa Search MCP server added! Set EXA_API_KEY in environment.')
+					new Notice('Exa Search MCP server added! Set EXA_API_KEY environment variable and enable the server.')
 					// Re-render the entire settings tab
 					this.onSettingsChanged?.()
 				})

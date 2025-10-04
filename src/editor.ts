@@ -532,7 +532,12 @@ export const generate = async (
 
 		statusBarManager.setSuccessStatus(stats)
 
-		if (llmResponse.length === 0) {
+		// Check if anything was generated (text or tool calls via cursor movement)
+		const endPos = editor.getCursor('to')
+		const cursorMoved = startPos && (startPos.line !== endPos.line || startPos.ch !== endPos.ch)
+
+		// Only throw error if no LLM text AND no content inserted (no tool calls)
+		if (llmResponse.length === 0 && !cursorMoved) {
 			throw new Error(t('No text generated'))
 		}
 

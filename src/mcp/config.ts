@@ -10,6 +10,33 @@
 
 import type { MCPServerConfig } from './types'
 
+/**
+ * Substitute environment variables in env object
+ * Supports {env:VAR_NAME} syntax
+ */
+function substituteEnvVariables(env?: Record<string, string>): Record<string, string> | undefined {
+	if (!env) return undefined
+
+	const substituted: Record<string, string> = {}
+	for (const [key, value] of Object.entries(env)) {
+		// Check for {env:VAR_NAME} pattern
+		const match = value.match(/^\{env:([A-Z_][A-Z0-9_]*)\}$/)
+		if (match) {
+			const envVarName = match[1]
+			const envValue = process.env[envVarName]
+			if (envValue) {
+				substituted[key] = envValue
+			} else {
+				console.warn(`Environment variable ${envVarName} not found, using placeholder`)
+				substituted[key] = value // Keep placeholder if env var not found
+			}
+		} else {
+			substituted[key] = value
+		}
+	}
+	return substituted
+}
+
 export type { MCPServerConfig }
 
 /**
@@ -91,7 +118,7 @@ export function parseConfigInput(input: string): {
 					mcpUseConfig: {
 						command: serverConfig.command,
 						args: serverConfig.args || [],
-						env: serverConfig.env
+						env: substituteEnvVariables(serverConfig.env)
 					}
 				}
 			}
@@ -104,7 +131,9 @@ export function parseConfigInput(input: string): {
 					mcpUseConfig: {
 						command: parsed.command,
 						args: (parsed as { command: string; args?: string[]; env?: Record<string, string> }).args || [],
-						env: (parsed as { command: string; args?: string[]; env?: Record<string, string> }).env
+						env: substituteEnvVariables(
+							(parsed as { command: string; args?: string[]; env?: Record<string, string> }).env
+						)
 					}
 				}
 			}
@@ -126,7 +155,7 @@ export function parseConfigInput(input: string): {
 	}
 
 	// 3. Command format (bash/shell command)
-	const parts = trimmed.split(/\s+/).filter(p => p.length > 0)
+	const parts = trimmed.split(/\s+/).filter((p) => p.length > 0)
 	if (parts.length === 0 || !parts[0]) {
 		return {
 			type: 'command',
