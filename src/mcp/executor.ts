@@ -3,6 +3,7 @@
  * Coordinates tool execution with tracking, limits, and error handling
  */
 
+import type { StatusBarManager } from '../statusBarManager'
 import { ExecutionLimitError } from './errors'
 import type { MCPServerManager } from './managerMCPUse'
 import type { ExecutionHistoryEntry, ExecutionTracker, ToolExecutionResult } from './types'
@@ -30,11 +31,18 @@ export class ToolExecutor {
 	private readonly tracker: ExecutionTracker
 	private readonly options: ToolExecutorOptions
 	private readonly activeControllers: Map<string, AbortController> = new Map()
+	private statusBarManager?: StatusBarManager
 
-	constructor(manager: MCPServerManager, tracker: ExecutionTracker, options: ToolExecutorOptions = {}) {
+	constructor(
+		manager: MCPServerManager,
+		tracker: ExecutionTracker,
+		options: ToolExecutorOptions = {},
+		statusBarManager?: StatusBarManager
+	) {
 		this.manager = manager
 		this.tracker = tracker
 		this.options = { timeout: 30000, ...options }
+		this.statusBarManager = statusBarManager
 	}
 
 	/**
@@ -115,6 +123,17 @@ export class ToolExecutor {
 				executionRecord.duration = Date.now() - executionRecord.timestamp
 				executionRecord.status = 'error'
 				executionRecord.errorMessage = error instanceof Error ? error.message : String(error)
+
+				// Log to status bar error buffer with sanitized context
+				this.statusBarManager?.logError('tool', `Tool execution failed: ${request.toolName}`, error as Error, {
+					serverId: request.serverId,
+					serverName: executionRecord.serverName,
+					toolName: request.toolName,
+					source: request.source,
+					documentPath: request.documentPath,
+					// Sanitize parameters - don't include sensitive data
+					parameterKeys: Object.keys(request.parameters)
+				})
 			}
 
 			throw error

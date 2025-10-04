@@ -9,6 +9,7 @@
 
 import { EventEmitter } from 'node:events'
 import { MCPClient, type MCPSession } from 'mcp-use'
+import type { StatusBarManager } from '../statusBarManager'
 import { ServerNotAvailableError } from './errors'
 import { partitionConfigs, toMCPUseConfig } from './mcpUseAdapter'
 import { migrateServerConfigs } from './migration'
@@ -35,13 +36,14 @@ export class MCPServerManager extends EventEmitter<MCPServerManagerEvents> {
 	private healthStatuses: Map<string, ServerHealthStatus> = new Map()
 	private failureThreshold: number = 3
 	private retryPolicy: RetryPolicy = DEFAULT_RETRY_POLICY
+	private statusBarManager?: StatusBarManager
 
 	/**
 	 * Initialize manager with server configurations
 	 */
 	async initialize(
 		configs: MCPServerConfig[],
-		options?: { failureThreshold?: number; retryPolicy?: RetryPolicy }
+		options?: { failureThreshold?: number; retryPolicy?: RetryPolicy; statusBarManager?: StatusBarManager }
 	): Promise<void> {
 		// Set failure threshold from options or use default
 		if (options?.failureThreshold !== undefined) {
@@ -52,6 +54,12 @@ export class MCPServerManager extends EventEmitter<MCPServerManagerEvents> {
 		if (options?.retryPolicy) {
 			this.retryPolicy = options.retryPolicy
 		}
+
+		// Store status bar manager for error logging
+		if (options?.statusBarManager) {
+			this.statusBarManager = options.statusBarManager
+		}
+
 		const normalizedConfigs = migrateServerConfigs(configs as unknown as Parameters<typeof migrateServerConfigs>[0])
 
 		// Store server configurations
@@ -95,6 +103,13 @@ export class MCPServerManager extends EventEmitter<MCPServerManagerEvents> {
 						this.updateHealthStatus(config.id, 'healthy')
 					} catch (error) {
 						logError(`Failed to create session for ${config.id}`, error)
+
+						// Log to status bar error buffer
+						this.statusBarManager?.logError('mcp', `Failed to start MCP server: ${config.name}`, error as Error, {
+							serverId: config.id,
+							serverName: config.name,
+							configInput: config.configInput
+						})
 
 						// Increment failure count on startup failure
 						config.failureCount++
@@ -169,6 +184,20 @@ export class MCPServerManager extends EventEmitter<MCPServerManagerEvents> {
 			// All retries failed - increment failure count
 			config.failureCount++
 
+			// Log to status bar error buffer
+			this.statusBarManager?.logError(
+				'mcp',
+				`Failed to start MCP server after retries: ${config.name}`,
+				error as Error,
+				{
+					serverId: config.id,
+					serverName: config.name,
+					configInput: config.configInput,
+					failureCount: config.failureCount,
+					maxRetries: this.retryPolicy.maxAttempts
+				}
+			)
+
 			// Check if threshold exceeded and auto-disable
 			this.checkAndAutoDisable(config)
 
@@ -197,6 +226,13 @@ export class MCPServerManager extends EventEmitter<MCPServerManagerEvents> {
 			this.emit('server-stopped', serverId)
 		} catch (error) {
 			logError(`Error stopping server ${serverId}`, error)
+
+			// Log to status bar error buffer
+			this.statusBarManager?.logError('mcp', `Failed to stop MCP server: ${config.name}`, error as Error, {
+				serverId: config.id,
+				serverName: config.name
+			})
+
 			throw error
 		}
 	}

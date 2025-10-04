@@ -2,8 +2,8 @@ import { Ollama } from 'ollama/browser'
 import type { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
-	async function* (messages: Message[], controller: AbortController, resolveEmbedAsBinary: ResolveEmbedAsBinary) {
-		const { parameters, mcpManager, mcpExecutor, documentPath, ...optionsExcludingParams } = settings
+	async function* (messages: Message[], controller: AbortController, _resolveEmbedAsBinary: ResolveEmbedAsBinary) {
+		const { parameters, mcpManager, mcpExecutor, documentPath, statusBarManager, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { baseURL, model, ...remains } = options
 
@@ -37,12 +37,10 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 					embeds: msg.embeds
 				}))
 
-				yield* coordinator.generateWithTools(
-					formattedMessages,
-					adapter,
-					mcpExec,
-					{ documentPath: documentPath || 'unknown.md' }
-				)
+				yield* coordinator.generateWithTools(formattedMessages, adapter, mcpExec, {
+					documentPath: documentPath || 'unknown.md',
+					statusBarManager: statusBarManager as any
+				})
 
 				return
 			} catch (error) {
@@ -64,7 +62,9 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 		}
 
 		const ollama = new Ollama({ host: baseURL })
-		const response = (await ollama.chat({ ...requestParams, messages, stream: true } as Parameters<typeof ollama.chat>[0])) as unknown as AsyncIterable<{ message: { content: string } }>
+		const response = (await ollama.chat({ ...requestParams, messages, stream: true } as Parameters<
+			typeof ollama.chat
+		>[0])) as unknown as AsyncIterable<{ message: { content: string } }>
 		for await (const part of response) {
 			if (controller.signal.aborted) {
 				ollama.abort()

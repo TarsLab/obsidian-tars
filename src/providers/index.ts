@@ -50,6 +50,7 @@ export interface BaseOptions {
 	mcpManager?: unknown // MCPServerManager from mcp module
 	mcpExecutor?: unknown // ToolExecutor from mcp module
 	documentPath?: string // Current document path for tool execution context
+	statusBarManager?: unknown // StatusBarManager for error logging
 }
 
 export interface ProviderSettings {

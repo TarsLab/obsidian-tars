@@ -10,7 +10,7 @@
  */
 
 import type { Editor } from 'obsidian'
-
+import type { StatusBarManager } from '../statusBarManager'
 import type { ToolExecutor } from './executor'
 import type { ToolCall, ToolResponseParser } from './toolResponseParser'
 
@@ -73,9 +73,15 @@ export interface GenerateOptions {
 	onToolCall?: (toolName: string) => void
 	onToolResult?: (toolName: string, duration: number) => void
 	editor?: Editor
+	statusBarManager?: StatusBarManager
 }
 
-function insertToolCallMarkdown(editor: Editor, toolName: string, serverId: string, parameters: Record<string, unknown>): void {
+function insertToolCallMarkdown(
+	editor: Editor,
+	toolName: string,
+	serverId: string,
+	parameters: Record<string, unknown>
+): void {
 	const markdown = `\n\n[🔧 Tool: ${toolName}](mcp://${serverId}/${toolName})\n\`\`\`json\n${JSON.stringify(parameters, null, 2)}\n\`\`\`\n`
 	editor.replaceRange(markdown, editor.getCursor())
 }
@@ -89,7 +95,6 @@ function formatResultContent(result: ToolExecutionResult): string {
 			return typeof content === 'string' ? content : String(content)
 		case 'image':
 			return typeof content === 'string' ? `![Tool Result](${content})` : String(content)
-		case 'text':
 		default:
 			return `\`\`\`text\n${String(content)}\n\`\`\``
 	}
@@ -118,7 +123,7 @@ export class ToolCallingCoordinator {
 		executor: ToolExecutor,
 		options: GenerateOptions = {}
 	): AsyncGenerator<string> {
-		const { maxTurns = 10, documentPath = '', onToolCall, onToolResult, editor } = options
+		const { maxTurns = 10, documentPath = '', onToolCall, onToolResult, editor, statusBarManager } = options
 
 		const conversation = [...messages]
 
@@ -176,15 +181,25 @@ export class ToolCallingCoordinator {
 						const toolMessage = adapter.formatToolResult(toolCall.id, result)
 						conversation.push(toolMessage)
 					} catch (error) {
-						// Add error message to conversation so LLM knows tool failed
-						const errorMessage = adapter.formatToolResult(
-							toolCall.id,
+						// Log to status bar error buffer
+						statusBarManager?.logError(
+							'tool',
+							`Tool execution failed in AI conversation: ${toolCall.name}`,
+							error as Error,
 							{
-								content: { error: error instanceof Error ? error.message : String(error) },
-								contentType: 'json',
-								executionDuration: 0
+								toolName: toolCall.name,
+								serverId,
+								documentPath,
+								source: 'ai-autonomous'
 							}
 						)
+
+						// Add error message to conversation so LLM knows tool failed
+						const errorMessage = adapter.formatToolResult(toolCall.id, {
+							content: { error: error instanceof Error ? error.message : String(error) },
+							contentType: 'json',
+							executionDuration: 0
+						})
 						conversation.push(errorMessage)
 					}
 				}

@@ -66,7 +66,7 @@ const formatEmbed = async (embed: EmbedCache, resolveEmbedAsBinary: ResolveEmbed
 
 const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, resolveEmbedAsBinary: ResolveEmbedAsBinary) {
-		const { parameters, mcpManager, mcpExecutor, documentPath, ...optionsExcludingParams } = settings
+		const { parameters, mcpManager, mcpExecutor, documentPath, statusBarManager, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const {
 			apiKey,
@@ -128,7 +128,8 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 
 				yield* coordinator.generateWithTools(formattedMessages, adapter, mcpExec, {
 					documentPath: documentPath || 'unknown.md',
-					editor
+					editor,
+					statusBarManager: statusBarManager as any
 				})
 
 				return

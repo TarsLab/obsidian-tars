@@ -10,32 +10,12 @@ export { ToolExecutor } from './executor'
 export { MCPServerManager } from './managerMCPUse' // Using mcp-use library
 // Migration
 export { migrateServerConfig, migrateServerConfigs, needsMigration } from './migration'
-// Tool calling infrastructure
-export {
-	ClaudeToolResponseParser,
-	OllamaToolResponseParser,
-	OpenAIToolResponseParser,
-	type StreamChunk,
-	type TextChunk,
-	type ToolCall,
-	type ToolCallChunk,
-	type ToolResponseParser
-} from './toolResponseParser'
-export {
-	createToolCallingCoordinator,
-	type GenerateOptions,
-	type Message,
-	type ProviderAdapter,
-	ToolCallingCoordinator,
-	type ToolExecutionRequest,
-	type ToolExecutionResult
-} from './toolCallingCoordinator'
 export {
 	buildToolServerMapping,
-	createOpenAIAdapter,
-	createOpenAIAdapterWithMapping,
 	type ClaudeAdapterConfig,
 	ClaudeProviderAdapter,
+	createOpenAIAdapter,
+	createOpenAIAdapterWithMapping,
 	type OllamaAdapterConfig,
 	OllamaProviderAdapter,
 	type OpenAIAdapterConfig,
@@ -62,10 +42,31 @@ export {
 	type OpenAITool,
 	providerSupportsTools
 } from './providerToolIntegration'
+export {
+	createToolCallingCoordinator,
+	type GenerateOptions,
+	type Message,
+	type ProviderAdapter,
+	ToolCallingCoordinator,
+	type ToolExecutionRequest,
+	type ToolExecutionResult
+} from './toolCallingCoordinator'
+// Tool calling infrastructure
+export {
+	ClaudeToolResponseParser,
+	OllamaToolResponseParser,
+	OpenAIToolResponseParser,
+	type StreamChunk,
+	type TextChunk,
+	type ToolCall,
+	type ToolCallChunk,
+	type ToolResponseParser
+} from './toolResponseParser'
 // Core types
 export * from './types'
 export * from './utils'
 
+import type { StatusBarManager } from '../statusBarManager'
 import { CodeBlockProcessor } from './codeBlockProcessor'
 import { ToolExecutor } from './executor'
 // Import types for function signatures
@@ -76,7 +77,10 @@ export function createMCPManager(): MCPServerManager {
 	return new MCPServerManager()
 }
 
-export function createToolExecutor(manager: MCPServerManager, options?: { timeout?: number; concurrentLimit?: number; sessionLimit?: number }): ToolExecutor {
+export function createToolExecutor(
+	manager: MCPServerManager,
+	options?: { timeout?: number; concurrentLimit?: number; sessionLimit?: number; statusBarManager?: StatusBarManager }
+): ToolExecutor {
 	const tracker = {
 		concurrentLimit: options?.concurrentLimit ?? DEFAULT_CONCURRENT_LIMIT,
 		sessionLimit: options?.sessionLimit ?? DEFAULT_SESSION_LIMIT,
@@ -86,7 +90,12 @@ export function createToolExecutor(manager: MCPServerManager, options?: { timeou
 		executionHistory: []
 	}
 
-	return new ToolExecutor(manager, tracker, { timeout: options?.timeout ?? DEFAULT_MCP_TIMEOUT })
+	return new ToolExecutor(
+		manager,
+		tracker,
+		{ timeout: options?.timeout ?? DEFAULT_MCP_TIMEOUT },
+		options?.statusBarManager
+	)
 }
 
 export function createCodeBlockProcessor(): CodeBlockProcessor {

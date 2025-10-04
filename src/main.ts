@@ -46,6 +46,10 @@ export default class TarsPlugin extends Plugin {
 
 		console.debug('loading Tars plugin...')
 
+		// Initialize StatusBar early so MCP components can log errors
+		const statusBarItem = this.addStatusBarItem()
+		this.statusBarManager = new StatusBarManager(this.app, statusBarItem)
+
 		// Initialize MCP Server Manager
 		if (this.settings.mcpServers && this.settings.mcpServers.length > 0) {
 			try {
@@ -69,14 +73,16 @@ export default class TarsPlugin extends Plugin {
 							'ENETUNREACH',
 							'EHOSTUNREACH'
 						]
-					}
+					},
+					statusBarManager: this.statusBarManager
 				})
 
 				// Create tool executor with settings
 				this.mcpExecutor = createToolExecutor(this.mcpManager, {
 					timeout: this.settings.mcpGlobalTimeout,
 					concurrentLimit: this.settings.mcpConcurrentLimit,
-					sessionLimit: this.settings.mcpSessionLimit
+					sessionLimit: this.settings.mcpSessionLimit,
+					statusBarManager: this.statusBarManager
 				})
 
 				// Create code block processor
@@ -176,9 +182,6 @@ export default class TarsPlugin extends Plugin {
 				new Notice('Failed to initialize MCP servers. Check console for details.')
 			}
 		}
-
-		const statusBarItem = this.addStatusBarItem()
-		this.statusBarManager = new StatusBarManager(this.app, statusBarItem)
 
 		// Update MCP status in status bar if MCP manager is initialized
 		if (this.mcpManager) {
