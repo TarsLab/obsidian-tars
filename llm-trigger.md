@@ -9,3 +9,19 @@ start working on the next task from the list, keep attention to Important Notes 
 
 
 so far we achieve minimalistic working version of the plugin, I see in Obsidian app that we successfully can execute the tools with Ollama provider. We are close to significant milestone - "release candidate"
+
+
+
+
+```memory-server
+tool:create_entities
+entities:
+  - name: language_learning_curve
+    entityType: concept
+    observations:
+      - JavaScript: gentle
+      - TypeScript: moderate
+      - Python: gentle
+      - Java: moderate
+      - C++: steep
+```

@@ -3,6 +3,8 @@
  * Handles parsing and rendering of MCP tool invocation code blocks
  */
 
+import { parse as parseYAML } from 'yaml'
+
 import { YAMLParseError } from './errors'
 import type { ErrorInfo, MCPServerConfig, ToolExecutionResult, ToolInvocation } from './types'
 import { logError } from './utils'
@@ -202,37 +204,49 @@ export class CodeBlockProcessor {
 			return {}
 		}
 
+		const source = lines.join('\n')
+
 		try {
-			// Simple YAML-like parsing (key: value format)
+			const parsed = parseYAML(source)
+			if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+				return parsed as Record<string, unknown>
+			}
+			if (parsed === null || parsed === undefined) {
+				return {}
+			}
+			console.debug('Unexpected YAML root type, falling back to manual parser', typeof parsed)
+		} catch (yamlError) {
+			console.debug('YAML parsing failed, falling back to manual parser', yamlError)
+		}
+
+		// Fallback: simple key-value parser (legacy behaviour)
+		try {
 			const params: Record<string, unknown> = {}
 			let currentKey = ''
 			let currentValue: string[] = []
 
 			for (const line of lines) {
 				const trimmed = line.trim()
-
 				if (trimmed === '') {
-					continue // Skip empty lines
+					continue
 				}
 
-				// Check if line starts a new key (key: value format)
 				const keyValueMatch = trimmed.match(/^([^:]+):\s*(.*)$/)
-				if (keyValueMatch) {
-					// Save previous key-value pair
+				const leadingWhitespace = line.match(/^\s*/)?.[0]?.length ?? 0
+				const isRootLevel = leadingWhitespace === 0
+
+				if (keyValueMatch && isRootLevel) {
 					if (currentKey) {
 						params[currentKey] = this.parseYAMLValue(currentValue.join('\n'))
 					}
 
-					// Start new key-value pair
 					currentKey = keyValueMatch[1].trim()
 					currentValue = [keyValueMatch[2].trim()]
 				} else {
-					// Continuation of previous value (multiline)
 					currentValue.push(trimmed)
 				}
 			}
 
-			// Save last key-value pair
 			if (currentKey) {
 				params[currentKey] = this.parseYAMLValue(currentValue.join('\n'))
 			}
@@ -240,7 +254,7 @@ export class CodeBlockProcessor {
 			return params
 		} catch (error) {
 			throw new YAMLParseError(
-				undefined, // No specific line number available
+				undefined,
 				error instanceof Error ? error.message : String(error)
 			)
 		}
@@ -264,6 +278,15 @@ export class CodeBlockProcessor {
 		// Handle numeric values
 		if (/^-?\d+(\.\d+)?$/.test(trimmed)) {
 			return parseFloat(trimmed)
+		}
+
+		// Handle JSON-like arrays/objects (e.g., [] or {})
+		if ((trimmed.startsWith('[') && trimmed.endsWith(']')) || (trimmed.startsWith('{') && trimmed.endsWith('}'))) {
+			try {
+				return JSON.parse(trimmed)
+			} catch (error) {
+				console.debug('Failed to parse JSON-like parameter value', error)
+			}
 		}
 
 		// Handle quoted strings (remove quotes)

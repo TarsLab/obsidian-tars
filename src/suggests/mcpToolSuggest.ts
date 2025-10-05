@@ -9,14 +9,22 @@ import {
 } from 'obsidian'
 
 import type { MCPServerManager } from '../mcp/managerMCPUse'
-import type { MCPServerConfig } from '../mcp/types'
-import { detectMCPCodeBlockContext, filterTools, parseToolLine } from './mcpToolSuggestHelpers'
+import type { MCPServerConfig, ToolDefinition } from '../mcp/types'
+import {
+	buildRequiredParameterInsertion,
+	collectUsedParameters,
+	detectMCPCodeBlockContext,
+	extractParameterDefinitions,
+	filterTools,
+	parseToolLine
+} from './mcpToolSuggestHelpers'
 
 export interface ToolSuggestion {
 	name: string
 	description?: string
 	serverId: string
 	serverName: string
+	tool: ToolDefinition
 }
 
 export class MCPToolSuggest extends EditorSuggest<ToolSuggestion> {
@@ -74,7 +82,8 @@ export class MCPToolSuggest extends EditorSuggest<ToolSuggestion> {
 				name: tool.name,
 				description: tool.description,
 				serverId: serverEntry.serverId,
-				serverName: serverEntry.serverName
+				serverName: serverEntry.serverName,
+				tool
 			}))
 		} catch (error) {
 			console.debug('Failed to build tool suggestions', error)
@@ -98,10 +107,67 @@ export class MCPToolSuggest extends EditorSuggest<ToolSuggestion> {
 
 	async selectSuggestion(suggestion: ToolSuggestion): Promise<void> {
 		if (!this.context) return
-		this.context.editor.replaceRange(suggestion.name, this.context.start, this.context.end)
+		const { editor, start, end } = this.context
+		editor.replaceRange(suggestion.name, start, end)
+
+		const insertionEnd = {
+			line: start.line,
+			ch: start.ch + suggestion.name.length
+		}
+
+		editor.setCursor(insertionEnd)
+		this.insertRequiredParameters(editor, insertionEnd, suggestion.tool)
 	}
 
 	private findServerByName(name: string): MCPServerConfig | undefined {
 		return this.getServerConfigs().find((server) => server.name === name)
+	}
+
+	private insertRequiredParameters(editor: Editor, insertionEnd: EditorPosition, tool: ToolDefinition): void {
+		const lineContent = editor.getLine(insertionEnd.line) ?? ''
+		const indentation = lineContent.match(/^\s*/)?.[0] ?? ''
+		const blockContext = detectMCPCodeBlockContext(editor, insertionEnd)
+		if (!blockContext) {
+			return
+		}
+
+		const parameterDefinitions = extractParameterDefinitions(tool)
+		const requiredDefinitions = parameterDefinitions.filter((definition) => definition.required)
+		if (requiredDefinitions.length === 0) {
+			return
+		}
+
+		const blockEndLine = this.findBlockEndLine(editor, blockContext.blockStartLine)
+		const usedParameters = collectUsedParameters(editor, blockContext.blockStartLine, blockEndLine)
+		const { lines, cursorColumn } = buildRequiredParameterInsertion(parameterDefinitions, usedParameters, indentation)
+
+		if (lines.length === 0) {
+			return
+		}
+
+		const insertionLineLength = (editor.getLine(insertionEnd.line) ?? '').length
+		const insertionPoint = { line: insertionEnd.line, ch: insertionLineLength }
+		const insertText = `\n${lines.join('\n')}`
+		editor.replaceRange(insertText, insertionPoint, insertionPoint)
+
+		const firstParamLineIndex = insertionEnd.line + 1
+		const firstParamLine = editor.getLine(firstParamLineIndex) ?? ''
+		let cursorCh = cursorColumn ?? firstParamLine.length
+		if (cursorColumn === null) {
+			const colonIndex = firstParamLine.indexOf(':')
+			cursorCh = colonIndex === -1 ? firstParamLine.length : colonIndex + 1 + (firstParamLine.charAt(colonIndex + 1) === ' ' ? 1 : 0)
+		}
+		editor.setCursor({ line: firstParamLineIndex, ch: cursorCh })
+	}
+
+	private findBlockEndLine(editor: Editor, blockStartLine: number): number {
+		const lineCount = editor.lineCount()
+		for (let lineIndex = blockStartLine + 1; lineIndex < lineCount; lineIndex++) {
+			const trimmed = editor.getLine(lineIndex)?.trim() ?? ''
+			if (trimmed.startsWith('```')) {
+				return lineIndex
+			}
+		}
+		return lineCount
 	}
 }

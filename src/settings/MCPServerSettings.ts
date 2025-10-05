@@ -80,6 +80,7 @@ export class MCPServerSettings {
 						const limit = parseInt(value, 10)
 						if (!Number.isNaN(limit) && limit > 0) {
 							this.plugin.settings.mcpConcurrentLimit = limit
+							this.plugin.mcpExecutor?.updateLimits({ concurrentLimit: limit })
 							await this.plugin.saveSettings()
 						}
 					})
@@ -96,6 +97,7 @@ export class MCPServerSettings {
 						const limit = parseInt(value, 10)
 						if (!Number.isNaN(limit) && limit >= -1) {
 							this.plugin.settings.mcpSessionLimit = limit
+							this.plugin.mcpExecutor?.updateLimits({ sessionLimit: limit })
 							await this.plugin.saveSettings()
 						}
 					})

@@ -96,6 +96,44 @@ describe('ToolExecutor limits contract tests', () => {
 		})
 	})
 
+	describe('dynamic limit updates', () => {
+		it('applies updated session limit in runtime', () => {
+			const manager = new MCPServerManager()
+			const tracker = {
+				concurrentLimit: 3,
+				sessionLimit: 25,
+				activeExecutions: new Set<string>(),
+				totalExecuted: 25,
+				stopped: false,
+				executionHistory: []
+			}
+			const executor = new ToolExecutor(manager, tracker)
+
+			executor.updateLimits({ sessionLimit: -1 })
+
+			expect(executor.canExecute()).toBe(true)
+			expect(executor.getStats().sessionLimit).toBe(-1)
+		})
+
+		it('applies updated concurrent limit in runtime', () => {
+			const manager = new MCPServerManager()
+			const tracker = {
+				concurrentLimit: 2,
+				sessionLimit: -1,
+				activeExecutions: new Set<string>(['req-1', 'req-2']),
+				totalExecuted: 10,
+				stopped: false,
+				executionHistory: []
+			}
+			const executor = new ToolExecutor(manager, tracker)
+
+			executor.updateLimits({ concurrentLimit: 4 })
+
+			expect(executor.getStats().concurrentLimit).toBe(4)
+			expect(executor.canExecute()).toBe(true)
+		})
+	})
+
 	describe('stop functionality', () => {
 		it('should stop all executions when stop() called', async () => {
 			// GIVEN: Active executions in progress

@@ -187,6 +187,19 @@ export class ToolExecutor {
 	}
 
 	/**
+	 * Update execution limits in response to settings changes
+	 */
+	updateLimits(limits: { concurrentLimit?: number; sessionLimit?: number }): void {
+		if (typeof limits.concurrentLimit === 'number' && Number.isFinite(limits.concurrentLimit) && limits.concurrentLimit > 0) {
+			this.tracker.concurrentLimit = limits.concurrentLimit
+		}
+
+		if (typeof limits.sessionLimit === 'number' && Number.isFinite(limits.sessionLimit) && limits.sessionLimit >= -1) {
+			this.tracker.sessionLimit = limits.sessionLimit
+		}
+	}
+
+	/**
 	 * Stop all future executions
 	 */
 	stop(): void {
