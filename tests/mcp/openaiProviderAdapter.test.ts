@@ -15,22 +15,70 @@ const mockOpenAI = {
 	}
 }
 
-// Mock MCP manager
-const mockMCPManager = {
+const createToolSnapshot = () => ({
+	mapping: new Map([
+		[
+			'test_tool',
+			{
+				id: 'server1',
+				name: 'Server 1'
+			}
+		]
+	]),
+	servers: [
+		{
+			serverId: 'server1',
+			serverName: 'Server 1',
+			tools: [
+				{
+					name: 'test_tool',
+					description: 'A test tool',
+					inputSchema: { type: 'object', properties: {} }
+				}
+			]
+		}
+	]
+})
+
+const createMockToolCache = () => {
+	const snapshot = createToolSnapshot()
+	const cache = {
+		getSnapshot: vi.fn().mockResolvedValue(snapshot),
+		getToolMapping: vi.fn().mockResolvedValue(snapshot.mapping),
+		getCachedMapping: vi.fn().mockReturnValue(snapshot.mapping),
+		preload: vi.fn(),
+		invalidate: vi.fn(),
+		getMetrics: vi.fn().mockReturnValue({
+			requests: 0,
+			hits: 0,
+			misses: 0,
+			batched: 0,
+			invalidations: 0,
+			inFlight: false,
+			lastUpdatedAt: null,
+			lastBuildDurationMs: null,
+			lastServerCount: 0,
+			lastToolCount: 0,
+			lastError: null,
+			lastInvalidationAt: null,
+			lastInvalidationReason: null
+		})
+	}
+
+	return { snapshot, cache }
+}
+
+const createMockMCPManager = (toolCache: ReturnType<typeof createMockToolCache>['cache']) => ({
 	listServers: vi.fn().mockReturnValue([
 		{ id: 'server1', name: 'Server 1', enabled: true }
 	]),
 	getClient: vi.fn().mockReturnValue({
-		listTools: vi.fn().mockResolvedValue([
-			{
-				name: 'test_tool',
-				description: 'A test tool',
-				inputSchema: { type: 'object', properties: {} }
-			}
-		])
+		listTools: vi.fn().mockResolvedValue([])
 	}),
-	on: vi.fn() // Mock EventEmitter on method
-}
+	getToolDiscoveryCache: vi.fn().mockReturnValue(toolCache),
+	on: vi.fn().mockReturnThis(),
+	emit: vi.fn()
+})
 
 // Mock executor
 const mockExecutor = {
@@ -45,10 +93,15 @@ const mockExecutor = {
 describe('OpenAIProviderAdapter', () => {
 	let adapter: OpenAIProviderAdapter
 	let controller: AbortController
+	let mockMCPManager: ReturnType<typeof createMockMCPManager>
+	let mockToolCache: ReturnType<typeof createMockToolCache>['cache']
 
 	beforeEach(() => {
 		vi.clearAllMocks()
 		controller = new AbortController()
+		const toolCacheData = createMockToolCache()
+		mockToolCache = toolCacheData.cache
+		mockMCPManager = createMockMCPManager(mockToolCache)
 
 		adapter = new OpenAIProviderAdapter({
 			// biome-ignore lint/suspicious/noExplicitAny: mock
@@ -61,14 +114,28 @@ describe('OpenAIProviderAdapter', () => {
 		})
 	})
 
-	describe('Initialization', () => {
+		describe('Initialization', () => {
 		it('should initialize and build tool mapping', async () => {
-			// WHEN: Initializing adapter
+			// When: Initializing adapter
 			await adapter.initialize()
 
-			// THEN: Should query servers for tools
-			expect(mockMCPManager.listServers).toHaveBeenCalled()
-			expect(mockMCPManager.getClient).toHaveBeenCalledWith('server1')
+			// Then: Should load tools from discovery cache
+			expect(mockToolCache.getSnapshot).toHaveBeenCalledTimes(1)
+		})
+
+		it('supports lazy initialization by deferring tool discovery', async () => {
+			// When: Initializing with preload disabled
+			await adapter.initialize({ preloadTools: false })
+
+			// Then: Snapshot not fetched yet
+			expect(mockToolCache.getSnapshot).not.toHaveBeenCalled()
+			expect(mockToolCache.getCachedMapping).toHaveBeenCalled()
+
+			// When: Tools needed later
+			await (adapter as any).buildTools()
+
+			// Then: Snapshot fetched on demand
+			expect(mockToolCache.getSnapshot).toHaveBeenCalledTimes(1)
 		})
 	})
 

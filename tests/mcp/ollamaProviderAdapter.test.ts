@@ -14,26 +14,75 @@ const createMockOllamaClient = () => ({
 	abort: vi.fn()
 })
 
+const createToolSnapshot = () => ({
+	mapping: new Map([
+		[
+			'get_weather',
+			{
+				id: 'test-server',
+				name: 'Test Server'
+			}
+		]
+	]),
+	servers: [
+		{
+			serverId: 'test-server',
+			serverName: 'Test Server',
+			tools: [
+				{
+					name: 'get_weather',
+					description: 'Get current weather',
+					inputSchema: {
+						type: 'object',
+						properties: {
+							location: { type: 'string' }
+						}
+					}
+				}
+			]
+		}
+	]
+})
+
+const createMockToolCache = () => {
+	const snapshot = createToolSnapshot()
+	const cache = {
+		getSnapshot: vi.fn().mockResolvedValue(snapshot),
+		getToolMapping: vi.fn().mockResolvedValue(snapshot.mapping),
+		getCachedMapping: vi.fn().mockReturnValue(snapshot.mapping),
+		preload: vi.fn(),
+		invalidate: vi.fn(),
+		getMetrics: vi.fn().mockReturnValue({
+			requests: 0,
+			hits: 0,
+			misses: 0,
+			batched: 0,
+			invalidations: 0,
+			inFlight: false,
+			lastUpdatedAt: null,
+			lastBuildDurationMs: null,
+			lastServerCount: 0,
+			lastToolCount: 0,
+			lastError: null,
+			lastInvalidationAt: null,
+			lastInvalidationReason: null
+		})
+	}
+
+	return { snapshot, cache }
+}
+
 // Mock MCP manager
-const createMockMCPManager = (): MCPServerManager => ({
+const createMockMCPManager = (toolCache: ReturnType<typeof createMockToolCache>['cache']): MCPServerManager => ({
 	listServers: vi.fn().mockReturnValue([
 		{ id: 'test-server', name: 'Test Server', enabled: true }
 	]),
 	getClient: vi.fn().mockReturnValue({
-		listTools: vi.fn().mockResolvedValue([
-			{
-				name: 'get_weather',
-				description: 'Get current weather',
-				inputSchema: {
-					type: 'object',
-					properties: {
-						location: { type: 'string' }
-					}
-				}
-			}
-		])
+		listTools: vi.fn().mockResolvedValue([])
 	}),
-	on: vi.fn() // Mock EventEmitter on method
+	getToolDiscoveryCache: vi.fn().mockReturnValue(toolCache),
+	on: vi.fn().mockReturnThis(),
+	emit: vi.fn()
 	// biome-ignore lint/suspicious/noExplicitAny: mock
 } as any)
 
@@ -44,17 +93,20 @@ const createMockExecutor = (): ToolExecutor => ({
 	// biome-ignore lint/suspicious/noExplicitAny: mock
 } as any)
 
-describe('OllamaProviderAdapter', () => {
+	describe('OllamaProviderAdapter', () => {
 	let adapter: OllamaProviderAdapter
 	let mockOllamaClient: ReturnType<typeof createMockOllamaClient>
 	let mockMCPManager: MCPServerManager
 	let mockExecutor: ToolExecutor
 	let controller: AbortController
+	let mockToolCache: ReturnType<typeof createMockToolCache>['cache']
 
 	beforeEach(() => {
 		vi.clearAllMocks()
 		mockOllamaClient = createMockOllamaClient()
-		mockMCPManager = createMockMCPManager()
+		const toolCacheData = createMockToolCache()
+		mockToolCache = toolCacheData.cache
+		mockMCPManager = createMockMCPManager(mockToolCache)
 		mockExecutor = createMockExecutor()
 		controller = new AbortController()
 
@@ -68,30 +120,47 @@ describe('OllamaProviderAdapter', () => {
 		})
 	})
 
-	describe('Initialization', () => {
+		describe('Initialization', () => {
 		it('should build tool-to-server mapping', async () => {
-			// WHEN: Initializing adapter
+			// When: Initializing adapter
 			await adapter.initialize()
 
-			// THEN: Should query MCP servers for tools
-			expect(mockMCPManager.listServers).toHaveBeenCalled()
-			expect(mockMCPManager.getClient).toHaveBeenCalledWith('test-server')
+			// Then: Should load tools from discovery cache
+			expect(mockToolCache.getSnapshot).toHaveBeenCalledTimes(1)
 		})
 
 		it('should find server info for tool after initialization', async () => {
-			// GIVEN: Initialized adapter
+			// Given: Initialized adapter
 			await adapter.initialize()
 
-			// WHEN: Finding server info
+			// When: Finding server info
 			const serverInfo = adapter.findServer('get_weather')
 
-			// THEN: Should return correct server ID
+			// Then: Should return correct server ID
 			expect(serverInfo).toEqual({ id: 'test-server', name: 'Test Server' })
 		})
 
 		it('should throw if findServer called before initialization', () => {
-			// WHEN/THEN: Calling findServer before initialize
-			expect(() => adapter.findServer('get_weather')).toThrow('not initialized')
+			// Given: No cached mapping available
+			mockToolCache.getCachedMapping.mockReturnValueOnce(null)
+
+			// When/Then: Calling findServer before initialize
+			expect(() => adapter.findServer('get_weather')).toThrow('tool mapping not initialized')
+		})
+
+		it('supports lazy initialization by deferring tool discovery', async () => {
+			// When: Initializing with lazy option
+			await adapter.initialize({ preloadTools: false })
+
+			// Then: Snapshot should not be fetched yet (only cached mapping read)
+			expect(mockToolCache.getSnapshot).not.toHaveBeenCalled()
+			expect(mockToolCache.getCachedMapping).toHaveBeenCalled()
+
+			// When: Tools required later
+			await (adapter as any).buildTools()
+
+			// Then: Snapshot fetched on demand
+			expect(mockToolCache.getSnapshot).toHaveBeenCalledTimes(1)
 		})
 	})
 

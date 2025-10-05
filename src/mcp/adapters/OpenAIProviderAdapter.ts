@@ -3,10 +3,10 @@ import type { EmbedCache } from 'obsidian'
 
 import type { ToolExecutor } from '../executor'
 import type { MCPServerManager } from '../managerMCPUse'
+import { ToolDiscoveryCache } from '../toolDiscoveryCache'
 import type { Message, ProviderAdapter, ToolExecutionResult } from '../toolCallingCoordinator'
 import type { ToolServerInfo } from '../types'
 import { OpenAIToolResponseParser } from '../toolResponseParser'
-import { buildToolServerMapping } from './toolMapping'
 
 export interface OpenAIAdapterConfig {
 	mcpManager: MCPServerManager
@@ -21,6 +21,7 @@ export class OpenAIProviderAdapter implements ProviderAdapter<OpenAI.ChatComplet
 	private readonly mcpExecutor: ToolExecutor
 	private readonly client: OpenAI
 	private readonly controller: AbortController
+	private readonly toolDiscoveryCache: ToolDiscoveryCache
 	private toolMapping: Map<string, ToolServerInfo> | null = null
 	private cachedTools: OpenAI.ChatCompletionTool[] | null = null
 	private readonly resolveEmbedAsBinary?: (embed: EmbedCache) => Promise<ArrayBuffer>
@@ -30,6 +31,7 @@ export class OpenAIProviderAdapter implements ProviderAdapter<OpenAI.ChatComplet
 		this.mcpExecutor = config.mcpExecutor
 		this.client = config.openaiClient
 		this.controller = config.controller
+		this.toolDiscoveryCache = this.mcpManager.getToolDiscoveryCache()
 		this.resolveEmbedAsBinary = config.resolveEmbedAsBinary
 
 		this.mcpManager.on('server-started', () => this.invalidateCache())
@@ -37,8 +39,13 @@ export class OpenAIProviderAdapter implements ProviderAdapter<OpenAI.ChatComplet
 		this.mcpManager.on('server-failed', () => this.invalidateCache())
 	}
 
-	async initialize(): Promise<void> {
-		this.toolMapping = await buildToolServerMapping(this.mcpManager)
+	async initialize(options?: { preloadTools?: boolean }): Promise<void> {
+		if (options?.preloadTools === false) {
+			this.toolMapping = this.toolDiscoveryCache.getCachedMapping()
+			this.cachedTools = null
+			return
+		}
+
 		this.cachedTools = await this.buildTools()
 	}
 
@@ -70,8 +77,18 @@ export class OpenAIProviderAdapter implements ProviderAdapter<OpenAI.ChatComplet
 	}
 
 	findServer(toolName: string): ToolServerInfo | null {
+		if (!this.toolMapping) {
+			const cached = this.toolDiscoveryCache.getCachedMapping()
+			if (cached) {
+				this.toolMapping = cached
+			}
+		}
+
 		if (this.toolMapping) {
-			return this.toolMapping.get(toolName) ?? null
+			const serverInfo = this.toolMapping.get(toolName)
+			if (serverInfo) {
+				return serverInfo
+			}
 		}
 
 		const servers = this.mcpManager.listServers()
@@ -99,32 +116,21 @@ export class OpenAIProviderAdapter implements ProviderAdapter<OpenAI.ChatComplet
 			return this.cachedTools
 		}
 
-		const tools: OpenAI.ChatCompletionTool[] = []
-		const servers = this.mcpManager.listServers()
+		const snapshot = await this.toolDiscoveryCache.getSnapshot()
+		this.toolMapping = snapshot.mapping
 
-		for (const server of servers) {
-			if (!server.enabled) continue
-
-			const client = this.mcpManager.getClient(server.id)
-			if (!client) continue
-
-			try {
-				const serverTools = await client.listTools()
-				for (const tool of serverTools) {
-					tools.push({
-						type: 'function',
-						function: {
-							name: tool.name,
-							description: tool.description || '',
-							parameters: tool.inputSchema as Record<string, unknown>
-						}
-					})
+		const tools: OpenAI.ChatCompletionTool[] = snapshot.servers.flatMap((server) =>
+			server.tools.map((tool) => ({
+				type: 'function',
+				function: {
+					name: tool.name,
+					description: tool.description || '',
+					parameters: tool.inputSchema as Record<string, unknown>
 				}
-			} catch (error) {
-				console.error(`Failed to list tools for ${server.name}:`, error)
-			}
-		}
+			}))
+		)
 
+		this.cachedTools = tools
 		return tools
 	}
 

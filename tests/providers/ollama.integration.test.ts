@@ -64,10 +64,33 @@ describe('Ollama Provider Integration - Tool Calling', () => {
 		const mcp = await import('../../src/mcp/index.js')
 
 		// Mock dependencies
+		const mockToolCache = {
+			getSnapshot: vi.fn().mockResolvedValue({ mapping: new Map(), servers: [] }),
+			getToolMapping: vi.fn().mockResolvedValue(new Map()),
+			getCachedMapping: vi.fn().mockReturnValue(new Map()),
+			preload: vi.fn(),
+			invalidate: vi.fn(),
+			getMetrics: vi.fn().mockReturnValue({
+				requests: 0,
+				hits: 0,
+				misses: 0,
+				batched: 0,
+				invalidations: 0,
+				inFlight: false,
+				lastUpdatedAt: null,
+				lastBuildDurationMs: null,
+				lastServerCount: 0,
+				lastToolCount: 0,
+				lastError: null,
+				lastInvalidationAt: null,
+				lastInvalidationReason: null
+			})
+		}
 		const mockMcpManager = {
 			listServers: vi.fn().mockReturnValue([]),
 			getClient: vi.fn(),
-			on: vi.fn()
+			getToolDiscoveryCache: vi.fn().mockReturnValue(mockToolCache),
+			on: vi.fn().mockReturnThis()
 		}
 		const mockMcpExecutor = {
 			executeTool: vi.fn(),

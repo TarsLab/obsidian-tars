@@ -36,7 +36,7 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 					resolveEmbedAsBinary
 				})
 
-				await adapter.initialize()
+				await adapter.initialize({ preloadTools: false })
 
 				const coordinator = new ToolCallingCoordinator()
 

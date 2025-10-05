@@ -34,7 +34,7 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 					model
 				})
 
-				await adapter.initialize()
+				await adapter.initialize({ preloadTools: false })
 
 				const coordinator = new ToolCallingCoordinator()
 

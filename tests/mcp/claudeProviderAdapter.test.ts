@@ -5,6 +5,59 @@ import { ClaudeProviderAdapter } from '../../src/mcp/adapters/ClaudeProviderAdap
 import type { MCPServerManager } from '../../src/mcp/managerMCPUse'
 import type { MCPServerConfig } from '../../src/mcp/types'
 
+const createToolSnapshot = () => ({
+	mapping: new Map([
+		[
+			'test_tool',
+			{
+				id: 'test-server',
+				name: 'Test Server'
+			}
+		]
+	]),
+	servers: [
+		{
+			serverId: 'test-server',
+			serverName: 'Test Server',
+			tools: [
+				{
+					name: 'test_tool',
+					description: 'A test tool',
+					inputSchema: { type: 'object', properties: {} }
+				}
+			]
+		}
+	]
+})
+
+const createMockToolCache = () => {
+	const snapshot = createToolSnapshot()
+	const cache = {
+		getSnapshot: vi.fn().mockResolvedValue(snapshot),
+		getToolMapping: vi.fn().mockResolvedValue(snapshot.mapping),
+		getCachedMapping: vi.fn().mockReturnValue(snapshot.mapping),
+		preload: vi.fn(),
+		invalidate: vi.fn(),
+		getMetrics: vi.fn().mockReturnValue({
+			requests: 0,
+			hits: 0,
+			misses: 0,
+			batched: 0,
+			invalidations: 0,
+			inFlight: false,
+			lastUpdatedAt: null,
+			lastBuildDurationMs: null,
+			lastServerCount: 0,
+			lastToolCount: 0,
+			lastError: null,
+			lastInvalidationAt: null,
+			lastInvalidationReason: null
+		})
+	}
+
+	return { snapshot, cache }
+}
+
 // Mock Anthropic client
 vi.mock('@anthropic-ai/sdk', () => ({
 	default: vi.fn().mockImplementation(() => ({
@@ -19,13 +72,18 @@ describe('ClaudeProviderAdapter', () => {
 	let mockMcpManager: MCPServerManager
 	let adapter: ClaudeProviderAdapter
 	let controller: AbortController
+ 	let mockToolCache: ReturnType<typeof createMockToolCache>['cache']
 
 	beforeEach(() => {
 		mockAnthropicClient = new Anthropic({ apiKey: 'test-key' })
+		const toolCacheData = createMockToolCache()
+		mockToolCache = toolCacheData.cache
 		mockMcpManager = {
 			listServers: vi.fn().mockReturnValue([]),
 			getClient: vi.fn(),
-			on: vi.fn()
+			getToolDiscoveryCache: vi.fn().mockReturnValue(mockToolCache),
+			on: vi.fn().mockReturnThis(),
+			emit: vi.fn()
 		} as unknown as MCPServerManager
 		controller = new AbortController()
 
@@ -40,58 +98,31 @@ describe('ClaudeProviderAdapter', () => {
 
 	describe('initialize', () => {
 		it('should initialize tool mapping and cache tools', async () => {
-			const mockServer: MCPServerConfig = {
-				id: 'test-server',
-				name: 'Test Server',
-				enabled: true,
-				configInput: 'npx @modelcontextprotocol/server-memory',
-				failureCount: 0,
-				autoDisabled: false
-			}
-			const mockClient = {
-				listTools: vi.fn().mockResolvedValue([
-					{
-						name: 'test_tool',
-						description: 'A test tool',
-						inputSchema: { type: 'object', properties: {} }
-					}
-				])
-			}
-
-			vi.mocked(mockMcpManager.listServers).mockReturnValue([mockServer])
-			vi.mocked(mockMcpManager.getClient).mockReturnValue(mockClient as any)
-
+			// When: Initializing adapter
 			await adapter.initialize()
 
-			expect(mockMcpManager.listServers).toHaveBeenCalled()
-			expect(mockMcpManager.getClient).toHaveBeenCalledWith('test-server')
-			expect(mockClient.listTools).toHaveBeenCalled()
+			// Then: Tool discovery cache used to build mapping
+			expect(mockToolCache.getSnapshot).toHaveBeenCalledTimes(1)
+		})
+
+		it('supports lazy initialization by deferring tool discovery', async () => {
+			// When: Initializing lazily
+			await adapter.initialize({ preloadTools: false })
+
+			// Then: Snapshot not requested yet
+			expect(mockToolCache.getSnapshot).not.toHaveBeenCalled()
+			expect(mockToolCache.getCachedMapping).toHaveBeenCalled()
+
+			// When: Tools needed later
+			await (adapter as any).buildTools()
+
+			// Then: Snapshot fetched on demand
+			expect(mockToolCache.getSnapshot).toHaveBeenCalledTimes(1)
 		})
 	})
 
 	describe('findServer', () => {
 		it('should return server ID for known tool', async () => {
-			const mockServer: MCPServerConfig = {
-				id: 'test-server',
-				name: 'Test Server',
-				enabled: true,
-				configInput: 'npx @modelcontextprotocol/server-memory',
-				failureCount: 0,
-				autoDisabled: false
-			}
-			const mockClient = {
-				listTools: vi.fn().mockResolvedValue([
-					{
-						name: 'test_tool',
-						description: 'A test tool',
-						inputSchema: { type: 'object', properties: {} }
-					}
-				])
-			}
-
-			vi.mocked(mockMcpManager.listServers).mockReturnValue([mockServer])
-			vi.mocked(mockMcpManager.getClient).mockReturnValue(mockClient as any)
-
 			await adapter.initialize()
 
 			const serverInfo = adapter.findServer('test_tool')
@@ -106,7 +137,8 @@ describe('ClaudeProviderAdapter', () => {
 		})
 
 		it('should throw error if not initialized', () => {
-			expect(() => adapter.findServer('test_tool')).toThrow('ClaudeProviderAdapter not initialized')
+			mockToolCache.getCachedMapping.mockReturnValueOnce(null)
+			expect(() => adapter.findServer('test_tool')).toThrow('tool mapping not initialized')
 		})
 	})
 

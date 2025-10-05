@@ -2,10 +2,10 @@ import type { Ollama } from 'ollama/browser'
 
 import type { ToolExecutor } from '../executor'
 import type { MCPServerManager } from '../managerMCPUse'
+import { ToolDiscoveryCache } from '../toolDiscoveryCache'
 import type { Message, ProviderAdapter, ToolExecutionResult } from '../toolCallingCoordinator'
 import type { ToolServerInfo } from '../types'
 import { OllamaToolResponseParser } from '../toolResponseParser'
-import { buildToolServerMapping } from './toolMapping'
 
 interface OllamaChunk {
 	message?: {
@@ -34,6 +34,7 @@ export class OllamaProviderAdapter implements ProviderAdapter<OllamaChunk> {
 	private readonly client: Ollama
 	private readonly controller: AbortController
 	private readonly model: string
+	private readonly toolDiscoveryCache: ToolDiscoveryCache
 	private toolMapping: Map<string, ToolServerInfo> | null = null
 	private cachedTools: Array<{
 		type: 'function'
@@ -47,24 +48,26 @@ export class OllamaProviderAdapter implements ProviderAdapter<OllamaChunk> {
 		this.client = config.ollamaClient
 		this.controller = config.controller
 		this.model = config.model
+		this.toolDiscoveryCache = this.mcpManager.getToolDiscoveryCache()
 
 		this.mcpManager.on('server-started', () => this.invalidateCache())
 		this.mcpManager.on('server-stopped', () => this.invalidateCache())
 		this.mcpManager.on('server-failed', () => this.invalidateCache())
 	}
 
-	async initialize(): Promise<void> {
+	async initialize(options?: { preloadTools?: boolean }): Promise<void> {
 		console.debug(`[Ollama MCP Adapter] Initializing adapter...`)
 
 		try {
-			console.debug(`[Ollama MCP Adapter] Building tool server mapping...`)
-			this.toolMapping = await buildToolServerMapping(this.mcpManager)
-			console.debug(`[Ollama MCP Adapter] Tool mapping built:`, Array.from(this.toolMapping.entries()))
+			if (options?.preloadTools === false) {
+				console.debug('[Ollama MCP Adapter] Lazy initialization enabled; deferring tool preload')
+				this.toolMapping = this.toolDiscoveryCache.getCachedMapping()
+				this.cachedTools = null
+				return
+			}
 
-			console.debug(`[Ollama MCP Adapter] Building tools...`)
-			this.cachedTools = await this.buildTools()
-			console.debug(`[Ollama MCP Adapter] Tools built: ${this.cachedTools?.length || 0} tools`)
-
+			const tools = await this.buildTools()
+			console.debug(`[Ollama MCP Adapter] Tools preloaded: ${tools.length}`)
 			console.debug(`[Ollama MCP Adapter] Initialization complete`)
 		} catch (error) {
 			console.error(`[Ollama MCP Adapter] Initialization failed:`, error)
@@ -83,7 +86,12 @@ export class OllamaProviderAdapter implements ProviderAdapter<OllamaChunk> {
 
 	findServer(toolName: string): ToolServerInfo | null {
 		if (!this.toolMapping) {
-			throw new Error('OllamaProviderAdapter not initialized - call initialize() first')
+			const cached = this.toolDiscoveryCache.getCachedMapping()
+			if (cached) {
+				this.toolMapping = cached
+			} else {
+				throw new Error('OllamaProviderAdapter tool mapping not initialized - call initialize() first')
+			}
 		}
 		return this.toolMapping.get(toolName) ?? null
 }
@@ -172,54 +180,24 @@ export class OllamaProviderAdapter implements ProviderAdapter<OllamaChunk> {
 			return this.cachedTools
 		}
 
-		console.debug(`[Ollama MCP Adapter] Building tools from MCP servers...`)
-		const tools: Array<{ type: 'function'; function: { name: string; description?: string; parameters?: unknown } }> =
-			[]
-		const servers = this.mcpManager.listServers()
+		console.debug(`[Ollama MCP Adapter] Building tools from MCP servers via discovery cache...`)
+		const snapshot = await this.toolDiscoveryCache.getSnapshot()
+		this.toolMapping = snapshot.mapping
 
-		console.debug(
-			`[Ollama MCP Adapter] Found ${servers.length} MCP servers:`,
-			servers.map((s) => ({ id: s.id, enabled: s.enabled }))
+		const tools = snapshot.servers.flatMap((server) =>
+			server.tools.map((tool) => ({
+				type: 'function' as const,
+				function: {
+					name: tool.name,
+					description: tool.description,
+					parameters: tool.inputSchema as unknown
+				}
+			}))
 		)
 
-		for (const server of servers) {
-			if (!server.enabled) {
-				console.debug(`[Ollama MCP Adapter] Skipping disabled server: ${server.id}`)
-				continue
-			}
-
-			console.debug(`[Ollama MCP Adapter] Processing server: ${server.id}`)
-			const client = this.mcpManager.getClient(server.id)
-			if (!client) {
-				console.warn(`[Ollama MCP Adapter] No client found for server: ${server.id}`)
-				continue
-			}
-
-			try {
-				console.debug(`[Ollama MCP Adapter] Listing tools for server: ${server.id}`)
-				const serverTools = await client.listTools()
-				console.debug(
-					`[Ollama MCP Adapter] Server ${server.id} has ${serverTools.length} tools:`,
-					serverTools.map((t) => t.name)
-				)
-
-				for (const tool of serverTools) {
-					tools.push({
-						type: 'function',
-						function: {
-							name: tool.name,
-							description: tool.description,
-							parameters: tool.inputSchema
-						}
-					})
-				}
-				console.debug(`[Ollama MCP Adapter] Added ${serverTools.length} tools from server ${server.id}`)
-			} catch (error) {
-				console.error(`[Ollama MCP Adapter] Failed to list tools from server ${server.id}:`, error)
-			}
-		}
-
-		console.debug(`[Ollama MCP Adapter] Total tools built: ${tools.length}`)
+		console.debug(
+			`[Ollama MCP Adapter] Built ${tools.length} tools from ${snapshot.servers.length} servers`
+		)
 		this.cachedTools = tools
 		return tools
 	}

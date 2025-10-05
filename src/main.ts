@@ -27,6 +27,7 @@ import { DEFAULT_SETTINGS, type PluginSettings } from './settings'
 import { TarsSettingTab } from './settingTab'
 import { StatusBarManager } from './statusBarManager'
 import { getMaxTriggerLineLength, TagEditorSuggest, type TagEntry } from './suggest'
+import { MCPToolSuggest } from './suggests/mcpToolSuggest'
 
 export default class TarsPlugin extends Plugin {
 	settings: PluginSettings
@@ -215,6 +216,12 @@ export default class TarsPlugin extends Plugin {
 					this.mcpExecutor
 				)
 			)
+
+		if (this.mcpManager && this.settings.mcpServers.length > 0) {
+			this.registerEditorSuggest(
+				new MCPToolSuggest(this.app, this.mcpManager, () => this.settings.mcpServers)
+			)
+		}
 
 		this.addCommand({
 			id: 'cancelGeneration',

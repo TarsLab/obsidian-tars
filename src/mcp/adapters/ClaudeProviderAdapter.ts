@@ -9,8 +9,8 @@ import type {
 
 import type { Message, ProviderAdapter, ToolExecutionResult } from '../toolCallingCoordinator'
 import type { MCPServerManager } from '../managerMCPUse'
+import { ToolDiscoveryCache } from '../toolDiscoveryCache'
 import { ClaudeToolResponseParser } from '../toolResponseParser'
-import { buildToolServerMapping } from './toolMapping'
 import type { ToolServerInfo } from '../types'
 
 export interface ClaudeAdapterConfig {
@@ -31,6 +31,7 @@ export class ClaudeProviderAdapter implements ProviderAdapter<ClaudeStreamEvent>
 	private readonly model: string
 	private readonly maxTokens: number
 	private readonly system?: string
+	private readonly toolDiscoveryCache: ToolDiscoveryCache
 	private toolMapping: Map<string, ToolServerInfo> | null = null
 	private cachedTools: AnthropicTool[] | null = null
 	private readonly parser = new ClaudeToolResponseParser()
@@ -42,14 +43,20 @@ export class ClaudeProviderAdapter implements ProviderAdapter<ClaudeStreamEvent>
 		this.model = config.model
 		this.maxTokens = config.maxTokens
 		this.system = config.system
+		this.toolDiscoveryCache = this.mcpManager.getToolDiscoveryCache()
 
 		this.mcpManager.on('server-started', () => this.invalidateCache())
 		this.mcpManager.on('server-stopped', () => this.invalidateCache())
 		this.mcpManager.on('server-failed', () => this.invalidateCache())
 	}
 
-	async initialize(): Promise<void> {
-		this.toolMapping = await buildToolServerMapping(this.mcpManager)
+	async initialize(options?: { preloadTools?: boolean }): Promise<void> {
+		if (options?.preloadTools === false) {
+			this.toolMapping = this.toolDiscoveryCache.getCachedMapping()
+			this.cachedTools = null
+			return
+		}
+
 		this.cachedTools = await this.buildTools()
 	}
 
@@ -64,10 +71,15 @@ export class ClaudeProviderAdapter implements ProviderAdapter<ClaudeStreamEvent>
 
 	findServer(toolName: string): ToolServerInfo | null {
 		if (!this.toolMapping) {
-			throw new Error('ClaudeProviderAdapter not initialized - call initialize() first')
+			const cached = this.toolDiscoveryCache.getCachedMapping()
+			if (cached) {
+				this.toolMapping = cached
+			} else {
+				throw new Error('ClaudeProviderAdapter tool mapping not initialized - call initialize() first')
+			}
 		}
 		return this.toolMapping.get(toolName) ?? null
-	}
+}
 
 	async *sendRequest(messages: Message[]): AsyncGenerator<ClaudeStreamEvent> {
 		const tools = await this.buildTools()
@@ -107,25 +119,16 @@ export class ClaudeProviderAdapter implements ProviderAdapter<ClaudeStreamEvent>
 			return this.cachedTools
 		}
 
-		const tools: AnthropicTool[] = []
-		const servers = this.mcpManager.listServers()
-		for (const server of servers) {
-			if (!server.enabled) continue
-			const client = this.mcpManager.getClient(server.id)
-			if (!client) continue
-			try {
-				const serverTools = await client.listTools()
-				for (const tool of serverTools) {
-					tools.push({
-						name: tool.name,
-						description: tool.description ?? '',
-						input_schema: tool.inputSchema as AnthropicTool['input_schema']
-					})
-				}
-			} catch (error) {
-				console.error(`Failed to list tools for Claude server ${server.id}:`, error)
-			}
-		}
+		const snapshot = await this.toolDiscoveryCache.getSnapshot()
+		this.toolMapping = snapshot.mapping
+
+		const tools: AnthropicTool[] = snapshot.servers.flatMap((server) =>
+			server.tools.map((tool) => ({
+				name: tool.name,
+				description: tool.description ?? '',
+				input_schema: tool.inputSchema as AnthropicTool['input_schema']
+			}))
+		)
 
 		this.cachedTools = tools
 		return tools

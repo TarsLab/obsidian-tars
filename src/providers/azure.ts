@@ -40,7 +40,7 @@ const sendRequestFunc = (settings: AzureOptions): SendRequest =>
 					resolveEmbedAsBinary
 				})
 
-				await adapter.initialize()
+				await adapter.initialize({ preloadTools: false })
 
 				const coordinator = new ToolCallingCoordinator()
 

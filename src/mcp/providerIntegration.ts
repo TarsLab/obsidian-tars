@@ -34,25 +34,21 @@ export async function buildAIToolContext(
 
 	// Collect tools from all enabled servers
 	const tools: AIToolContext['tools'] = []
+	const snapshot = await manager.getToolDiscoveryCache().getSnapshot()
+	const serversById = new Map(snapshot.servers.map((entry) => [entry.serverId, entry]))
 
 	for (const server of servers) {
-		const client = manager.getClient(server.id)
-		if (!client) continue
+		const snapshotServer = serversById.get(server.id)
+		if (!snapshotServer) continue
 
-		try {
-			const serverTools = await client.listTools()
-
-			for (const tool of serverTools) {
-				tools.push({
-					serverId: server.id,
-					serverName: server.name,
-					toolName: tool.name,
-					description: tool.description || '',
-					inputSchema: tool.inputSchema
-				})
-			}
-		} catch (error) {
-			console.warn(`Failed to list tools for server ${server.name}:`, error)
+		for (const tool of snapshotServer.tools) {
+			tools.push({
+				serverId: server.id,
+				serverName: server.name,
+				toolName: tool.name,
+				description: tool.description || '',
+				inputSchema: tool.inputSchema
+			})
 		}
 	}
 

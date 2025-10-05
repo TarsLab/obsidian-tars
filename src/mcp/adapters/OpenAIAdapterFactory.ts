@@ -4,7 +4,6 @@ import type { Message, ProviderAdapter, ToolExecutionResult } from '../toolCalli
 import type { ToolServerInfo } from '../types'
 import { OpenAIToolResponseParser } from '../toolResponseParser'
 import type { OpenAIAdapterConfig } from './OpenAIProviderAdapter'
-import { buildToolServerMapping } from './toolMapping'
 
 export interface OpenAIAdapterConfigSimple {
 	mcpManager: MCPServerManager
@@ -55,7 +54,7 @@ export async function createOpenAIAdapterWithMapping(
 	config: OpenAIAdapterConfig
 ): Promise<Pick<ProviderAdapter, 'getParser' | 'findServer' | 'formatToolResult'>> {
 	const { mcpManager } = config
-	const toolMapping = await buildToolServerMapping(mcpManager)
+	const toolMapping = await mcpManager.getToolDiscoveryCache().getToolMapping()
 
 	return {
 		getParser: () => new OpenAIToolResponseParser(),

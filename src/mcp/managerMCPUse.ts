@@ -14,6 +14,7 @@ import { ServerNotAvailableError } from './errors'
 import { partitionConfigs, toMCPUseConfig } from './mcpUseAdapter'
 import { migrateServerConfigs } from './migration'
 import { DEFAULT_RETRY_POLICY, withRetry } from './retryUtils'
+import { ToolDiscoveryCache, type ToolDiscoveryMetrics, type ToolServerAccessor } from './toolDiscoveryCache'
 import type { MCPServerConfig, RetryPolicy, ServerHealthStatus, ToolDefinition } from './types'
 import { ConnectionState } from './types'
 import { logError, logWarning } from './utils'
@@ -29,7 +30,7 @@ export interface MCPServerManagerEvents {
 /**
  * MCP Server Manager using mcp-use
  */
-export class MCPServerManager extends EventEmitter<MCPServerManagerEvents> {
+export class MCPServerManager extends EventEmitter<MCPServerManagerEvents> implements ToolServerAccessor {
 	private mcpClient: MCPClient | null = null
 	private servers: Map<string, MCPServerConfig> = new Map()
 	private sessions: Map<string, MCPSession> = new Map()
@@ -37,6 +38,20 @@ export class MCPServerManager extends EventEmitter<MCPServerManagerEvents> {
 	private failureThreshold: number = 3
 	private retryPolicy: RetryPolicy = DEFAULT_RETRY_POLICY
 	private statusBarManager?: StatusBarManager
+	private readonly toolDiscoveryCache: ToolDiscoveryCache
+	private readonly handleServerChange = (reason: string) => {
+		this.toolDiscoveryCache.invalidate(reason)
+	}
+
+	constructor() {
+		super()
+		this.toolDiscoveryCache = new ToolDiscoveryCache(this)
+
+		this.on('server-started', () => this.handleServerChange('server-started'))
+		this.on('server-stopped', () => this.handleServerChange('server-stopped'))
+		this.on('server-failed', () => this.handleServerChange('server-failed'))
+		this.on('server-auto-disabled', () => this.handleServerChange('server-auto-disabled'))
+	}
 
 	/**
 	 * Initialize manager with server configurations
@@ -68,6 +83,7 @@ export class MCPServerManager extends EventEmitter<MCPServerManagerEvents> {
 			this.servers.set(config.id, config)
 		}
 		this.sessions.clear()
+		this.toolDiscoveryCache.invalidate('manager.initialize')
 
 		// Partition configs: mcp-use supported vs custom handling needed
 		const { mcpUseConfigs, customConfigs } = partitionConfigs(normalizedConfigs)
@@ -298,6 +314,14 @@ export class MCPServerManager extends EventEmitter<MCPServerManagerEvents> {
 		return Array.from(this.servers.values())
 	}
 
+	getToolDiscoveryCache(): ToolDiscoveryCache {
+		return this.toolDiscoveryCache
+	}
+
+	getToolDiscoveryMetrics(): ToolDiscoveryMetrics {
+		return this.toolDiscoveryCache.getMetrics()
+	}
+
 	/**
 	 * Shutdown all servers and cleanup
 	 */
@@ -315,6 +339,7 @@ export class MCPServerManager extends EventEmitter<MCPServerManagerEvents> {
 		this.sessions.clear()
 		this.servers.clear()
 		this.healthStatuses.clear()
+		this.toolDiscoveryCache.invalidate('manager.shutdown')
 	}
 
 	/**

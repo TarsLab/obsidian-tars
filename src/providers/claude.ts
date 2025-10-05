@@ -113,7 +113,7 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 					system: undefined // Could be extracted from messages if needed
 				})
 
-				await adapter.initialize()
+				await adapter.initialize({ preloadTools: false })
 
 				const coordinator = new ToolCallingCoordinator()
 
