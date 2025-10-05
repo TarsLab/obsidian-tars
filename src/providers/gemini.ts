@@ -1,6 +1,9 @@
 import { type Content, GoogleGenerativeAI } from '@google/generative-ai'
+import { createLogger } from '../logger'
 import { t } from 'src/lang/helper'
 import type { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
+
+const logger = createLogger('providers:gemini')
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, _resolveEmbedAsBinary: ResolveEmbedAsBinary) {
@@ -23,7 +26,7 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 		// For now, we'll skip Gemini tool integration until we implement proper format conversion
 		// TODO: Implement Gemini-specific tool format conversion
 		if (mcpManager && mcpExecutor) {
-			console.debug('Gemini tool integration not yet implemented - requires special format')
+			logger.debug('gemini tool integration not yet implemented; skipping MCP tools')
 		}
 
 		const genAI = new GoogleGenerativeAI(apiKey)

@@ -3,9 +3,12 @@
  * Helper functions to integrate MCP tools with AI providers
  */
 
+import { createLogger } from '../logger'
 import type { ToolExecutor } from './executor'
 import type { MCPServerManager } from './managerMCPUse'
 import type { AIToolContext } from './types'
+
+const logger = createLogger('mcp:provider-integration')
 
 /**
  * Build AI tool context from enabled MCP servers
@@ -121,7 +124,7 @@ export function parseToolCallFromResponse(response: string): {
 			}
 		}
 	} catch (error) {
-		console.error('Failed to parse tool call:', error)
+		logger.error('failed to parse tool call from response', error)
 	}
 
 	return null

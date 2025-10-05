@@ -5,9 +5,12 @@
 
 import { parse as parseYAML } from 'yaml'
 
+import { createLogger } from '../logger'
 import { YAMLParseError } from './errors'
 import type { ErrorInfo, MCPServerConfig, ToolExecutionResult, ToolInvocation } from './types'
 import { logError } from './utils'
+
+const logger = createLogger('mcp:code-block-processor')
 
 export class CodeBlockProcessor {
 	private serverConfigs: MCPServerConfig[] = []
@@ -214,9 +217,11 @@ export class CodeBlockProcessor {
 			if (parsed === null || parsed === undefined) {
 				return {}
 			}
-			console.debug('Unexpected YAML root type, falling back to manual parser', typeof parsed)
+			logger.debug('unexpected yaml root type for tool parameters, falling back', {
+				rootType: typeof parsed
+			})
 		} catch (yamlError) {
-			console.debug('YAML parsing failed, falling back to manual parser', yamlError)
+			logger.debug('yaml parsing failed for tool parameters, falling back to manual parser', yamlError)
 		}
 
 		// Fallback: simple key-value parser (legacy behaviour)
@@ -285,7 +290,7 @@ export class CodeBlockProcessor {
 			try {
 				return JSON.parse(trimmed)
 			} catch (error) {
-				console.debug('Failed to parse JSON-like parameter value', error)
+				logger.debug('failed to parse json-like parameter value', error)
 			}
 		}
 

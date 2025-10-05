@@ -9,6 +9,7 @@ import {
 	normalizePath,
 	Platform
 } from 'obsidian'
+import { createLogger } from '../logger'
 import { refineRange } from 'src/commands/tagUtils'
 import { t } from 'src/lang/helper'
 import { APP_FOLDER, type PluginSettings } from 'src/settings'
@@ -17,6 +18,8 @@ import { findChangedTemplates, getPromptTemplatesFromFile, type PromptTemplate }
 
 export const templateToCmdId = (template: PromptTemplate): string => `Prompt#${template.title}`
 export const getTitleFromCmdId = (id: string): string => id.slice(id.indexOf('#') + 1)
+
+const logger = createLogger('prompt:command')
 
 export const loadTemplateFileCommand = (
 	app: App,
@@ -41,7 +44,7 @@ export const loadTemplateFileCommand = (
 			// Find elements in these two arrays that have the same title but different content
 			const changed = findChangedTemplates(settings.promptTemplates, promptTemplates)
 			if (changed.length > 0) {
-				console.debug('changed', changed)
+				logger.info('prompt templates updated', { titles: changed.map((t) => t.title) })
 				new Notice(t('Templates have been updated: ') + changed.map((t) => t.title).join(', '))
 			}
 
@@ -54,9 +57,10 @@ export const loadTemplateFileCommand = (
 				new ReporterModal(app, reporter).open()
 			}
 		} catch (error) {
-			console.error(error)
+			logger.error('failed to load prompt templates', error)
+			const err = error instanceof Error ? error : new Error(String(error))
 			new Notice(
-				`🔴 ${Platform.isDesktopApp ? t('Check the developer console for error details. ') : ''}${error}`,
+				`🔴 ${Platform.isDesktopApp ? t('Check the developer console for error details. ') : ''}${err}`,
 				10 * 1000
 			)
 		}
@@ -101,9 +105,10 @@ export const promptTemplateCmd = (id: string, name: string, app: App, settings: 
 			await new Promise((resolve) => setTimeout(resolve, 500))
 			applyTemplate(editor, template.template)
 		} catch (error) {
-			console.error(error)
+			logger.error('failed to apply prompt template', error)
+			const err = error instanceof Error ? error : new Error(String(error))
 			new Notice(
-				`🔴 ${Platform.isDesktopApp ? t('Check the developer console for error details. ') : ''}${error}`,
+				`🔴 ${Platform.isDesktopApp ? t('Check the developer console for error details. ') : ''}${err}`,
 				10 * 1000
 			)
 		}

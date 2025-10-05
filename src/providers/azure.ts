@@ -1,4 +1,5 @@
 import { AzureOpenAI } from 'openai'
+import { createLogger } from '../logger'
 import { t } from 'src/lang/helper'
 import type { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 import { CALLOUT_BLOCK_END, CALLOUT_BLOCK_START } from './utils'
@@ -8,12 +9,15 @@ interface AzureOptions extends BaseOptions {
 	apiVersion: string
 }
 
+const logger = createLogger('providers:azure')
+
 const sendRequestFunc = (settings: AzureOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, resolveEmbedAsBinary: ResolveEmbedAsBinary) {
 		const { parameters, mcpManager, mcpExecutor, documentPath, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters } // 这样的设计，让parameters 可以覆盖掉前面的设置 optionsExcludingParams
 		const { apiKey, model, endpoint, apiVersion, ...remains } = options
 		if (!apiKey) throw new Error(t('API key is required'))
+		logger.info('starting azure completion', { endpoint, model, messageCount: messages.length })
 
 		// Tool-aware path: Use coordinator for autonomous tool calling
 		if (mcpManager && mcpExecutor) {
@@ -60,7 +64,7 @@ const sendRequestFunc = (settings: AzureOptions): SendRequest =>
 
 				return
 			} catch (error) {
-				console.warn('Failed to use tool-aware path for Azure, falling back to original:', error)
+				logger.warn('tool-aware path unavailable, falling back to streaming pipeline', error)
 				// Fall through to original path
 			}
 		}
@@ -73,7 +77,7 @@ const sendRequestFunc = (settings: AzureOptions): SendRequest =>
 				// biome-ignore lint/suspicious/noExplicitAny: MCP types are optional dependencies
 				requestParams = await injectMCPTools(requestParams, 'Azure', mcpManager as any, mcpExecutor as any)
 			} catch (error) {
-				console.warn('Failed to inject MCP tools for Azure:', error)
+				logger.warn('failed to inject MCP tools for azure', error)
 			}
 		}
 
@@ -102,7 +106,10 @@ const sendRequestFunc = (settings: AzureOptions): SendRequest =>
 
 		for await (const part of stream) {
 			if (part.usage?.prompt_tokens && part.usage.completion_tokens)
-				console.debug(`Prompt tokens: ${part.usage.prompt_tokens}, completion tokens: ${part.usage.completion_tokens}`)
+				logger.debug('usage update', {
+					promptTokens: part.usage.prompt_tokens,
+					completionTokens: part.usage.completion_tokens
+				})
 
 			const text = part.choices[0]?.delta?.content
 			if (!text) continue

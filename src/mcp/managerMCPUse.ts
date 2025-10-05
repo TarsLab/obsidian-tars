@@ -9,6 +9,7 @@
 
 import { EventEmitter } from 'node:events'
 import { MCPClient, type MCPSession } from 'mcp-use'
+import { createLogger } from '../logger'
 import type { StatusBarManager } from '../statusBarManager'
 import { ServerNotAvailableError } from './errors'
 import { partitionConfigs, toMCPUseConfig } from './mcpUseAdapter'
@@ -18,6 +19,8 @@ import { ToolDiscoveryCache, type ToolDiscoveryMetrics, type ToolServerAccessor 
 import type { MCPServerConfig, RetryPolicy, ServerHealthStatus, ToolDefinition } from './types'
 import { ConnectionState } from './types'
 import { logError, logWarning } from './utils'
+
+const logger = createLogger('mcp:manager')
 
 export interface MCPServerManagerEvents {
 	'server-started': [serverId: string]
@@ -91,10 +94,10 @@ export class MCPServerManager extends EventEmitter<MCPServerManagerEvents> imple
 		// Warn about unsupported configs (skip in test environment)
 		if (process.env.NODE_ENV !== 'test' && process.env.VITEST !== 'true') {
 			for (const config of customConfigs) {
-				console.warn(
-					`[MCP Manager] Server ${config.id} uses unsupported format. ` +
-						`Supported: stdio commands or Claude Desktop JSON format.`
-				)
+				logger.warn('unsupported server configuration format detected', {
+					serverId: config.id,
+					name: config.name
+				})
 			}
 		}
 
@@ -185,9 +188,13 @@ export class MCPServerManager extends EventEmitter<MCPServerManagerEvents> imple
 
 					// Log retry attempt (skip in test environment)
 					if (process.env.NODE_ENV !== 'test' && process.env.VITEST !== 'true') {
-						console.warn(
-							`[MCP Manager] Retrying server ${serverId} (attempt ${attempt}/${this.retryPolicy.maxAttempts}) in ${Math.round(nextRetryIn / 1000)}s: ${error.message}`
-						)
+						logger.warn('retrying server start', {
+							serverId,
+							attempt,
+							maxAttempts: this.retryPolicy.maxAttempts,
+							nextRetryInMs: nextRetryIn,
+							errorMessage: error.message
+						})
 					}
 				}
 			)
@@ -356,9 +363,10 @@ export class MCPServerManager extends EventEmitter<MCPServerManagerEvents> imple
 
 			// Log warning (skip in test environment)
 			if (process.env.NODE_ENV !== 'test' && process.env.VITEST !== 'true') {
-				console.warn(
-					`[MCP Manager] Server ${config.id} auto-disabled after ${config.failureCount} consecutive failures`
-				)
+				logger.warn('server auto-disabled after repeated failures', {
+					serverId: config.id,
+					failureCount: config.failureCount
+				})
 			}
 		}
 	}

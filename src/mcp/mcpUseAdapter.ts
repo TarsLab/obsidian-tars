@@ -5,8 +5,11 @@
  * with the mcp-use library's expected format.
  */
 
+import { createLogger } from '../logger'
 import { parseConfigInput, toMCPUseFormat } from './config'
 import type { MCPServerConfig } from './types'
+
+const logger = createLogger('mcp:mcp-use-adapter')
 
 /**
  * mcp-use server configuration format
@@ -61,7 +64,7 @@ export function toMCPUseConfig(configs: MCPServerConfig[]): MCPUseConfig {
 				const serverConfig = toMCPUseServerConfig(config)
 				Object.assign(mcpServers, serverConfig)
 			} catch (error) {
-				console.warn(`Skipping server ${config.id}:`, error)
+				logger.warn('skipping server during mcp-use conversion', { serverId: config.id, error })
 			}
 		}
 	}

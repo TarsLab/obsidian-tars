@@ -15,6 +15,7 @@ import {
 	type TagCache,
 	type Vault
 } from 'obsidian'
+import { createLogger } from './logger'
 import { t } from 'src/lang/helper'
 import type {
 	CreatePlainText,
@@ -28,6 +29,9 @@ import { withStreamLogging } from './providers/decorator'
 import { APP_FOLDER, availableVendors, type EditorStatus, type PluginSettings } from './settings'
 import type { GenerationStats, StatusBarManager } from './statusBarManager'
 import type { TagRole } from './suggest'
+
+const logger = createLogger('editor')
+const streamLogger = createLogger('editor:stream')
 
 export interface RunEnv {
 	readonly appMeta: MetadataCache
@@ -110,7 +114,7 @@ export const buildRunEnv = async (app: App, settings: PluginSettings): Promise<R
 	}
 	const resolveEmbed = async (embed: EmbedCache) => {
 		const { path, subpath } = parseLinktext(embed.link)
-		console.debug('resolveEmbed path', path, 'subpath', subpath)
+		logger.debug('resolving embed reference', { path, subpath })
 		const targetFile = appMeta.getFirstLinkpathDest(path, filePath)
 		if (targetFile === null) {
 			throw new Error(`LinkText broken: ${embed.link.substring(0, 20)}`)
@@ -140,7 +144,7 @@ export const buildRunEnv = async (app: App, settings: PluginSettings): Promise<R
 const resolveLinkedContent = async (env: RunEnv, linkText: string) => {
 	const { appMeta, vault, filePath } = env
 	const { path, subpath } = parseLinktext(linkText)
-	console.debug('path', path, 'subpath', subpath)
+	logger.debug('resolving linked content', { path, subpath })
 
 	const targetFile = appMeta.getFirstLinkpathDest(path, filePath)
 
@@ -190,7 +194,10 @@ const extractTaggedBlocks = (env: RunEnv, startOffset: number, endOffset: number
 				: null
 		})
 		.filter((t) => t !== null) as Tag[]
-	console.debug('roleMappedTags', roleMappedTags)
+	logger.debug('role mapped tags identified', {
+		count: roleMappedTags.length,
+		roles: [...new Set(roleMappedTags.map((tag) => tag.tag))]
+	})
 
 	const ranges: [number, number][] = roleMappedTags.map((tag, i) => [
 		tag.tagRange[0],
@@ -210,7 +217,7 @@ const extractTaggedBlocks = (env: RunEnv, startOffset: number, endOffset: number
 		),
 		line: [roleMappedTags[i].tagLine, roleMappedTags[i + 1] ? roleMappedTags[i + 1].tagLine - 1 : Infinity]
 	}))
-	console.debug('taggedBlocks', taggedBlocks)
+	logger.debug('tagged blocks extracted', { count: taggedBlocks.length })
 	return taggedBlocks
 }
 
@@ -273,7 +280,7 @@ const resolveTextRangeWithLinks = async (
 		}),
 		{ endOffset: startOffset, text: '' }
 	)
-	console.debug('accumulatedText', accumulatedText)
+	logger.debug('accumulated link text built', { length: accumulatedText.text.length })
 	return {
 		text: accumulatedText.text + fileText.slice(accumulatedText.endOffset, endOffset),
 		range: [startOffset, endOffset] as [number, number]
@@ -286,7 +293,7 @@ const extractTaggedBlockContent = async (env: RunEnv, taggedBlock: TaggedBlock) 
 			resolveTextRangeWithLinks(env, section, taggedBlock.contentRange, taggedBlock.role)
 		)
 	)
-	console.debug('textRanges', textRanges)
+	logger.debug('text ranges resolved', { count: textRanges.length })
 	const accumulated = textRanges
 		.map((range) => range.text)
 		.join('\n\n')
@@ -351,7 +358,6 @@ const insertText = (editor: Editor, text: string, editorStatus: EditorStatus, la
 	const lineAtCursor = editor.getLine(cursor.line)
 	if (lineAtCursor.length > cursor.ch) {
 		cursor = { line: cursor.line, ch: lineAtCursor.length }
-		// console.debug('Update cursor to end of line', cursor)
 	}
 
 	const lines = text.split('\n')
@@ -385,7 +391,7 @@ export const extractConversationsTextOnly = async (env: RunEnv) => {
 		.filter((_, index) => index % 2 === 0)
 		.map((startOffset, index) => ({ startOffset, endOffset: positions[index * 2 + 1] }))
 
-	console.debug('ranges', ranges)
+	logger.debug('conversation ranges computed', { count: ranges.length })
 
 	const conversations = await Promise.all(
 		ranges.map(async (r) => {
@@ -413,23 +419,25 @@ export const getMsgPositionByLine = (env: RunEnv, line: number) => {
 	const msgTagsInMeta = tagsInMeta.filter((t) =>
 		msgTags.some((n) => t.tag.slice(1).split('/')[0].toLowerCase() === n.toLowerCase())
 	)
-	console.debug('msgTagsInMeta', msgTagsInMeta)
 	const msgIndex = msgTagsInMeta.findLastIndex((t) => t.position.start.line <= line)
 	if (msgIndex < 0) return [-1, -1]
 
-	console.debug('msgTag', msgTagsInMeta[msgIndex])
 	const startOffset = msgTagsInMeta[msgIndex].position.end.offset + 2
 	const nextMsgIndex = msgIndex + 1
 	const nextMsgStartOffset =
 		nextMsgIndex < msgTagsInMeta.length ? msgTagsInMeta[nextMsgIndex].position.start.offset : Infinity
-	console.debug('nextTag', msgTagsInMeta[nextMsgIndex])
 	const lastSection = sections.findLast(
 		(section) => section.position.end.offset <= nextMsgStartOffset && section.position.start.line >= line
 	)
 	if (!lastSection) return [-1, -1]
 
 	const endOffset = lastSection.position.end.offset
-	console.debug('startOff', startOffset, 'endOffset', endOffset)
+	logger.debug('message positions resolved', {
+		line,
+		tag: msgTagsInMeta[msgIndex].tag,
+		startOffset,
+		endOffset
+	})
 	return [startOffset, endOffset]
 }
 
@@ -445,7 +453,7 @@ const createDecoratedSendRequest = async (env: RunEnv, vendor: Vendor, provider:
 		if (!(await env.vault.adapter.exists(normalizePath(APP_FOLDER)))) {
 			await env.vault.createFolder(APP_FOLDER)
 		}
-		console.debug('Using stream logging')
+		logger.info('stream logging enabled for provider request')
 		return withStreamLogging(vendor.sendRequestFunc(provider.options), env.createPlainText)
 	} else {
 		return vendor.sendRequestFunc(provider.options)
@@ -483,7 +491,7 @@ export const generate = async (
 		const messages = conversation.map((c) =>
 			c.embeds ? { role: c.role, content: c.content, embeds: c.embeds } : { role: c.role, content: c.content }
 		)
-		console.debug('messages', messages)
+		logger.debug('messages prepared for provider', { count: messages.length })
 
 		const lastMsg = messages.last()
 		if (!lastMsg || lastMsg.role !== 'user' || lastMsg.content.trim().length === 0) {
@@ -496,7 +504,7 @@ export const generate = async (
 				role: 'system',
 				content: env.options.defaultSystemMsg
 			})
-			console.debug('Default system message added:', env.options.defaultSystemMsg)
+			logger.debug('default system message injected')
 		}
 
 		const round = messages.filter((m) => m.role === 'assistant').length + 1
@@ -514,17 +522,21 @@ export const generate = async (
 		let chunkCount = 0
 		let totalTextLength = 0
 
-		console.debug(`[Ollama Debug] Starting generation with ${messages.length} messages`)
-		console.debug(`[Ollama Debug] Last message:`, lastMsg)
+		streamLogger.debug('starting generation', { messageCount: messages.length })
+		streamLogger.debug('last message summary', {
+			role: lastMsg.role,
+			length: lastMsg.content.length
+		})
 
 		try {
 			for await (const text of sendRequest(messages, controller, env.resolveEmbed, env.saveAttachment)) {
 				chunkCount++
 				totalTextLength += text?.length || 0
 
-				console.debug(`[Ollama Debug] Received chunk ${chunkCount}:`, {
+				streamLogger.debug('received chunk', {
+					chunk: chunkCount,
 					textLength: text?.length || 0,
-					textPreview: text?.substring(0, 100) || 'EMPTY',
+					preview: text?.substring(0, 100) || 'EMPTY',
 					totalResponseLength: totalTextLength
 				})
 
@@ -534,11 +546,11 @@ export const generate = async (
 				statusBarManager.updateGeneratingProgress(llmResponse.length)
 			}
 		} catch (error) {
-			console.error(`[Ollama Debug] Error during streaming:`, error)
+			streamLogger.error('streaming error', error)
 			throw error
 		}
 
-		console.debug(`[Ollama Debug] Streaming complete:`, {
+		streamLogger.info('streaming complete', {
 			chunkCount,
 			totalTextLength,
 			llmResponseLength: llmResponse.length,
@@ -570,13 +582,13 @@ export const generate = async (
 			throw new Error(t('No text generated'))
 		}
 
-		console.debug(`✨ ${t('AI generate')} ✨ `, llmResponse)
+		logger.info('assistant response generated', { characters: llmResponse.length })
 		if (startPos) {
 			const endPos = editor.getCursor('to')
 			const insertedText = editor.getRange(startPos, endPos)
 			const formattedText = formatTextWithLeadingBreaks(llmResponse)
 			if (insertedText !== formattedText) {
-				console.debug('format text with leading breaks')
+				logger.debug('normalizing leading breaks in response')
 				editor.replaceRange(formattedText, startPos, endPos)
 			}
 		}

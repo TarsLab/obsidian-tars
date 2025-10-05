@@ -35,10 +35,11 @@ describe('Error Logging Integration', () => {
 	describe('MCPServerManager Error Logging', () => {
 		it('should log errors when server fails to start during initialization', async () => {
 			// Given: A server config that will fail to start
+			// Use 'false' command which fails immediately without npm noise
 			const failingConfig: MCPServerConfig = {
 				id: 'test-server',
 				name: 'test-server',
-				configInput: 'invalid-command',
+				configInput: 'false',
 				enabled: true,
 				failureCount: 0,
 				autoDisabled: false
@@ -61,18 +62,19 @@ describe('Error Logging Integration', () => {
 				expect.objectContaining({
 					serverId: 'test-server',
 					serverName: 'test-server',
-					configInput: 'invalid-command'
+					configInput: 'false'
 				})
 			)
 		})
 
 		it('should log errors with retry context when all retries fail', async () => {
 			// Given: A manager with retry policy and mock client
+			// Use 'false' command which fails immediately without npm noise
 			const manager = new MCPServerManager()
 			const config: MCPServerConfig = {
 				id: 'retry-test',
 				name: 'retry-test',
-				configInput: 'npx invalid-command',
+				configInput: 'false',
 				enabled: true,
 				failureCount: 0,
 				autoDisabled: false
@@ -401,11 +403,12 @@ describe('Error Logging Integration', () => {
 	describe('Error Context Validation', () => {
 		it('should include server context in MCP manager errors', async () => {
 			// Given: Manager with statusBarManager
+			// Use 'false' command which fails immediately without npm noise
 			const manager = new MCPServerManager()
 			const config: MCPServerConfig = {
 				id: 'context-test',
 				name: 'Context Test Server',
-				configInput: 'npx invalid-command',
+				configInput: 'false',
 				enabled: true,
 				failureCount: 0,
 				autoDisabled: false
@@ -425,7 +428,7 @@ describe('Error Logging Integration', () => {
 			expect(mcpError?.context).toMatchObject({
 				serverId: 'context-test',
 				serverName: 'Context Test Server',
-				configInput: expect.stringContaining('invalid-command')
+				configInput: 'false'
 			})
 		})
 

@@ -49,29 +49,20 @@ vi.mock('mcp-use', () => {
 
 describe('MCP Server Failure Tracking', () => {
 	let manager: MCPServerManager
-	let consoleErrorSpy: ReturnType<typeof vi.spyOn> | undefined
-	let consoleWarnSpy: ReturnType<typeof vi.spyOn> | undefined
-	let consoleErrorMessages: string[]
+	const getConsoleErrors = () => globalThis.__CONSOLE_ERROR_MESSAGES__
 
 	const expectErrorLoggedFor = (serverId: string) => {
 		expect(
-			consoleErrorMessages.some((msg) => msg.includes(`Failed to create session for ${serverId}`))
+			getConsoleErrors().some((msg) => msg.includes(`Failed to create session for ${serverId}`))
 		).toBe(true)
 	}
 
 	beforeEach(() => {
 		manager = new MCPServerManager()
-		consoleErrorMessages = []
-		consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation((...args) => {
-			consoleErrorMessages.push(args.map((arg) => String(arg)).join(' '))
-		})
-		consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
 	})
 
 	afterEach(async () => {
 		await manager.shutdown()
-		consoleErrorSpy?.mockRestore()
-		consoleWarnSpy?.mockRestore()
 	})
 
 	describe('Failure Counter', () => {

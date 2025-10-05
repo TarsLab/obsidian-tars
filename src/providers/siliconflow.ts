@@ -1,7 +1,10 @@
 import OpenAI from 'openai'
+import { createLogger } from '../logger'
 import { t } from 'src/lang/helper'
 import type { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 import { CALLOUT_BLOCK_END, CALLOUT_BLOCK_START, convertEmbedToImageUrl } from './utils'
+
+const logger = createLogger('providers:siliconflow')
 
 type DeepSeekDelta = OpenAI.ChatCompletionChunk.Choice.Delta & {
 	reasoning_content?: string
@@ -22,7 +25,7 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 				// biome-ignore lint/suspicious/noExplicitAny: MCP types are optional dependencies
 				requestParams = await injectMCPTools(requestParams, 'SiliconFlow', mcpManager as any, mcpExecutor as any)
 			} catch (error) {
-				console.warn('Failed to inject MCP tools for SiliconFlow:', error)
+				logger.warn('failed to inject MCP tools for siliconflow', error)
 			}
 		}
 

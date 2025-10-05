@@ -8,6 +8,7 @@ import {
 	type TFile
 } from 'obsidian'
 
+import { createLogger } from '../logger'
 import type { MCPServerManager } from '../mcp/managerMCPUse'
 import type { MCPServerConfig, ToolDefinition } from '../mcp/types'
 import {
@@ -26,6 +27,8 @@ export interface ToolSuggestion {
 	serverName: string
 	tool: ToolDefinition
 }
+
+const logger = createLogger('suggest:mcp-tools')
 
 export class MCPToolSuggest extends EditorSuggest<ToolSuggestion> {
 	private readonly getServerConfigs: () => MCPServerConfig[]
@@ -86,7 +89,7 @@ export class MCPToolSuggest extends EditorSuggest<ToolSuggestion> {
 				tool
 			}))
 		} catch (error) {
-			console.debug('Failed to build tool suggestions', error)
+			logger.warn('failed to build tool suggestions', error)
 			return []
 		}
 	}

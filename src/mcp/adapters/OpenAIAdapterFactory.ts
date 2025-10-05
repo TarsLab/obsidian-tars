@@ -1,9 +1,12 @@
+import { createLogger } from '../../logger'
 import type { ToolExecutor } from '../executor'
 import type { MCPServerManager } from '../managerMCPUse'
 import type { Message, ProviderAdapter, ToolExecutionResult } from '../toolCallingCoordinator'
 import type { ToolServerInfo } from '../types'
 import { OpenAIToolResponseParser } from '../toolResponseParser'
 import type { OpenAIAdapterConfig } from './OpenAIProviderAdapter'
+
+const logger = createLogger('mcp:openai-adapter-factory')
 
 export interface OpenAIAdapterConfigSimple {
 	mcpManager: MCPServerManager
@@ -31,7 +34,7 @@ export function createOpenAIAdapter(config: OpenAIAdapterConfig): Pick<ProviderA
 						name: server.name
 					}
 				} catch (error) {
-					console.debug(`Error checking tools for ${server.id}:`, error)
+					logger.debug('failed to inspect tools for server', { serverId: server.id, error })
 				}
 			}
 

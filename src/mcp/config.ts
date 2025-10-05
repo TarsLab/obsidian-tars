@@ -8,7 +8,10 @@
  * - This enables SSE (Server-Sent Events) transport support
  */
 
+import { createLogger } from '../logger'
 import type { MCPServerConfig } from './types'
+
+const logger = createLogger('mcp:config')
 
 /**
  * Substitute environment variables in env object
@@ -27,7 +30,7 @@ function substituteEnvVariables(env?: Record<string, string>): Record<string, st
 			if (envValue) {
 				substituted[key] = envValue
 			} else {
-				console.warn(`Environment variable ${envVarName} not found, using placeholder`)
+				logger.warn('environment variable not found for config substitution', { envVarName, key })
 				substituted[key] = value // Keep placeholder if env var not found
 			}
 		} else {

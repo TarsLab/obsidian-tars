@@ -1,7 +1,10 @@
 import axios from 'axios'
+import { createLogger } from '../logger'
 import { t } from 'src/lang/helper'
 import type { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 import { CALLOUT_BLOCK_END, CALLOUT_BLOCK_START, convertEmbedToImageUrl } from './utils'
+
+const logger = createLogger('providers:kimi')
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, resolveEmbedAsBinary: ResolveEmbedAsBinary) {
@@ -10,6 +13,7 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 		const { apiKey, baseURL, model, ...remains } = options
 		if (!apiKey) throw new Error(t('API key is required'))
 		if (!model) throw new Error(t('Model is required'))
+		logger.info('starting kimi chat', { baseURL, model, messageCount: messages.length })
 
 		// Inject MCP tools if available
 		// biome-ignore lint/suspicious/noExplicitAny: MCP tools inject runtime
@@ -20,7 +24,7 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 				// biome-ignore lint/suspicious/noExplicitAny: MCP types are optional dependencies
 				requestBody = await injectMCPTools(requestBody, 'Kimi', mcpManager as any, mcpExecutor as any)
 			} catch (error) {
-				console.warn('Failed to inject MCP tools for Kimi:', error)
+				logger.warn('failed to inject MCP tools for kimi', error)
 			}
 		}
 

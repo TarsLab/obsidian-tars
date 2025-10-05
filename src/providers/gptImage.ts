@@ -1,10 +1,13 @@
 import { Notice } from 'obsidian'
 import OpenAI from 'openai'
+import { createLogger } from '../logger'
 import { t } from 'src/lang/helper'
 import type { BaseOptions, Message, ResolveEmbedAsBinary, SaveAttachment, SendRequest, Vendor } from '.'
 import { getMimeTypeFromFilename } from './utils'
 
 const models = ['gpt-image-1']
+
+const logger = createLogger('providers:gpt-image')
 
 export const DEFAULT_GPT_IMAGE_OPTIONS = {
 	n: 2,
@@ -39,9 +42,19 @@ const sendRequestFunc = (settings: GptImageOptions): SendRequest =>
 			options
 		if (!apiKey) throw new Error(t('API key is required'))
 		if (!saveAttachment) throw new Error('saveAttachment is required')
-
-		console.debug('messages:', messages)
-		console.debug('options:', options)
+		logger.info('starting gpt image generation', {
+			model,
+			imageCount: n,
+			hasInputImage: Boolean(messages.last()?.embeds?.length)
+		})
+		logger.debug('image generation options', {
+			displayWidth,
+			background,
+			n,
+			outputFormat: output_format,
+			quality,
+			size
+		})
 		if (messages.length > 1) {
 			new Notice(t('Only the last user message is used for image generation. Other messages are ignored.'))
 		}
@@ -117,13 +130,13 @@ const sendRequestFunc = (settings: GptImageOptions): SendRequest =>
 			const imageData = response.data[i]
 			const imageBase64 = imageData.b64_json
 			if (!imageBase64) {
-				console.error(`No base64 image data returned for image ${i + 1}`)
+				logger.error('no base64 image data returned for generated image', { index: i })
 				continue
 			}
 			const imageBuffer = Buffer.from(imageBase64, 'base64')
 			const indexFlag = n > 1 ? `-${i + 1}` : ''
 			const filename = `gptImage-${formatTime}${indexFlag}.${output_format}`
-			console.debug(`Saving image as ${filename}`)
+			logger.info('saving generated image to vault', { filename })
 			await saveAttachment(filename, imageBuffer.buffer)
 
 			yield `![[${filename}|${displayWidth}]]\n\n`

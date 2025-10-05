@@ -1,7 +1,10 @@
 import OpenAI from 'openai'
+import { createLogger } from '../logger'
 import { t } from 'src/lang/helper'
 import type { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 import { convertEmbedToImageUrl } from './utils'
+
+const logger = createLogger('providers:openai')
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, resolveEmbedAsBinary: ResolveEmbedAsBinary) {
@@ -9,6 +12,7 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, baseURL, model, ...remains } = options
 		if (!apiKey) throw new Error(t('API key is required'))
+		logger.info('starting openai chat', { baseURL, model, messageCount: messages.length })
 
 		// Tool-aware path: Use coordinator for autonomous tool calling
 		if (mcpManager && mcpExecutor) {
@@ -49,7 +53,7 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 
 				return
 			} catch (error) {
-				console.warn('Failed to use tool-aware path, falling back to original:', error)
+				logger.warn('tool-aware path unavailable, falling back to streaming pipeline', error)
 				// Fall through to original path
 			}
 		}
@@ -62,7 +66,7 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 				// biome-ignore lint/suspicious/noExplicitAny: MCP types are optional dependencies
 				requestParams = await injectMCPTools(requestParams, 'OpenAI', mcpManager as any, mcpExecutor as any)
 			} catch (error) {
-				console.warn('Failed to inject MCP tools for OpenAI:', error)
+				logger.warn('failed to inject MCP tools for openai', error)
 			}
 		}
 

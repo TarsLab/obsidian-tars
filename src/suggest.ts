@@ -9,6 +9,7 @@ import {
 	Platform,
 	type TFile
 } from 'obsidian'
+import { createLogger } from './logger'
 import { buildRunEnv, generate, type RequestController } from './editor'
 import { t } from './lang/helper'
 import type { PluginSettings } from './settings'
@@ -96,6 +97,8 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 		this.mcpManager = mcpManager
 		this.mcpExecutor = mcpExecutor
 	}
+
+	private readonly logger = createLogger('suggest:tag-editor')
 
 	/** Based on the editor line and cursor position, determine if this EditorSuggest should be triggered at this moment. Typically, you would run a regular expression on the current line text before the cursor. Return null to indicate that this editor suggest is not supposed to be triggered.
 	Please be mindful of performance when implementing this function, as it will be triggered very often (on each keypress). Keep it simple, and return null as early as possible if you determine that it is not the right time. **/
@@ -189,7 +192,7 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 			this.close()
 			return
 		}
-		console.debug('element', element)
+		this.logger.debug('assistant suggestion selected', { tag: element.tag, hasNewline: element.replacement.includes('\n') })
 
 		try {
 			const provider = this.settings.providers.find((p) => p.tag === element.tag)
@@ -199,7 +202,7 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 
 			const env = await buildRunEnv(this.app, this.settings)
 			const messagesEndOffset = editor.posToOffset(this.context.start)
-			console.debug('endOffset', messagesEndOffset)
+			this.logger.debug('assistant generation offset resolved', { offset: messagesEndOffset })
 			await generate(
 				env,
 				editor,
@@ -212,15 +215,16 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 				this.mcpExecutor
 			)
 		} catch (error) {
-			console.error('error', error)
-			if (error.name === 'AbortError') {
+			this.logger.error('failed to trigger assistant generation', error)
+			const err = error instanceof Error ? error : new Error(String(error))
+			if (err.name === 'AbortError') {
 				this.statusBarManager.setCancelledStatus()
 				new Notice(t('Generation cancelled'))
 				return
 			}
 
-			this.statusBarManager.setErrorStatus(error as Error)
-			new Notice(`🔴 ${Platform.isDesktopApp ? t('Click status bar for error details. ') : ''}${error}`, 10 * 1000)
+			this.statusBarManager.setErrorStatus(err)
+			new Notice(`🔴 ${Platform.isDesktopApp ? t('Click status bar for error details. ') : ''}${err}`, 10 * 1000)
 		}
 		this.close()
 	}

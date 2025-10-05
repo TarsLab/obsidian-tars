@@ -1,4 +1,5 @@
 import type { App, HeadingCache, SectionCache } from 'obsidian'
+import { createLogger } from '../logger'
 import { t } from 'src/lang/helper'
 
 export interface PromptTemplate {
@@ -19,7 +20,7 @@ export const getPromptTemplatesFromFile = async (app: App, promptFilePath: strin
 		throw new Error(t('Waiting for metadata to be ready. Please try again.'))
 	}
 
-	console.debug('sections', fileMeta.sections)
+	logger.debug('sections fetched', { count: fileMeta.sections?.length ?? 0 })
 
 	const sections = fileMeta.sections
 	if (!sections) {
@@ -49,10 +50,10 @@ export const getPromptTemplatesFromFile = async (app: App, promptFilePath: strin
 		)
 		.filter((group) => group.length > 0) // Remove empty groups
 
-	console.debug('sectionGroups', sectionGroups)
+	logger.debug('section groups computed', { groupCount: sectionGroups.length })
 
 	const slides = sectionGroups.slice(1) // Remove the intro slide
-	console.debug('slides', slides)
+	logger.debug('slides prepared', { count: slides.length })
 
 	const promptTemplates: PromptTemplate[] = []
 	const reporter: string[] = []
@@ -67,8 +68,10 @@ export const getPromptTemplatesFromFile = async (app: App, promptFilePath: strin
 			reporter.push(error.message)
 		}
 	}
-	console.debug('promptTemplates', promptTemplates)
-	console.debug('reporter', reporter)
+	logger.debug('prompt templates extracted', { count: promptTemplates.length })
+	if (reporter.length > 0) {
+		logger.warn('prompt template parsing issues', { errors: reporter })
+	}
 	return { promptTemplates, reporter }
 }
 
@@ -125,3 +128,4 @@ export const findChangedTemplates = (
 
 	return result
 }
+const logger = createLogger('prompt:template')

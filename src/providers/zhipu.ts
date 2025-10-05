@@ -1,5 +1,6 @@
 import * as jose from 'jose'
 import OpenAI from 'openai'
+import { createLogger } from '../logger'
 import { t } from 'src/lang/helper'
 import type { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 
@@ -15,13 +16,20 @@ export interface ZhipuOptions extends BaseOptions {
 	enableWebSearch: boolean
 }
 
+const logger = createLogger('providers:zhipu')
+
 const sendRequestFunc = (settings: ZhipuOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, _resolveEmbedAsBinary: ResolveEmbedAsBinary) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, baseURL, model, token: currentToken, tokenExpireInMinutes, enableWebSearch, ...remains } = options
 		if (!apiKey) throw new Error(t('API key is required'))
-		console.debug('zhipu options', { baseURL, apiKey, model, currentToken, tokenExpireInMinutes, enableWebSearch })
+		logger.info('starting zhipu chat', { baseURL, model, messageCount: messages.length })
+		logger.debug('zhipu options', {
+			tokenCached: Boolean(currentToken),
+			tokenExpireInMinutes,
+			enableWebSearch
+		})
 
 		const { token } = await validOrCreate(currentToken, apiKey, tokenExpireInMinutes)
 		settings.token = token
@@ -98,7 +106,10 @@ const validOrCreate = async (currentToken: Token | undefined, apiKeySecret: stri
 		}
 	}
 	const newToken = await createToken(apiKeySecret, expireInMinutes)
-	console.debug('create new token', newToken)
+	logger.debug('issued new session token', {
+		expiresAt: newToken.exp,
+		tokenPreview: newToken.id.slice(0, 8)
+	})
 	return {
 		isValid: false,
 		token: newToken

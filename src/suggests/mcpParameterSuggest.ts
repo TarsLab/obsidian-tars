@@ -8,6 +8,7 @@ import {
 	type TFile
 } from 'obsidian'
 
+import { createLogger } from '../logger'
 import type { MCPServerManager } from '../mcp/managerMCPUse'
 import type { MCPServerConfig } from '../mcp/types'
 import {
@@ -25,6 +26,8 @@ export interface ParameterSuggestion {
 	description?: string
 	required: boolean
 }
+
+const logger = createLogger('suggest:mcp-parameters')
 
 export class MCPParameterSuggest extends EditorSuggest<ParameterSuggestion> {
 	private readonly getServerConfigs: () => MCPServerConfig[]
@@ -95,7 +98,7 @@ export class MCPParameterSuggest extends EditorSuggest<ParameterSuggestion> {
 				required: definition.required
 			}))
 		} catch (error) {
-			console.debug('Failed to build parameter suggestions', error)
+			logger.warn('failed to build parameter suggestions', error)
 			return []
 		}
 	}

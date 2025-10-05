@@ -1,8 +1,11 @@
 import OpenAI from 'openai'
 import type { EmbedCache } from 'obsidian'
+import { createLogger } from '../logger'
 import { t } from 'src/lang/helper'
 import type { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 import { arrayBufferToBase64, getMimeTypeFromFilename } from './utils'
+
+const logger = createLogger('providers:openrouter')
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, resolveEmbedAsBinary: ResolveEmbedAsBinary) {
@@ -11,6 +14,7 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 		const { apiKey, baseURL, model, ...remains } = options
 		if (!apiKey) throw new Error(t('API key is required'))
 		if (!model) throw new Error(t('Model is required'))
+		logger.info('starting openrouter chat', { baseURL, model, messageCount: messages.length })
 
 		// Tool-aware path: Use coordinator for autonomous tool calling
 		if (mcpManager && mcpExecutor) {
@@ -56,7 +60,7 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 
 				return
 			} catch (error) {
-				console.warn('Failed to use tool-aware path for OpenRouter, falling back to original:', error)
+				logger.warn('tool-aware path unavailable, falling back to streaming pipeline', error)
 				// Fall through to original path
 			}
 		}
@@ -70,7 +74,7 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 				// biome-ignore lint/suspicious/noExplicitAny: MCP types are optional dependencies
 				requestBody = await injectMCPTools(requestBody, 'OpenRouter', mcpManager as any, mcpExecutor as any)
 			} catch (error) {
-				console.warn('Failed to inject MCP tools for OpenRouter:', error)
+				logger.warn('failed to inject MCP tools for openrouter', error)
 			}
 		}
 

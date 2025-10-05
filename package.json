@@ -41,6 +41,8 @@
 	},
 	"dependencies": {
 		"@modelcontextprotocol/sdk": "^1.18.2",
+		"@types/debug": "^4.1.12",
+		"debug": "^4.4.3",
 		"mcp-use": "^0.1.0",
 		"yaml": "^2.8.1"
 	},

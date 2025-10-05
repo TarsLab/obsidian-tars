@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { type EmbedCache, Notice } from 'obsidian'
+import { createLogger } from '../logger'
 import { t } from 'src/lang/helper'
 import type { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 import {
@@ -9,6 +10,8 @@ import {
 	getCapabilityEmoji,
 	getMimeTypeFromFilename
 } from './utils'
+
+const logger = createLogger('providers:claude')
 
 export interface ClaudeOptions extends BaseOptions {
 	max_tokens: number
@@ -134,7 +137,7 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 
 				return
 			} catch (error) {
-				console.warn('Failed to use tool-aware path for Claude, falling back to original:', error)
+				logger.warn('tool-aware path unavailable for claude; falling back to standard workflow', error)
 				// Fall through to original path
 			}
 		}

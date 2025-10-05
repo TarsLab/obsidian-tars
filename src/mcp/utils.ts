@@ -3,8 +3,11 @@
  * Common helpers and patterns used across MCP modules
  */
 
+import { createLogger } from '../logger'
 import type { MCPServerConfig } from './types'
 import { TransportProtocol } from './types'
+
+const logger = createLogger('mcp:utils')
 
 /**
  * Extract error message from unknown error type
@@ -30,7 +33,7 @@ export async function safeAsync<T>(operation: () => Promise<T>, fallback: T, err
 	try {
 		return await operation()
 	} catch (error) {
-		console.warn(formatErrorWithContext(errorMessage, error))
+		logger.warn(formatErrorWithContext(errorMessage, error))
 		return fallback
 	}
 }
@@ -39,14 +42,14 @@ export async function safeAsync<T>(operation: () => Promise<T>, fallback: T, err
  * Log error with context
  */
 export function logError(context: string, error: unknown): void {
-	console.error(formatErrorWithContext(context, error))
+	logger.error(formatErrorWithContext(context, error))
 }
 
 /**
  * Log warning with context
  */
 export function logWarning(context: string, error: unknown): void {
-	console.warn(formatErrorWithContext(context, error))
+	logger.warn(formatErrorWithContext(context, error))
 }
 
 /**
@@ -89,9 +92,8 @@ export function parseExecutionCommand(cmd: string): {
 					env: jsonConfig.env
 				}
 			}
-		} catch (e) {
+		} catch {
 			// Not valid JSON, fall through to try other parsing methods
-			console.debug('Failed to parse as JSON:', e)
 		}
 	}
 

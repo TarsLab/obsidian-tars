@@ -1,7 +1,10 @@
 import OpenAI from 'openai'
+import { createLogger } from '../logger'
 import { t } from 'src/lang/helper'
 import type { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 import { convertEmbedToImageUrl } from './utils'
+
+const logger = createLogger('providers:qwen')
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, resolveEmbedAsBinary: ResolveEmbedAsBinary) {
@@ -9,6 +12,7 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, baseURL, model, ...remains } = options
 		if (!apiKey) throw new Error(t('API key is required'))
+		logger.info('starting qwen chat', { baseURL, model, messageCount: messages.length })
 
 		// Inject MCP tools if available
 		let requestParams: Record<string, unknown> = { model, ...remains }
@@ -18,7 +22,7 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 				// biome-ignore lint/suspicious/noExplicitAny: MCP types are optional dependencies
 				requestParams = await injectMCPTools(requestParams, 'Qwen', mcpManager as any, mcpExecutor as any)
 			} catch (error) {
-				console.warn('Failed to inject MCP tools for Qwen:', error)
+				logger.warn('failed to inject MCP tools for qwen', error)
 			}
 		}
 

@@ -5,8 +5,11 @@
  */
 
 import { type App, type Editor, Modal } from 'obsidian'
+import { createLogger } from '../logger'
 import type { MCPServerManager } from '../mcp/managerMCPUse'
 import type { ToolDefinition } from '../mcp/types'
+
+const logger = createLogger('modal:tool-browser')
 
 interface ToolWithServer {
 	tool: ToolDefinition
@@ -110,7 +113,7 @@ export class ToolBrowserModal extends Modal {
 					})
 				}
 			} catch (error) {
-				console.warn(`Failed to load tools from ${server.name}:`, error)
+				logger.warn('failed to load tools from server', { server: server.name, error })
 			}
 		}
 	}

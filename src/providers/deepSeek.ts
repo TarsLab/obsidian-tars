@@ -1,7 +1,10 @@
 import OpenAI from 'openai'
+import { createLogger } from '../logger'
 import { t } from 'src/lang/helper'
 import type { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 import { CALLOUT_BLOCK_END, CALLOUT_BLOCK_START } from './utils'
+
+const logger = createLogger('providers:deepseek')
 
 type DeepSeekDelta = OpenAI.ChatCompletionChunk.Choice.Delta & {
 	reasoning_content?: string
@@ -22,7 +25,7 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 				// biome-ignore lint/suspicious/noExplicitAny: MCP types are optional dependencies
 				requestParams = await injectMCPTools(requestParams, 'DeepSeek', mcpManager as any, mcpExecutor as any)
 			} catch (error) {
-				console.warn('Failed to inject MCP tools for DeepSeek:', error)
+				logger.warn('failed to inject MCP tools for deepseek', error)
 			}
 		}
 
@@ -44,7 +47,10 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 		let startReasoning = false
 		for await (const part of stream) {
 			if (part.usage?.prompt_tokens && part.usage.completion_tokens)
-				console.debug(`Prompt tokens: ${part.usage.prompt_tokens}, completion tokens: ${part.usage.completion_tokens}`)
+				logger.debug('usage update', {
+					promptTokens: part.usage.prompt_tokens,
+					completionTokens: part.usage.completion_tokens
+				})
 
 			const delta = part.choices[0]?.delta as DeepSeekDelta
 			const reasonContent = delta?.reasoning_content

@@ -1,7 +1,10 @@
 import type { App, Editor, EditorPosition, EditorRange, EditorSelection, TagCache } from 'obsidian'
+import { createLogger } from '../logger'
 import { t } from 'src/lang/helper'
 import type { PluginSettings } from 'src/settings'
 import type { TagRole } from 'src/suggest'
+
+const logger = createLogger('commands:tag-utils')
 
 export const HARD_LINE_BREAK = '  \n' // Two spaces plus newline, hard line break in markdown
 
@@ -23,13 +26,15 @@ export const fetchTagMeta = (app: App, editor: Editor, settings: PluginSettings)
 
 export const refineRange = (app: App, editor: Editor): EditorRange => {
 	const selection = getEditorSelection(editor)
-	console.debug('anchor', selection.anchor)
-	console.debug('head', selection.head)
+	logger.debug('selection range resolved', {
+		anchor: selection.anchor,
+		head: selection.head
+	})
 	const cursor = editor.getCursor()
 
 	const { sections } = getEnv(app)
 	if (!sections) {
-		console.debug('No sections')
+		logger.debug('no sections available in metadata')
 		return {
 			from: {
 				line: cursor.line,
@@ -52,7 +57,7 @@ export const refineRange = (app: App, editor: Editor): EditorRange => {
 	)
 
 	if (overlappingSections.length === 0) {
-		console.debug('No overlapping sections')
+		logger.debug('no overlapping sections found for selection')
 
 		// select the whole line
 		return {

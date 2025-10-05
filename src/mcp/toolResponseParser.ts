@@ -7,6 +7,11 @@
  */
 
 import OpenAI from 'openai'
+import { createLogger } from '../logger'
+import { logError } from './utils'
+
+const logger = createLogger('mcp:tool-parser')
+const ollamaLogger = createLogger('mcp:tool-parser:ollama')
 
 // ============================================================================
 // Common Types
@@ -176,17 +181,17 @@ export class OpenAIToolResponseParser implements ToolResponseParser<OpenAI.ChatC
 		for (const accumulated of this.toolCalls.values()) {
 			if (accumulated.id && accumulated.name && accumulated.arguments) {
 				try {
-					const parsedArgs = JSON.parse(accumulated.arguments)
+						const parsedArgs = JSON.parse(accumulated.arguments)
 					this.finishedToolCalls.push({
 						id: accumulated.id,
 						name: accumulated.name,
 						arguments: parsedArgs
 					})
-				} catch (error) {
-					console.error(`Failed to parse tool call arguments: ${accumulated.arguments}`, error)
-					// Still add the tool call with raw string arguments
-					this.finishedToolCalls.push({
-						id: accumulated.id,
+					} catch (error) {
+						logError(`Failed to parse tool call arguments: ${accumulated.arguments}`, error)
+						// Still add the tool call with raw string arguments
+						this.finishedToolCalls.push({
+							id: accumulated.id,
 						name: accumulated.name,
 						arguments: { _raw: accumulated.arguments }
 					})
@@ -291,7 +296,7 @@ export class ClaudeToolResponseParser implements ToolResponseParser<ClaudeStream
 							arguments: parsedInput
 						})
 					} catch (error) {
-						console.error(`Failed to parse Claude tool input: ${accumulated.inputJson}`, error)
+						logError(`Failed to parse Claude tool input: ${accumulated.inputJson}`, error)
 					}
 				}
 				return null
@@ -343,15 +348,15 @@ export class OllamaToolResponseParser implements ToolResponseParser<OllamaChunk>
 	private toolCalls: ToolCall[] = []
 
 	parseChunk(chunk: OllamaChunk): StreamChunk | null {
-		console.debug('[Ollama Tool Parser] Received chunk:', {
-			hasMessage: !!chunk.message,
+		ollamaLogger.debug('received chunk', {
+			hasMessage: Boolean(chunk.message),
 			contentPreview: chunk.message?.content?.slice(0, 80) ?? null,
-			hasToolCalls: !!chunk.message?.tool_calls?.length,
+			hasToolCalls: Boolean(chunk.message?.tool_calls?.length),
 			done: chunk.done
 		})
 		// Handle text content
 		if (chunk.message?.content) {
-			console.debug('[Ollama Tool Parser] Emitting text chunk', {
+			ollamaLogger.debug('emitting text chunk', {
 				length: chunk.message.content.length
 			})
 			return {
@@ -364,7 +369,7 @@ export class OllamaToolResponseParser implements ToolResponseParser<OllamaChunk>
 		// Note: Ollama sends complete tool calls, not streamed
 		if (chunk.message?.tool_calls && chunk.message.tool_calls.length > 0) {
 			for (const toolCall of chunk.message.tool_calls) {
-				console.debug('[Ollama Tool Parser] Processing tool call', {
+				ollamaLogger.debug('processing tool call', {
 					name: toolCall.function.name,
 					argumentKeys: Object.keys(toolCall.function.arguments || {})
 				})
@@ -377,7 +382,7 @@ export class OllamaToolResponseParser implements ToolResponseParser<OllamaChunk>
 		}
 
 		if (!chunk.message && chunk.done) {
-			console.debug('[Ollama Tool Parser] Chunk indicates done without message content')
+			ollamaLogger.debug('received done signal without message content')
 		}
 
 		return null

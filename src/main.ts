@@ -1,4 +1,7 @@
 import { Notice, Plugin } from 'obsidian'
+import { createLogger } from './logger'
+
+const logger = createLogger('plugin')
 
 import {
 	asstTagCmd,
@@ -46,7 +49,7 @@ export default class TarsPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings()
 
-		console.debug('loading Tars plugin...')
+		logger.info('loading tars plugin')
 
 		// Initialize StatusBar early so MCP components can log errors
 		const statusBarItem = this.addStatusBarItem()
@@ -173,14 +176,14 @@ export default class TarsPlugin extends Plugin {
 							await this.mcpManager.performHealthCheck()
 							this.updateMCPStatus()
 						} catch (error) {
-							console.debug('Health check failed:', error)
+							logger.warn('mcp health check failed', error)
 						}
 					}
 				}, HEALTH_CHECK_INTERVAL)
 
-				console.debug('MCP integration initialized with', this.settings.mcpServers.length, 'servers')
+				logger.info('mcp integration initialized', { serverCount: this.settings.mcpServers.length })
 			} catch (error) {
-				console.error('Failed to initialize MCP integration:', error)
+				logger.error('failed to initialize mcp integration', error)
 				new Notice('Failed to initialize MCP servers. Check console for details.')
 			}
 		}
@@ -262,9 +265,9 @@ export default class TarsPlugin extends Plugin {
 		if (this.mcpManager) {
 			try {
 				await this.mcpManager.shutdown()
-				console.debug('MCP integration shutdown complete')
+				logger.info('mcp integration shutdown complete')
 			} catch (error) {
-				console.error('Error shutting down MCP integration:', error)
+				logger.error('error shutting down mcp integration', error)
 			}
 		}
 	}
@@ -323,12 +326,12 @@ export default class TarsPlugin extends Plugin {
 
 		const removedTags = toRemove.map((cmdId) => getMeta(cmdId).tag)
 		if (removedTags.length > 0) {
-			console.debug('Removed commands', removedTags)
+			logger.info('removed tag commands', { tags: removedTags })
 			new Notice(`${t('Removed commands')}: ${removedTags.join(', ')}`)
 		}
 		const addedTags = toAdd.map((cmdId) => getMeta(cmdId).tag)
 		if (addedTags.length > 0) {
-			console.debug('Added commands', addedTags)
+			logger.info('added tag commands', { tags: addedTags })
 			new Notice(`${t('Added commands')}: ${addedTags.join(', ')}`)
 		}
 	}
@@ -349,12 +352,12 @@ export default class TarsPlugin extends Plugin {
 
 		const removedTitles = toRemove.map((cmdId) => getTitleFromCmdId(cmdId))
 		if (removedTitles.length > 0) {
-			console.debug('Removed commands', removedTitles)
+			logger.info('removed prompt commands', { titles: removedTitles })
 			new Notice(`${t('Removed commands')}: ${removedTitles.join(', ')}`)
 		}
 		const addedTitles = toAdd.map((t) => t.title)
 		if (addedTitles.length > 0) {
-			console.debug('Added commands', addedTitles)
+			logger.info('added prompt commands', { titles: addedTitles })
 			new Notice(`${t('Added commands')}: ${addedTitles.join(', ')}`)
 		}
 	}
@@ -386,7 +389,7 @@ export default class TarsPlugin extends Plugin {
 			if (needsSave) {
 				this.settings.mcpServers = migratedServers
 				await this.saveSettings()
-				console.log('[Tars] Migrated MCP server configs to executionCommand format')
+				logger.info('migrated mcp server configs to executionCommand format')
 			}
 		}
 	}
@@ -410,7 +413,7 @@ export default class TarsPlugin extends Plugin {
 					const tools = await client.listTools()
 					toolCount = tools.length
 				} catch (error) {
-					console.debug(`Could not list tools for ${server.id}:`, error)
+					logger.debug('could not list tools for server', { serverId: server.id, error })
 				}
 			}
 

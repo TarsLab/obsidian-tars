@@ -1,4 +1,7 @@
+import { createLogger } from '../logger'
 import type { ToolDefinition } from '../mcp/types'
+
+const logger = createLogger('suggest:mcp-helpers')
 
 export type EditorPositionLike = { line: number; ch: number }
 export type EditorLike = { getLine(line: number): string }
@@ -249,7 +252,7 @@ function formatExample(example: unknown): string {
 		try {
 			return JSON.stringify(example)
 		} catch (error) {
-			console.debug('Failed to stringify parameter example', error)
+			logger.debug('failed to stringify parameter example', error)
 		}
 	}
 	return String(example)

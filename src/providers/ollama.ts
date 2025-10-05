@@ -1,5 +1,8 @@
 import { Ollama } from 'ollama/browser'
+import { createLogger } from '../logger'
 import type { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
+
+const logger = createLogger('providers:ollama')
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, _resolveEmbedAsBinary: ResolveEmbedAsBinary) {
@@ -53,7 +56,7 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 
 				return
 			} catch (error) {
-				console.warn('Failed to use tool-aware path for Ollama, falling back to original:', error)
+				logger.warn('tool-aware path unavailable, falling back to streaming pipeline', error)
 				// Fall through to original path
 			}
 		}
@@ -61,25 +64,24 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 		// Original streaming path (backward compatible)
 		let requestParams: Record<string, unknown> = { model, ...remains }
 
-		console.debug(`[Ollama Provider] Connecting to Ollama at ${baseURL}`)
-		console.debug(`[Ollama Provider] Using model: ${model}`)
-		console.debug(`[Ollama Provider] Request params:`, { ...requestParams, messages: `${messages.length} messages` })
+		logger.info('starting ollama chat', { baseURL, model, messageCount: messages.length })
+		logger.debug('initial request params', { ...requestParams, messages: `${messages.length} messages` })
 
 		if (mcpManager && mcpExecutor) {
 			try {
 				const { injectMCPTools } = await import('../mcp/providerToolIntegration.js')
 				// biome-ignore lint/suspicious/noExplicitAny: MCP types are optional dependencies
 				requestParams = await injectMCPTools(requestParams, 'Ollama', mcpManager as any, mcpExecutor as any)
-				console.debug(`[Ollama Provider] MCP tools injected successfully`)
+				logger.debug('mcp tools injected successfully')
 			} catch (error) {
-				console.warn('[Ollama Provider] Failed to inject MCP tools for Ollama:', error)
+				logger.warn('failed to inject MCP tools for ollama', error)
 			}
 		}
 
 		const ollama = new Ollama({ host: baseURL })
 
 		try {
-			console.debug(`[Ollama Provider] Initiating chat request...`)
+			logger.debug('initiating streaming chat request')
 			const response = (await ollama.chat({ ...requestParams, messages, stream: true } as Parameters<
 				typeof ollama.chat
 			>[0])) as unknown as AsyncIterable<{ message: { content: string } }>
@@ -89,31 +91,32 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 				for await (const part of response) {
 					responseChunkCount++
 					if (controller.signal.aborted) {
-						console.debug(`[Ollama Provider] Request aborted after ${responseChunkCount} chunks`)
+						logger.info('request aborted', { chunkCount: responseChunkCount })
 						ollama.abort()
 						break
 					}
 
 					const content = part.message?.content || ''
-					console.debug(`[Ollama Provider] Chunk ${responseChunkCount}:`, {
+					logger.debug('received chunk', {
+						chunk: responseChunkCount,
 						contentLength: content.length,
-						contentPreview: content.substring(0, 100)
+						preview: content.substring(0, 100)
 					})
 
 					if (content) {
 						yield content
 					} else {
-						console.warn(`[Ollama Provider] Empty content in chunk ${responseChunkCount}`)
+						logger.warn('empty content received from stream', { chunk: responseChunkCount })
 					}
 				}
 			} catch (streamError) {
-				console.error(`[Ollama Provider] Error during streaming:`, streamError)
+				logger.error('error during ollama stream', streamError)
 				throw streamError
 			}
 
-			console.debug(`[Ollama Provider] Streaming completed after ${responseChunkCount} chunks`)
+			logger.info('stream completed', { chunkCount: responseChunkCount })
 		} catch (connectionError) {
-			console.error(`[Ollama Provider] Failed to connect to Ollama:`, connectionError)
+			logger.error('failed to connect to ollama', connectionError)
 			throw new Error(
 				`Ollama connection failed: ${connectionError instanceof Error ? connectionError.message : String(connectionError)}`
 			)

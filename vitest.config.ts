@@ -16,8 +16,9 @@ export default defineConfig({
 		include: ['tests/**/*.{test,spec}.ts'],
 		// Environment for tests
 		environment: 'jsdom',
-		// Setup files if needed (can be added later)
-		// setupFiles: [],
+		setupFiles: ['tests/setup/consoleMocks.ts'],
+		// Suppress console output during tests
+		onConsoleLog: () => false,
 		// Coverage configuration
 		coverage: {
 			// Use V8 coverage provider for Node.js

@@ -9,6 +9,7 @@ import {
 	Platform,
 	Setting
 } from 'obsidian'
+import { createLogger } from '../logger'
 import { buildRunEnv, generate, type RequestController } from 'src/editor'
 import { t } from 'src/lang/helper'
 import type { ProviderSettings } from 'src/providers'
@@ -24,6 +25,8 @@ import {
 	insertText,
 	isEmptyLines
 } from './tagUtils'
+
+const logger = createLogger('commands:assistant-tag')
 
 export const asstTagCmd = (
 	{ id, name, tag }: TagCmdMeta,
@@ -46,7 +49,12 @@ export const asstTagCmd = (
 			const defaultUserMark = toSpeakMark(settings.userTags[0])
 			const mark = toSpeakMark(tag)
 			const { range, role, tagContent, tagRange } = fetchTagMeta(app, editor, settings)
-			console.debug('asstTagCmd', { range, role, tagContent, tagRange })
+			logger.debug('assistant tag command context', {
+				range,
+				role,
+				tagContentLength: tagContent?.length ?? 0,
+				tagRange
+			})
 
 			// If it's an empty line, directly insert the tag
 			if (isEmptyLines(editor, range)) {
@@ -127,15 +135,16 @@ export const asstTagCmd = (
 				)
 			}
 		} catch (error) {
-			console.error(error)
-			if (error.name === 'AbortError') {
+			logger.error('assistant tag command failed', error)
+			const err = error instanceof Error ? error : new Error(String(error))
+			if (err.name === 'AbortError') {
 				statusBarManager.setCancelledStatus()
 				new Notice(t('Generation cancelled'))
 				return
 			}
 
-			statusBarManager.setErrorStatus(error as Error)
-			new Notice(`🔴 ${Platform.isDesktopApp ? t('Click status bar for error details. ') : ''}${error}`, 10 * 1000)
+			statusBarManager.setErrorStatus(err)
+			new Notice(`🔴 ${Platform.isDesktopApp ? t('Click status bar for error details. ') : ''}${err}`, 10 * 1000)
 		}
 	}
 })

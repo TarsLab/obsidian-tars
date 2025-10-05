@@ -8,17 +8,11 @@ import { OpenAIToolResponseParser } from '../../src/mcp/toolResponseParser'
 
 describe('OpenAIToolResponseParser - Detailed Implementation Tests', () => {
 	let parser: OpenAIToolResponseParser
-	let consoleErrorSpy: ReturnType<typeof vi.spyOn> | null = null
-	let consoleErrorMessages: string[] = []
-
 	beforeEach(() => {
 		parser = new OpenAIToolResponseParser()
 	})
 
 	afterEach(() => {
-		consoleErrorSpy?.mockRestore()
-		consoleErrorSpy = null
-		consoleErrorMessages = []
 	})
 
 	describe('Text-only responses', () => {
@@ -280,12 +274,7 @@ describe('OpenAIToolResponseParser - Detailed Implementation Tests', () => {
 	})
 
 	describe('Error handling', () => {
-		beforeEach(() => {
-			consoleErrorMessages = []
-			consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation((...args) => {
-				consoleErrorMessages.push(args.map((arg) => String(arg)).join(' '))
-			})
-		})
+		const getConsoleErrors = () => globalThis.__CONSOLE_ERROR_MESSAGES__
 
 		it('should handle malformed JSON in arguments', () => {
 			// GIVEN: Tool call with invalid JSON
@@ -336,7 +325,7 @@ describe('OpenAIToolResponseParser - Detailed Implementation Tests', () => {
 			expect(toolCalls[0].id).toBe('call_bad')
 			expect(toolCalls[0].name).toBe('bad_tool')
 			expect(toolCalls[0].arguments).toEqual({ _raw: '{invalid json' })
-			expect(consoleErrorMessages.some((msg) => msg.includes('Failed to parse tool call arguments'))).toBe(true)
+			expect(getConsoleErrors().some((msg) => msg.includes('Failed to parse tool call arguments'))).toBe(true)
 		})
 	})
 

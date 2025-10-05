@@ -10,10 +10,13 @@
  */
 
 import type { Editor } from 'obsidian'
+import { createLogger } from '../logger'
 import type { StatusBarManager } from '../statusBarManager'
 import type { ToolExecutor } from './executor'
 import type { ToolCall, ToolResponseParser } from './toolResponseParser'
 import type { ToolServerInfo } from './types'
+
+const logger = createLogger('mcp:tool-coordinator')
 
 // ============================================================================
 // Types
@@ -173,13 +176,16 @@ export class ToolCallingCoordinator {
 	): AsyncGenerator<string> {
 		const { maxTurns = 10, documentPath = '', onToolCall, onToolResult, editor, statusBarManager } = options
 
-		console.debug(`[Tool Coordinator] Starting generation with ${messages.length} messages`)
-		console.debug(`[Tool Coordinator] Max turns: ${maxTurns}, Document: ${documentPath}`)
+		logger.debug('starting generation loop', {
+			initialMessageCount: messages.length,
+			maxTurns,
+			documentPath
+		})
 
 		const conversation = [...messages]
 
 		for (let turn = 0; turn < maxTurns; turn++) {
-			console.debug(`[Tool Coordinator] Turn ${turn + 1}/${maxTurns}`)
+			logger.debug('processing turn', { turn: turn + 1, maxTurns })
 			const parser = adapter.getParser()
 			parser.reset()
 
@@ -191,32 +197,35 @@ export class ToolCallingCoordinator {
 			try {
 				for await (const chunk of adapter.sendRequest(conversation)) {
 					chunkCount++
-					console.debug(`[Tool Coordinator] Processing chunk ${chunkCount}`)
+					logger.debug('processing provider chunk', { turn: turn + 1, chunk: chunkCount })
 
 					const parsed = parser.parseChunk(chunk)
-					console.debug(`[Tool Coordinator] Parsed chunk ${chunkCount}:`, {
+					logger.debug('parsed chunk', {
+						turn: turn + 1,
+						chunk: chunkCount,
 						type: parsed?.type,
-						hasContent: parsed?.type === 'text' && !!parsed?.content,
 						contentLength: parsed?.type === 'text' ? parsed?.content?.length || 0 : 0
 					})
 
 					if (parsed?.type === 'text') {
 						hasTextOutput = true
 						textChunkCount++
-						console.debug(`[Tool Coordinator] Yielding text chunk ${textChunkCount}:`, {
-							contentLength: parsed.content.length,
-							contentPreview: parsed.content.substring(0, 100)
+						logger.debug('yielding text chunk', {
+							turn: turn + 1,
+							chunk: textChunkCount,
+							contentLength: parsed.content.length
 						})
 						yield parsed.content
 					}
 				}
 			} catch (error) {
-				console.error(`[Tool Coordinator] Error during streaming on turn ${turn + 1}:`, error)
+				logger.error('error during streaming', { turn: turn + 1, error })
 				throw error
 			}
 
 			const hasToolCalls = parser.hasCompleteToolCalls()
-			console.debug(`[Tool Coordinator] Turn ${turn + 1} complete:`, {
+			logger.debug('turn complete', {
+				turn: turn + 1,
 				chunkCount,
 				textChunkCount,
 				hasTextOutput,
@@ -226,10 +235,11 @@ export class ToolCallingCoordinator {
 			// Check if LLM wants to call tools
 			if (hasToolCalls) {
 				const toolCalls = parser.getToolCalls()
-				console.debug(
-					`[Tool Coordinator] Found ${toolCalls.length} complete tool calls:`,
-					toolCalls.map((tc) => tc.name)
-				)
+				logger.debug('tool calls detected', {
+					turn: turn + 1,
+					count: toolCalls.length,
+					names: toolCalls.map((tc) => tc.name)
+				})
 
 				// Record assistant tool call message for conversation history
 				conversation.push({
@@ -240,16 +250,22 @@ export class ToolCallingCoordinator {
 
 				// Execute each tool call
 				for (const toolCall of toolCalls) {
-					console.debug(`[Tool Coordinator] Executing tool: ${toolCall.name}`, toolCall.arguments)
+					logger.debug('preparing tool execution', {
+						turn: turn + 1,
+						tool: toolCall.name,
+						argumentKeys: Object.keys(toolCall.arguments || {})
+					})
 					const serverInfo = adapter.findServer(toolCall.name)
 					if (!serverInfo) {
-						console.warn(`[Tool Coordinator] No server found for tool: ${toolCall.name}`)
+						logger.warn('no server found for requested tool', { tool: toolCall.name })
 						continue
 					}
 
-					console.debug(
-						`[Tool Coordinator] Found server for tool ${toolCall.name}: ${serverInfo.id} (${serverInfo.name})`
-					)
+					logger.debug('resolved tool server', {
+						tool: toolCall.name,
+						serverId: serverInfo.id,
+						serverName: serverInfo.name
+					})
 
 					// Notify about tool execution
 					onToolCall?.(toolCall.name)
@@ -258,7 +274,7 @@ export class ToolCallingCoordinator {
 					}
 
 					try {
-						console.debug(`[Tool Coordinator] Calling executor for tool ${toolCall.name}...`)
+						logger.debug('invoking tool executor', { tool: toolCall.name })
 						// Execute the tool
 						const result = await executor.executeTool({
 							serverId: serverInfo.id,
@@ -268,7 +284,8 @@ export class ToolCallingCoordinator {
 							documentPath
 						})
 
-						console.debug(`[Tool Coordinator] Tool ${toolCall.name} executed successfully:`, {
+						logger.debug('tool execution succeeded', {
+							tool: toolCall.name,
 							executionDuration: result.executionDuration,
 							contentType: result.contentType,
 							contentLength:
@@ -285,7 +302,7 @@ export class ToolCallingCoordinator {
 						const toolMessage = adapter.formatToolResult(toolCall.id, result)
 						conversation.push(toolMessage)
 					} catch (error) {
-						console.error(`[Tool Coordinator] Tool execution failed for ${toolCall.name}:`, error)
+						logger.error('tool execution failed', { tool: toolCall.name, error })
 						// Log to status bar error buffer
 						statusBarManager?.logError(
 							'tool',
@@ -310,21 +327,21 @@ export class ToolCallingCoordinator {
 					}
 				}
 
-				console.debug(`[Tool Coordinator] Tool execution complete, continuing conversation loop`)
+				logger.debug('tool execution complete; continuing loop', { turn: turn + 1 })
 				// Continue loop - LLM will see tool results and generate final response
 				continue
 			} else {
-				console.debug(`[Tool Coordinator] No complete tool calls found`)
+				logger.debug('no complete tool calls found', { turn: turn + 1 })
 			}
 
 			// No tool calls - if we have text, we're done
 			if (hasTextOutput) {
-				console.debug(`[Tool Coordinator] No tool calls, but we have text output - ending generation`)
+				logger.debug('text output produced without tool calls; ending generation', { turn: turn + 1 })
 				break
 			}
 
 			// No text and no tool calls - something wrong, stop
-			console.warn(`[Tool Coordinator] No text output and no tool calls - ending generation after ${turn + 1} turns`)
+			logger.warn('no text output and no tool calls; aborting generation', { turn: turn + 1 })
 			break
 		}
 	}

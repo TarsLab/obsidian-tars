@@ -1,4 +1,5 @@
 import { type App, Notice, Setting, setIcon } from 'obsidian'
+import { createLogger } from '../logger'
 import type TarsPlugin from '../main'
 import { MCP_CONFIG_EXAMPLES, parseConfigInput, validateConfigInput } from '../mcp/config'
 import type { CommandDisplayModeValue } from '../mcp/displayMode'
@@ -10,6 +11,8 @@ import {
 	remoteUrlToCommand
 } from '../mcp/displayMode'
 import type { MCPServerConfig } from '../mcp/types'
+
+const logger = createLogger('settings:mcp-servers')
 
 export class MCPServerSettings {
 	private plugin: TarsPlugin
@@ -253,7 +256,7 @@ export class MCPServerSettings {
 							try {
 								await session.disconnect()
 							} catch (e) {
-								console.debug('Error closing test session:', e)
+								logger.debug('error closing test session', e)
 							}
 						} catch (error) {
 							const msg = error instanceof Error ? error.message : String(error)

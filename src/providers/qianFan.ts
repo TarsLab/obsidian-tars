@@ -1,7 +1,10 @@
 import axios from 'axios'
 import { Notice, Platform, requestUrl } from 'obsidian'
+import { createLogger } from '../logger'
 import { t } from 'src/lang/helper'
 import type { BaseOptions, Message, Optional, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
+
+const logger = createLogger('providers:qianfan')
 
 interface TokenResponse {
 	access_token: string
@@ -51,7 +54,7 @@ const validOrCreate = async (currentToken: Token | undefined, apiKey: string, ap
 		}
 	}
 	const newToken = await createToken(apiKey, apiSecret)
-	console.debug('create new token', newToken)
+	logger.debug('issued new qianfan token', { expiresAt: newToken.exp })
 	return {
 		isValid: false,
 		token: newToken
@@ -138,7 +141,10 @@ const sendRequestFunc = (settings: QianFanOptions): SendRequest =>
 				}
 			})
 
-			console.debug('response', response.json)
+			logger.debug('qianfan response received', {
+				statusCode: response.status,
+				keys: Object.keys(response.json ?? {})
+			})
 			yield response.json.result
 		}
 	}
