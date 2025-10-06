@@ -1,4 +1,4 @@
-import { Notice, Plugin } from 'obsidian'
+import { Editor, Notice, Plugin } from 'obsidian'
 import { createLogger } from './logger'
 
 const logger = createLogger('plugin')
@@ -173,6 +173,15 @@ export default class TarsPlugin extends Plugin {
 					editorCallback: (editor) => {
 						const { ToolBrowserModal } = require('./modals/toolBrowserModal')
 						new ToolBrowserModal(this.app, this.mcpManager, editor).open()
+					}
+				})
+
+				// Register Insert MCP Tool Call command (Feature-400-40)
+				this.addCommand({
+					id: 'insert-mcp-tool-call',
+					name: 'Insert MCP Tool Call Template',
+					editorCallback: async (editor) => {
+						await this.insertToolCallTemplate(editor)
 					}
 				})
 
@@ -459,6 +468,130 @@ export default class TarsPlugin extends Plugin {
 			failedServers,
 			activeExecutions,
 			servers: serverDetails
+		})
+	}
+
+	/**
+	 * Insert MCP tool call template (Feature-400-40)
+	 */
+	private async insertToolCallTemplate(editor: Editor) {
+		if (!this.mcpManager) {
+			new Notice('MCP is not initialized')
+			return
+		}
+
+		try {
+			// Get all available tools from all servers
+			const snapshot = await this.mcpManager.getToolDiscoveryCache().getSnapshot()
+			const allTools: Array<{ server: string; serverId: string; tool: any }> = []
+
+			for (const serverEntry of snapshot.servers) {
+				for (const tool of serverEntry.tools) {
+					allTools.push({
+						server: serverEntry.serverName,
+						serverId: serverEntry.serverId,
+						tool
+					})
+				}
+			}
+
+			if (allTools.length === 0) {
+				new Notice('No MCP tools available')
+				return
+			}
+
+			// Create suggester to pick a tool
+			const { SuggestModal } = require('obsidian')
+
+			class ToolPickerModal extends SuggestModal<{ server: string; serverId: string; tool: any }> {
+				constructor(
+					app: any,
+					private tools: Array<{ server: string; serverId: string; tool: any }>,
+					private onSelect: (item: { server: string; serverId: string; tool: any }) => void
+				) {
+					super(app)
+					this.setPlaceholder('Select a tool to insert...')
+				}
+
+				getSuggestions(query: string) {
+					const lowerQuery = query.toLowerCase()
+					return this.tools.filter(
+						(item) =>
+							item.tool.name.toLowerCase().includes(lowerQuery) ||
+							item.server.toLowerCase().includes(lowerQuery) ||
+							(item.tool.description && item.tool.description.toLowerCase().includes(lowerQuery))
+					)
+				}
+
+				renderSuggestion(item: { server: string; serverId: string; tool: any }, el: HTMLElement) {
+					el.createDiv({ text: `${item.tool.name}`, cls: 'suggestion-title' })
+					el.createDiv({ text: `${item.server}${item.tool.description ? ` - ${item.tool.description}` : ''}`, cls: 'suggestion-note' })
+				}
+
+				onChooseSuggestion(item: { server: string; serverId: string; tool: any }) {
+					this.onSelect(item)
+				}
+			}
+
+			new ToolPickerModal(this.app, allTools, (selected) => {
+				this.generateAndInsertTemplate(editor, selected.server, selected.tool)
+			}).open()
+		} catch (error) {
+			logger.error('failed to insert tool call template', error)
+			new Notice('Failed to insert tool call template')
+		}
+	}
+
+	/**
+	 * Generate and insert tool call template with parameter placeholders
+	 */
+	private generateAndInsertTemplate(editor: Editor, serverName: string, tool: any) {
+		const { buildParameterPlaceholder } = require('./suggests/mcpToolSuggestHelpers')
+
+		// Build template lines
+		const lines: string[] = [`\`\`\`${serverName}`, `tool: ${tool.name}`]
+
+		// Extract parameters from inputSchema
+		const inputSchema = tool.inputSchema || {}
+		const properties = inputSchema.properties || {}
+		const required = inputSchema.required || []
+
+		// Generate parameter lines with placeholders
+		const parameters = Object.keys(properties).map((name) => {
+			const property = properties[name]
+			return {
+				name,
+				type: property.type || 'any',
+				description: property.description || '',
+				required: required.includes(name),
+				example: property.example
+			}
+		})
+
+		// Add required parameters first, then optional ones
+		const sortedParams = parameters.sort((a, b) => {
+			if (a.required && !b.required) return -1
+			if (!a.required && b.required) return 1
+			return 0
+		})
+
+		for (const param of sortedParams) {
+			const placeholder = buildParameterPlaceholder(param)
+			const comment = param.required ? '' : ' # optional'
+			lines.push(`${param.name}: ${placeholder}${comment}`)
+		}
+
+		lines.push('```')
+
+		// Insert template at cursor
+		const cursor = editor.getCursor()
+		const template = lines.join('\n')
+		editor.replaceRange(template, cursor)
+
+		// Move cursor to first parameter value position (after "tool: ")
+		editor.setCursor({
+			line: cursor.line + 2,
+			ch: `${sortedParams[0]?.name || 'tool'}: `.length
 		})
 	}
 }
