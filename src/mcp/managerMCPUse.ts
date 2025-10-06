@@ -109,10 +109,13 @@ export class MCPServerManager extends EventEmitter<MCPServerManagerEvents> imple
 			if (Object.keys(mcpUseConfig.mcpServers).length > 0) {
 				this.mcpClient = MCPClient.fromDict(mcpUseConfig)
 
-				// Create sessions for all servers
-				for (const config of mcpUseConfigs) {
+				// Create sessions for all servers in parallel (non-blocking)
+				const sessionPromises = mcpUseConfigs.map(async (config) => {
 					try {
-						const session = await this.mcpClient.createSession(config.id, true)
+						const session = await this.mcpClient?.createSession(config.id, true)
+						if (!session) {
+							throw new Error(`Failed to create session for ${config.id}`)
+						}
 						this.sessions.set(config.id, session)
 
 						// Reset failure count on successful start
@@ -139,7 +142,10 @@ export class MCPServerManager extends EventEmitter<MCPServerManagerEvents> imple
 						this.emit('server-failed', config.id, error as Error)
 						this.updateHealthStatus(config.id, 'unhealthy')
 					}
-				}
+				})
+
+				// Wait for all sessions to complete (success or failure)
+				await Promise.allSettled(sessionPromises)
 			}
 		} catch (error) {
 			logError('Failed to initialize MCP client', error)

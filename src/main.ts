@@ -55,153 +55,153 @@ export default class TarsPlugin extends Plugin {
 		const statusBarItem = this.addStatusBarItem()
 		this.statusBarManager = new StatusBarManager(this.app, statusBarItem)
 
-		// Initialize MCP Server Manager
+		// Initialize MCP Server Manager (non-blocking)
 		if (this.settings.mcpServers && this.settings.mcpServers.length > 0) {
-			try {
-				this.mcpManager = new MCPServerManager()
-				await this.mcpManager.initialize(this.settings.mcpServers, {
-					failureThreshold: this.settings.mcpFailureThreshold,
-					retryPolicy: {
-						maxAttempts: this.settings.mcpRetryMaxAttempts,
-						initialDelay: this.settings.mcpRetryInitialDelay,
-						maxDelay: this.settings.mcpRetryMaxDelay,
-						backoffMultiplier: this.settings.mcpRetryBackoffMultiplier,
-						jitter: this.settings.mcpRetryJitter,
-						transientErrorCodes: [
-							'ECONNREFUSED',
-							'ECONNRESET',
-							'ETIMEDOUT',
-							'ENOTFOUND',
-							'ECONNABORTED',
-							'EPIPE',
-							'ECONNREFUSED',
-							'ENETUNREACH',
-							'EHOSTUNREACH'
-						]
-					},
-					statusBarManager: this.statusBarManager
-				})
+			this.mcpManager = new MCPServerManager()
 
-				// Setup real-time status updates from MCP events (Feature-400-30)
-				this.mcpManager.on('server-started', () => this.updateMCPStatus())
-				this.mcpManager.on('server-stopped', () => this.updateMCPStatus())
-				this.mcpManager.on('server-failed', () => this.updateMCPStatus())
-				this.mcpManager.on('server-auto-disabled', () => this.updateMCPStatus())
-				this.mcpManager.on('server-retry', () => this.updateMCPStatus())
+			// Setup real-time status updates from MCP events (Feature-400-30)
+			this.mcpManager.on('server-started', () => this.updateMCPStatus())
+			this.mcpManager.on('server-stopped', () => this.updateMCPStatus())
+			this.mcpManager.on('server-failed', () => this.updateMCPStatus())
+			this.mcpManager.on('server-auto-disabled', () => this.updateMCPStatus())
+			this.mcpManager.on('server-retry', () => this.updateMCPStatus())
 
-				// Create tool executor with settings
-				this.mcpExecutor = createToolExecutor(this.mcpManager, {
-					timeout: this.settings.mcpGlobalTimeout,
-					concurrentLimit: this.settings.mcpConcurrentLimit,
-					sessionLimit: this.settings.mcpSessionLimit,
-					statusBarManager: this.statusBarManager
-				})
+			// Create tool executor with settings
+			this.mcpExecutor = createToolExecutor(this.mcpManager, {
+				timeout: this.settings.mcpGlobalTimeout,
+				concurrentLimit: this.settings.mcpConcurrentLimit,
+				sessionLimit: this.settings.mcpSessionLimit,
+				statusBarManager: this.statusBarManager
+			})
 
-				// Create code block processor
-				this.mcpCodeBlockProcessor = new CodeBlockProcessor()
-				this.mcpCodeBlockProcessor.updateServerConfigs(this.settings.mcpServers)
+			// Create code block processor
+			this.mcpCodeBlockProcessor = new CodeBlockProcessor()
+			this.mcpCodeBlockProcessor.updateServerConfigs(this.settings.mcpServers)
 
-				// Register code block processors for each server
-				this.settings.mcpServers.forEach((server) => {
-					this.registerMarkdownCodeBlockProcessor(server.name, async (source, el, ctx) => {
-						if (!this.mcpExecutor || !this.mcpCodeBlockProcessor) return
+			// Register code block processors for each server
+			this.settings.mcpServers.forEach((server) => {
+				this.registerMarkdownCodeBlockProcessor(server.name, async (source, el, ctx) => {
+					if (!this.mcpExecutor || !this.mcpCodeBlockProcessor) return
 
-						// Parse tool invocation
-						const invocation = this.mcpCodeBlockProcessor.parseToolInvocation(source, server.name)
-						if (!invocation) {
-							el.createDiv({ text: 'Invalid tool invocation format', cls: 'mcp-error' })
-							return
-						}
+					// Parse tool invocation
+					const invocation = this.mcpCodeBlockProcessor.parseToolInvocation(source, server.name)
+					if (!invocation) {
+						el.createDiv({ text: 'Invalid tool invocation format', cls: 'mcp-error' })
+						return
+					}
 
-						// Create execution request
-						const request = {
-							serverId: invocation.serverId,
-							toolName: invocation.toolName,
-							parameters: invocation.parameters,
-							source: 'user-codeblock' as const,
-							documentPath: ctx.sourcePath
-						}
+					// Create execution request
+					const request = {
+						serverId: invocation.serverId,
+						toolName: invocation.toolName,
+						parameters: invocation.parameters,
+						source: 'user-codeblock' as const,
+						documentPath: ctx.sourcePath
+					}
 
-						// Show executing status with cancel button
-						let currentRequestId: string | null = null
-						this.mcpCodeBlockProcessor.renderStatus(el, 'executing', async () => {
-							if (currentRequestId && this.mcpExecutor) {
-								await this.mcpExecutor.cancelExecution(currentRequestId)
-								// Update status to show cancelled
-								if (this.mcpCodeBlockProcessor) {
-									this.mcpCodeBlockProcessor.renderError(el, {
-										message: 'Tool execution was cancelled by user',
-										timestamp: Date.now()
-									})
-								}
-							}
-						})
-
-						try {
-							// Execute tool and capture request ID for cancellation
-							const resultWithId = await this.mcpExecutor.executeToolWithId(request)
-							currentRequestId = resultWithId.requestId
-
-							// Render result
-							if (this.mcpCodeBlockProcessor) {
-								this.mcpCodeBlockProcessor.renderResult(el, resultWithId, {
-									showMetadata: true,
-									collapsible: resultWithId.contentType === 'json'
-								})
-							}
-						} catch (error) {
-							currentRequestId = null // Clear on error
-							// Render error
+					// Show executing status with cancel button
+					let currentRequestId: string | null = null
+					this.mcpCodeBlockProcessor.renderStatus(el, 'executing', async () => {
+						if (currentRequestId && this.mcpExecutor) {
+							await this.mcpExecutor.cancelExecution(currentRequestId)
+							// Update status to show cancelled
 							if (this.mcpCodeBlockProcessor) {
 								this.mcpCodeBlockProcessor.renderError(el, {
-									message: error instanceof Error ? error.message : String(error),
+									message: 'Tool execution was cancelled by user',
 									timestamp: Date.now()
 								})
 							}
 						}
 					})
-				})
 
-				// Register MCP commands
-				const mcpCommands = getMCPCommands(this.mcpExecutor)
-				mcpCommands.forEach((cmd) => this.addCommand(cmd))
+					try {
+						// Execute tool and capture request ID for cancellation
+						const resultWithId = await this.mcpExecutor.executeToolWithId(request)
+						currentRequestId = resultWithId.requestId
 
-				// Register Tool Browser command
-				this.addCommand({
-					id: 'browse-mcp-tools',
-					name: 'Browse MCP Tools',
-					editorCallback: (editor) => {
-						const { ToolBrowserModal } = require('./modals/toolBrowserModal')
-						new ToolBrowserModal(this.app, this.mcpManager, editor).open()
-					}
-				})
-
-				// Register Insert MCP Tool Call command (Feature-400-40)
-				this.addCommand({
-					id: 'insert-mcp-tool-call',
-					name: 'Insert MCP Tool Call Template',
-					editorCallback: async (editor) => {
-						await this.insertToolCallTemplate(editor)
-					}
-				})
-
-				// Start health check timer
-				this.mcpHealthCheckInterval = setInterval(async () => {
-					if (this.mcpManager) {
-						try {
-							await this.mcpManager.performHealthCheck()
-							this.updateMCPStatus()
-						} catch (error) {
-							logger.warn('mcp health check failed', error)
+						// Render result
+						if (this.mcpCodeBlockProcessor) {
+							this.mcpCodeBlockProcessor.renderResult(el, resultWithId, {
+								showMetadata: true,
+								collapsible: resultWithId.contentType === 'json'
+							})
+						}
+					} catch (error) {
+						currentRequestId = null // Clear on error
+						// Render error
+						if (this.mcpCodeBlockProcessor) {
+							this.mcpCodeBlockProcessor.renderError(el, {
+								message: error instanceof Error ? error.message : String(error),
+								timestamp: Date.now()
+							})
 						}
 					}
-				}, HEALTH_CHECK_INTERVAL)
+				})
+			})
 
-				logger.info('mcp integration initialized', { serverCount: this.settings.mcpServers.length })
-			} catch (error) {
-				logger.error('failed to initialize mcp integration', error)
-				new Notice('Failed to initialize MCP servers. Check console for details.')
-			}
+			// Register MCP commands
+			const mcpCommands = getMCPCommands(this.mcpExecutor)
+			mcpCommands.forEach((cmd) => this.addCommand(cmd))
+
+			// Register Tool Browser command
+			this.addCommand({
+				id: 'browse-mcp-tools',
+				name: 'Browse MCP Tools',
+				editorCallback: (editor) => {
+					const { ToolBrowserModal } = require('./modals/toolBrowserModal')
+					new ToolBrowserModal(this.app, this.mcpManager, editor).open()
+				}
+			})
+
+			// Register Insert MCP Tool Call command (Feature-400-40)
+			this.addCommand({
+				id: 'insert-mcp-tool-call',
+				name: 'Insert MCP Tool Call Template',
+				editorCallback: async (editor) => {
+					await this.insertToolCallTemplate(editor)
+				}
+			})
+
+			// Start health check timer
+			this.mcpHealthCheckInterval = setInterval(async () => {
+				if (this.mcpManager) {
+					try {
+						await this.mcpManager.performHealthCheck()
+						this.updateMCPStatus()
+					} catch (error) {
+						logger.warn('mcp health check failed', error)
+					}
+				}
+			}, HEALTH_CHECK_INTERVAL)
+
+			// Start initialization in background - don't block plugin activation
+			this.mcpManager.initialize(this.settings.mcpServers, {
+				failureThreshold: this.settings.mcpFailureThreshold,
+				retryPolicy: {
+					maxAttempts: this.settings.mcpRetryMaxAttempts,
+					initialDelay: this.settings.mcpRetryInitialDelay,
+					maxDelay: this.settings.mcpRetryMaxDelay,
+					backoffMultiplier: this.settings.mcpRetryBackoffMultiplier,
+					jitter: this.settings.mcpRetryJitter,
+					transientErrorCodes: [
+						'ECONNREFUSED',
+						'ECONNRESET',
+						'ETIMEDOUT',
+						'ENOTFOUND',
+						'ECONNABORTED',
+						'EPIPE',
+						'ECONNREFUSED',
+						'ENETUNREACH',
+						'EHOSTUNREACH'
+					]
+				},
+				statusBarManager: this.statusBarManager
+			}).catch(error => {
+				logger.error('mcp initialization failed (background)', error)
+				new Notice('Some MCP servers failed to start. Check console for details.')
+			})
+
+			logger.info('mcp integration setup complete, initializing servers in background', { serverCount: this.settings.mcpServers.length })
 		}
 
 		// Update MCP status in status bar if MCP manager is initialized
