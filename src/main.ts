@@ -82,6 +82,13 @@ export default class TarsPlugin extends Plugin {
 					statusBarManager: this.statusBarManager
 				})
 
+				// Setup real-time status updates from MCP events (Feature-400-30)
+				this.mcpManager.on('server-started', () => this.updateMCPStatus())
+				this.mcpManager.on('server-stopped', () => this.updateMCPStatus())
+				this.mcpManager.on('server-failed', () => this.updateMCPStatus())
+				this.mcpManager.on('server-auto-disabled', () => this.updateMCPStatus())
+				this.mcpManager.on('server-retry', () => this.updateMCPStatus())
+
 				// Create tool executor with settings
 				this.mcpExecutor = createToolExecutor(this.mcpManager, {
 					timeout: this.settings.mcpGlobalTimeout,
@@ -190,6 +197,10 @@ export default class TarsPlugin extends Plugin {
 
 		// Update MCP status in status bar if MCP manager is initialized
 		if (this.mcpManager) {
+			// Set refresh callback for modal (Feature-400-30-10)
+			this.statusBarManager.setRefreshCallback(async () => {
+				await this.updateMCPStatus()
+			})
 			this.updateMCPStatus()
 		}
 
@@ -435,12 +446,18 @@ export default class TarsPlugin extends Plugin {
 		const totalServers = servers.length
 		const availableTools = serverDetails.reduce((sum, s) => sum + s.toolCount, 0)
 		const retryingServers = serverDetails.filter((s) => s.isRetrying).length
+		const failedServers = serverDetails.filter((s) => s.enabled && !s.isConnected && !s.isRetrying).length
+
+		// Get active execution count from executor
+		const activeExecutions = this.mcpExecutor?.getStats().activeExecutions ?? 0
 
 		this.statusBarManager.setMCPStatus({
 			runningServers,
 			totalServers,
 			availableTools,
 			retryingServers,
+			failedServers,
+			activeExecutions,
 			servers: serverDetails
 		})
 	}

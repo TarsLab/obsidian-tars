@@ -543,6 +543,50 @@ summary.tars-setting-h4 {
 	margin-left: 8px;
 }
 
+/* MCP Status Modal Header (Feature-400-30) */
+.mcp-panel-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: var(--size-4-4);
+}
+
+.mcp-panel-header h2 {
+	margin: 0;
+}
+
+.mcp-refresh-button {
+	padding: var(--size-2-1) var(--size-4-2);
+	background-color: var(--interactive-normal);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	cursor: pointer;
+	font-size: var(--font-ui-smaller);
+}
+
+.mcp-refresh-button:hover {
+	background-color: var(--interactive-hover);
+}
+
+.mcp-refresh-button:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+/* MCP Status Summary Colors */
+.mcp-active {
+	color: var(--text-accent);
+	font-weight: var(--font-semibold);
+}
+
+.mcp-retrying {
+	color: var(--text-warning, #fbbf24);
+}
+
+.mcp-failed {
+	color: var(--text-error);
+}
+
 /* MCP Error Message */
 .mcp-error-container {
 	margin-top: var(--size-2-2);

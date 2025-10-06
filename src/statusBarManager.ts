@@ -50,6 +50,8 @@ export interface MCPStatusInfo {
 	totalServers: number
 	availableTools: number
 	retryingServers: number
+	failedServers?: number
+	activeExecutions?: number
 	servers: Array<{
 		id: string
 		name: string
@@ -73,7 +75,8 @@ class MCPStatusModal extends Modal {
 		private errorLog: ErrorLogEntry[] = [],
 		private onClearLogs?: () => void,
 		private onRemoveLog?: (id: string) => void,
-		private currentError?: ErrorInfo
+		private currentError?: ErrorInfo,
+		private onRefresh?: () => Promise<void>
 	) {
 		super(app)
 		this.activeTab = currentError ? 'errors' : 'mcp'
@@ -134,17 +137,56 @@ class MCPStatusModal extends Modal {
 	private renderMcpPanel(panel?: HTMLElement) {
 		if (!panel) return
 
-		panel.createEl('h2', { text: 'MCP Server Status' })
+		// Add header with refresh button (Feature-400-30-10)
+		const header = panel.createDiv({ cls: 'mcp-panel-header' })
+		header.createEl('h2', { text: 'MCP Server Status' })
+		if (this.onRefresh) {
+			const refreshBtn = header.createEl('button', {
+				text: '🔄 Refresh',
+				cls: 'mcp-refresh-button'
+			})
+			refreshBtn.onclick = async () => {
+				refreshBtn.disabled = true
+				refreshBtn.textContent = '⏳ Refreshing...'
+				try {
+					await this.onRefresh?.()
+					// Re-render the panel with updated data
+					panel.empty()
+					this.renderMcpPanel(panel)
+				} catch (error) {
+					refreshBtn.textContent = '❌ Error'
+				} finally {
+					if (!refreshBtn.disabled) {
+						refreshBtn.disabled = false
+						refreshBtn.textContent = '🔄 Refresh'
+					}
+				}
+			}
+		}
+
 		const statusContainer = panel.createDiv({ cls: 'mcp-status-modal' })
 
+		// Summary with execution statistics (Feature-400-30-10)
 		const summary = statusContainer.createDiv({ cls: 'mcp-summary' })
 		summary.createEl('p', {
 			text: `Running: ${this.mcpStatus.runningServers} / ${this.mcpStatus.totalServers} servers`
 		})
+		if (this.mcpStatus.activeExecutions !== undefined && this.mcpStatus.activeExecutions > 0) {
+			summary.createEl('p', {
+				text: `Active Executions: ${this.mcpStatus.activeExecutions}`,
+				cls: 'mcp-active'
+			})
+		}
 		if (this.mcpStatus.retryingServers > 0) {
 			summary.createEl('p', {
 				text: `Retrying: ${this.mcpStatus.retryingServers} servers`,
 				cls: 'mcp-retrying'
+			})
+		}
+		if (this.mcpStatus.failedServers !== undefined && this.mcpStatus.failedServers > 0) {
+			summary.createEl('p', {
+				text: `Failed: ${this.mcpStatus.failedServers} servers`,
+				cls: 'mcp-failed'
 			})
 		}
 		summary.createEl('p', {
@@ -577,6 +619,7 @@ export class StatusBarManager {
 	private autoHideTimer: NodeJS.Timeout | null = null
 	private errorLog: ErrorLogEntry[] = []
 	private readonly maxErrorLogSize = 50
+	private onRefreshMCPStatus?: () => Promise<void>
 
 	constructor(
 		private app: App,
@@ -595,6 +638,13 @@ export class StatusBarManager {
 		this.refreshStatusBar()
 	}
 
+	/**
+	 * Set the refresh callback for MCP status (Feature-400-30-10)
+	 */
+	setRefreshCallback(callback: () => Promise<void>) {
+		this.onRefreshMCPStatus = callback
+	}
+
 	private setupClickHandler() {
 		this.statusBarItem.addEventListener('click', () => {
 			// MCP status takes priority
@@ -606,7 +656,8 @@ export class StatusBarManager {
 					this.getErrorLog(),
 					() => this.clearErrorLog(),
 					(id) => this.removeErrorLogEntry(id),
-					currentErrorInfo
+					currentErrorInfo,
+					this.onRefreshMCPStatus
 				).open()
 				return
 			}
@@ -713,22 +764,42 @@ export class StatusBarManager {
 	}
 
 	setMCPStatus(mcpStatus: MCPStatusInfo) {
-		// Update the base text to include MCP info
+		// Update the base text to include MCP info (Feature-400-30)
 		let baseText = 'Tars'
 		if (mcpStatus.totalServers > 0) {
 			baseText += ` | MCP: ${mcpStatus.runningServers}/${mcpStatus.totalServers}`
-			if (mcpStatus.retryingServers > 0) {
+
+			// Show active executions if any
+			if (mcpStatus.activeExecutions && mcpStatus.activeExecutions > 0) {
+				baseText += ` (${mcpStatus.activeExecutions} active)`
+			}
+			// Show retrying status
+			else if (mcpStatus.retryingServers && mcpStatus.retryingServers > 0) {
 				baseText += ` (${mcpStatus.retryingServers} retrying)`
-			} else if (mcpStatus.availableTools > 0) {
+			}
+			// Show available tools
+			else if (mcpStatus.availableTools > 0) {
 				baseText += ` (${mcpStatus.availableTools} tools)`
+			}
+
+			// Add error indicator if there are failed servers
+			if (mcpStatus.failedServers && mcpStatus.failedServers > 0) {
+				baseText += ` ⚠️`
 			}
 		}
 
 		let tooltip = t('Tars AI assistant is ready')
 		if (mcpStatus.totalServers > 0) {
 			tooltip = `MCP: ${mcpStatus.runningServers} of ${mcpStatus.totalServers} servers running`
-			if (mcpStatus.retryingServers > 0) {
+
+			if (mcpStatus.activeExecutions && mcpStatus.activeExecutions > 0) {
+				tooltip += `, ${mcpStatus.activeExecutions} tool${mcpStatus.activeExecutions === 1 ? '' : 's'} executing`
+			}
+			if (mcpStatus.retryingServers && mcpStatus.retryingServers > 0) {
 				tooltip += `, ${mcpStatus.retryingServers} retrying`
+			}
+			if (mcpStatus.failedServers && mcpStatus.failedServers > 0) {
+				tooltip += `, ${mcpStatus.failedServers} failed`
 			}
 			if (mcpStatus.availableTools > 0) {
 				tooltip += `, ${mcpStatus.availableTools} tools available`
