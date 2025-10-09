@@ -142,8 +142,10 @@ function insertToolResultMarkdown(editor: Editor, result: ToolExecutionResult): 
 	const cursor = editor.getCursor()
 	const formattedContent = formatResultContent(result)
 	const bodyLines = formattedContent.split('\n')
+	const executedAtIso = new Date().toISOString()
 	const calloutLines = [
 		`> [!tool]- Tool Result (${result.executionDuration}ms)`,
+		`> Executed: ${executedAtIso}`,
 		...bodyLines.map((line) => `> ${line}`)
 	]
 	const markdown = `\n${calloutLines.join('\n')}\n`

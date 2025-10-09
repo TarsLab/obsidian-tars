@@ -101,6 +101,7 @@ describe('ToolCallingCoordinator integration: markdown persistence', () => {
 	expect(editor.content).toContain('> ```json')
 	expect(editor.content).toContain('>   "city": "London"')
 	expect(editor.content).toContain('> [!tool]- Tool Result (1234ms)')
+	expect(editor.content).toMatch(/> Executed: .+Z/)
 	expect(editor.content).toContain('>   "forecast": "Sunny"')
 	})
 })

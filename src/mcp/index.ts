@@ -63,6 +63,7 @@ export {
 	type ToolResponseParser
 } from './toolResponseParser'
 export { registerDocumentSessionHandlers } from './documentSessionHandlers'
+export { DocumentToolCache, type CachedToolResult } from './toolResultCache'
 // Core types
 export * from './types'
 export * from './utils'
