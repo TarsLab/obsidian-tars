@@ -42,17 +42,11 @@ export class MCPServerSettings {
 
 	// Main render method for MCP settings section
 	render(containerEl: HTMLElement): void {
-		// MCP Servers collapsible section
-		const mcpSection = containerEl.createEl('details')
-		mcpSection.createEl('summary', { text: 'MCP Servers', cls: 'tars-setting-h4' })
-		// Keep MCP section open by default for better UX
-		mcpSection.setAttribute('open', 'true')
-
-		this.renderGlobalSettings(mcpSection)
-		this.renderServerList(mcpSection)
-		this.renderQuickAddButtons(mcpSection)
-		this.renderAddNewServerButton(mcpSection)
-	}
+		this.renderGlobalSettings(containerEl)
+		this.renderServerList(containerEl)
+		this.renderQuickAddButtons(containerEl)
+		this.renderAddNewServerButton(containerEl)
+}
 
 	private renderGlobalSettings(containerEl: HTMLElement): void {
 		// Global MCP settings

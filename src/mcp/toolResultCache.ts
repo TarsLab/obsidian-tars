@@ -4,7 +4,7 @@ import type { Editor } from 'obsidian'
 export interface CachedToolResult {
 	serverId: string
 	serverName: string
-	oolName: string
+	toolName: string
 	parameters: Record<string, unknown>
 	parameterHash: string
 	durationMs?: number

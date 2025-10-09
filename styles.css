@@ -494,6 +494,46 @@ summary.tars-setting-h4 {
 	align-items: center;
 }
 
+.tars-collapsible {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	margin-bottom: var(--size-4-4);
+	background-color: var(--background-secondary);
+}
+
+.tars-collapsible__summary {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-2);
+	padding: var(--size-4-2) var(--size-4-3);
+	cursor: pointer;
+	font-weight: var(--font-semibold);
+	list-style: none;
+}
+
+.tars-collapsible__summary::-webkit-details-marker {
+	display: none;
+}
+
+.tars-collapsible__summary::before {
+	content: '▸';
+	font-size: 0.8em;
+	transition: transform 0.15s ease;
+}
+
+.tars-collapsible[open] > .tars-collapsible__summary::before {
+	transform: rotate(90deg);
+}
+
+.tars-collapsible__summary:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.tars-collapsible__content {
+	padding: var(--size-4-2) var(--size-4-3) var(--size-4-3);
+	border-top: 1px solid var(--background-modifier-border);
+}
+
 .mcp-textarea-container {
 	margin-top: var(--size-2-2);
 	margin-bottom: var(--size-4-2);

@@ -159,9 +159,21 @@ export class TarsSettingTab extends PluginSettingTab {
 
 		containerEl.createEl('br')
 
-		new Setting(containerEl).setName(t('System message')).setHeading()
+		const systemSectionContent = this.createCollapsibleSection(
+			containerEl,
+			t('System message'),
+			this.plugin.settings.uiState?.systemMessageExpanded ?? false,
+			async (open) => {
+				this.plugin.settings.uiState = {
+					...this.plugin.settings.uiState,
+					systemMessageExpanded: open
+				}
+				await this.plugin.saveSettings()
+			}
+		)
+
 		let defaultSystemMsgInput: HTMLTextAreaElement | null = null
-		new Setting(containerEl)
+		new Setting(systemSectionContent)
 			.setName(t('Enable default system message'))
 			.setDesc(t('Automatically add a system message when none exists in the conversation'))
 			.addToggle((toggle) =>
@@ -174,7 +186,7 @@ export class TarsSettingTab extends PluginSettingTab {
 				})
 			)
 
-		new Setting(containerEl).setName(t('Default system message')).addTextArea((textArea) => {
+		new Setting(systemSectionContent).setName(t('Default system message')).addTextArea((textArea) => {
 			defaultSystemMsgInput = textArea.inputEl
 			textArea
 				.setDisabled(!this.plugin.settings.enableDefaultSystemMsg)
@@ -213,10 +225,20 @@ export class TarsSettingTab extends PluginSettingTab {
 
 		containerEl.createEl('br')
 
-		const advancedSection = containerEl.createEl('details')
-		advancedSection.createEl('summary', { text: t('Advanced'), cls: 'tars-setting-h4' })
+		const advancedSectionContent = this.createCollapsibleSection(
+			containerEl,
+			t('Advanced'),
+			this.plugin.settings.uiState?.advancedExpanded ?? false,
+			async (open) => {
+				this.plugin.settings.uiState = {
+					...this.plugin.settings.uiState,
+					advancedExpanded: open
+				}
+				await this.plugin.saveSettings()
+			}
+		)
 
-		new Setting(advancedSection)
+		new Setting(advancedSectionContent)
 			.setName(t('Internal links for assistant messages'))
 			.setDesc(
 				t(
@@ -231,7 +253,7 @@ export class TarsSettingTab extends PluginSettingTab {
 			)
 
 		let answerDelayInput: HTMLInputElement | null = null
-		new Setting(advancedSection)
+		new Setting(advancedSectionContent)
 			.setName(t('Delay before answer (Seconds)'))
 			.setDesc(
 				t(
@@ -262,7 +284,7 @@ export class TarsSettingTab extends PluginSettingTab {
 					})
 			})
 
-		new Setting(advancedSection)
+		new Setting(advancedSectionContent)
 			.setName(t('Replace tag Command'))
 			.setDesc(t('Replace the names of the two most frequently occurring speakers with tag format.'))
 			.addToggle((toggle) =>
@@ -277,7 +299,7 @@ export class TarsSettingTab extends PluginSettingTab {
 				})
 			)
 
-		new Setting(advancedSection)
+		new Setting(advancedSectionContent)
 			.setName(t('Export to JSONL Command'))
 			.setDesc(t('Export conversations to JSONL'))
 			.addToggle((toggle) =>
@@ -292,7 +314,7 @@ export class TarsSettingTab extends PluginSettingTab {
 				})
 			)
 
-		new Setting(advancedSection)
+		new Setting(advancedSectionContent)
 			.setName(t('Tag suggest'))
 			.setDesc(
 				t(
@@ -308,10 +330,22 @@ export class TarsSettingTab extends PluginSettingTab {
 
 		// MCP Server Integration Settings
 		containerEl.createEl('br')
+		const mcpSectionContent = this.createCollapsibleSection(
+			containerEl,
+			'MCP Servers',
+			this.plugin.settings.uiState?.mcpServersExpanded ?? false,
+			async (open) => {
+				this.plugin.settings.uiState = {
+					...this.plugin.settings.uiState,
+					mcpServersExpanded: open
+				}
+				await this.plugin.saveSettings()
+			}
+		)
 
 		// Use the new MCPServerSettings component
 		const mcpSettings = new MCPServerSettings(this.app, this.plugin, () => this.display())
-		mcpSettings.render(containerEl)
+		mcpSettings.render(mcpSectionContent)
 	}
 
 	createProviderSetting = (index: number, settings: ProviderSettings, isOpen: boolean = false) => {
@@ -773,6 +807,24 @@ export class TarsSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings()
 					})
 			)
+	}
+
+	private createCollapsibleSection(
+		parent: HTMLElement,
+		title: string,
+		open: boolean,
+		onToggle: (open: boolean) => Promise<void> | void
+	): HTMLElement {
+		const details = parent.createEl('details', { cls: 'tars-collapsible' })
+		details.open = open
+		details.addEventListener('toggle', () => {
+			void onToggle(details.open)
+		})
+
+		const summary = details.createEl('summary', { cls: 'tars-collapsible__summary' })
+		summary.createSpan({ text: title })
+
+		return details.createDiv({ cls: 'tars-collapsible__content' })
 	}
 }
 

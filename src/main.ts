@@ -37,7 +37,7 @@ import { MCPToolSuggest } from './suggests/mcpToolSuggest'
 
 function createNoticeSessionNotifications(): SessionNotificationHandlers {
 	return {
-		onLimitReached: async (documentPath, limit, current) => {
+		onLimitReached: async (documentPath: string, limit: number, current: number) => {
 			return new Promise((resolve) => {
 				try {
 					const notice: any = new Notice('', 0)
@@ -89,7 +89,7 @@ function createNoticeSessionNotifications(): SessionNotificationHandlers {
 				}
 			})
 		},
-		onSessionReset: (documentPath) => {
+		onSessionReset: (documentPath: string) => {
 			try {
 				new Notice(`Session counter reset for ${documentPath}`, 4000)
 			} catch {
@@ -469,6 +469,10 @@ export default class TarsPlugin extends Plugin {
 	async loadSettings() {
 		const data = await this.loadData()
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, data)
+		this.settings.uiState = {
+			...DEFAULT_SETTINGS.uiState,
+			...this.settings.uiState
+		}
 
 		// Migrate legacy MCP server configs (dockerConfig/deploymentType → executionCommand)
 		if (this.settings.mcpServers && this.settings.mcpServers.length > 0) {

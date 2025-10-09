@@ -58,6 +58,11 @@ export interface PluginSettings {
 	mcpRetryMaxDelay: number
 	mcpRetryBackoffMultiplier: number
 	mcpRetryJitter: boolean
+	uiState?: {
+		mcpServersExpanded?: boolean
+		systemMessageExpanded?: boolean
+		advancedExpanded?: boolean
+	}
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -94,7 +99,12 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	mcpRetryInitialDelay: 1000,
 	mcpRetryMaxDelay: 30000,
 	mcpRetryBackoffMultiplier: 2,
-	mcpRetryJitter: true
+	mcpRetryJitter: true,
+	uiState: {
+		mcpServersExpanded: false,
+		systemMessageExpanded: false,
+		advancedExpanded: false
+	}
 }
 
 export const availableVendors: Vendor[] = [
