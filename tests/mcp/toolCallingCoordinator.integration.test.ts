@@ -26,6 +26,10 @@ class MockEditor {
 		return { ...this.cursor }
 	}
 
+	getValue() {
+		return this.content
+	}
+
 	setCursor(position: { line: number; ch: number }) {
 		this.cursor = { ...position }
 	}
@@ -103,5 +107,84 @@ describe('ToolCallingCoordinator integration: markdown persistence', () => {
 	expect(editor.content).toContain('> [!tool]- Tool Result (1234ms)')
 	expect(editor.content).toMatch(/> Executed: .+Z/)
 	expect(editor.content).toContain('>   "forecast": "Sunny"')
+	})
+
+	it('should reuse cached tool result when user chooses cached option', async () => {
+		const toolCall: ToolCall = {
+			id: 'call_cached',
+			name: 'getWeather',
+			arguments: { city: 'Paris' }
+		}
+
+		const mockParser: ToolResponseParser<unknown> = {
+			reset: vi.fn(),
+			parseChunk: vi.fn().mockImplementation(() => null),
+			hasCompleteToolCalls: vi.fn().mockReturnValueOnce(true).mockReturnValue(false),
+			getToolCalls: vi.fn().mockReturnValueOnce([toolCall]).mockReturnValue([])
+		}
+
+		const adapter = {
+			sendRequest: async function* () {
+				yield {}
+			},
+			getParser: () => mockParser,
+			findServer: () => ({ id: 'weather-server', name: 'Weather Server' }),
+			formatToolResult: vi.fn().mockImplementation((_id, result) => ({
+				role: 'tool',
+				content: String(result.content),
+				tool_call_id: toolCall.id
+			}))
+		} as unknown as ProviderAdapter<unknown>
+
+		const executor: StubToolExecutor = {
+			executeTool: vi.fn().mockResolvedValue({
+				content: { forecast: 'Rainy' },
+				contentType: 'json',
+				executionDuration: 999
+			})
+		}
+
+		const coordinator = new ToolCallingCoordinator()
+		const editor = new MockEditor()
+		editor.content = `> [!tool]- Tool Call (Weather Server: getWeather)
+> Tool: getWeather
+> Server Name: Weather Server
+> Server ID: weather-server
+> \`\`\`json
+> {
+>   "city": "Paris"
+> }
+> \`\`\`
+
+> [!tool]- Tool Result (180ms)
+> Executed: 2025-10-09T12:00:00.000Z
+> \`\`\`json
+> {
+>   "forecast": "Cloudy"
+> }
+> \`\`\`
+`
+
+		const prompt = vi.fn().mockResolvedValue<'use-cached'>('use-cached')
+
+		for await (const _chunk of coordinator.generateWithTools(
+			[{ role: 'user', content: 'Weather?' }],
+			adapter,
+			executor as unknown as import('../../src/mcp/executor').ToolExecutor,
+			{
+				documentPath: 'Weather.md',
+				editor,
+				onPromptCachedResult: prompt
+			} as never
+		)) {
+			// consume generator
+		}
+
+		expect(prompt).toHaveBeenCalledWith('getWeather', expect.objectContaining({ serverId: 'weather-server' }))
+		expect(executor.executeTool).not.toHaveBeenCalled()
+		expect(adapter.formatToolResult).toHaveBeenCalledWith(
+			toolCall.id,
+			expect.objectContaining({ contentType: 'markdown' })
+		)
 	})
 })

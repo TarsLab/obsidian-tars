@@ -59,7 +59,10 @@ const sendRequestFunc = (settings: AzureOptions): SendRequest =>
 					formattedMessages,
 					adapter,
 					mcpExec,
-					{ documentPath: documentPath || 'unknown.md' }
+					{
+						documentPath: documentPath || 'unknown.md',
+						autoUseDocumentCache: true
+					}
 				)
 
 				return

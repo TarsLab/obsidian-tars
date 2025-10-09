@@ -55,7 +55,10 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 					formattedMessages,
 					adapter,
 					mcpExec,
-					{ documentPath: documentPath || 'unknown.md' }
+					{
+						documentPath: documentPath || 'unknown.md',
+						autoUseDocumentCache: true
+					}
 				)
 
 				return

@@ -13,6 +13,7 @@ import type { Editor } from 'obsidian'
 import { createLogger } from '../logger'
 import type { StatusBarManager } from '../statusBarManager'
 import type { ToolExecutor } from './executor'
+import { DocumentToolCache, type CachedToolResult } from './toolResultCache'
 import type { ToolCall, ToolResponseParser } from './toolResponseParser'
 import type { ToolServerInfo } from './types'
 
@@ -78,6 +79,11 @@ export interface GenerateOptions {
 	onToolResult?: (toolName: string, duration: number) => void
 	editor?: Editor
 	statusBarManager?: StatusBarManager
+	onPromptCachedResult?: (
+		toolName: string,
+	cached: import('./toolResultCache').CachedToolResult
+) => Promise<'re-execute' | 'use-cached' | 'cancel'>
+	autoUseDocumentCache?: boolean
 }
 
 function insertToolCallMarkdown(
@@ -176,7 +182,16 @@ export class ToolCallingCoordinator {
 		executor: ToolExecutor,
 		options: GenerateOptions = {}
 	): AsyncGenerator<string> {
-		const { maxTurns = 10, documentPath = '', onToolCall, onToolResult, editor, statusBarManager } = options
+		const {
+			maxTurns = 10,
+			documentPath = '',
+			onToolCall,
+			onToolResult,
+			editor,
+			statusBarManager,
+			onPromptCachedResult,
+			autoUseDocumentCache = false
+		} = options
 
 		logger.debug('starting generation loop', {
 			initialMessageCount: messages.length,
@@ -185,6 +200,7 @@ export class ToolCallingCoordinator {
 		})
 
 		const conversation = [...messages]
+		const documentCache = editor ? new DocumentToolCache() : null
 
 		for (let turn = 0; turn < maxTurns; turn++) {
 			logger.debug('processing turn', { turn: turn + 1, maxTurns })
@@ -268,6 +284,52 @@ export class ToolCallingCoordinator {
 						serverId: serverInfo.id,
 						serverName: serverInfo.name
 					})
+
+					let cachedResult: CachedToolResult | null = null
+					if (documentCache && editor) {
+						cachedResult = documentCache.findExistingResult(
+							editor,
+							serverInfo.id,
+							toolCall.name,
+							toolCall.arguments || {}
+						)
+					}
+
+					let decision: 'execute' | 'use-cached' | 'cancel' = 'execute'
+					if (cachedResult) {
+						if (autoUseDocumentCache) {
+							decision = 'use-cached'
+						} else {
+							const handler = onPromptCachedResult ?? promptCachedResultWithNotice
+							const choice = await handler(toolCall.name, cachedResult)
+							if (choice === 'use-cached') {
+								decision = 'use-cached'
+							} else if (choice === 'cancel') {
+								decision = 'cancel'
+							}
+						}
+					}
+
+					if (decision === 'cancel') {
+						logger.info('tool execution cancelled by user via cache decision', {
+							tool: toolCall.name,
+							documentPath
+						})
+						continue
+					}
+
+					if (decision === 'use-cached' && cachedResult) {
+						logger.info('using cached tool result', {
+							tool: toolCall.name,
+							documentPath,
+							executedAt: cachedResult.executedAt
+						})
+						const cachedExecution = convertCachedResultToToolExecution(cachedResult)
+						onToolResult?.(toolCall.name, cachedExecution.executionDuration)
+						const toolMessage = adapter.formatToolResult(toolCall.id, cachedExecution)
+						conversation.push(toolMessage)
+						continue
+					}
 
 					// Notify about tool execution
 					onToolCall?.(toolCall.name)
@@ -354,4 +416,93 @@ export class ToolCallingCoordinator {
  */
 export function createToolCallingCoordinator(): ToolCallingCoordinator {
 	return new ToolCallingCoordinator()
+}
+
+function convertCachedResultToToolExecution(cached: CachedToolResult): ToolExecutionResult {
+	return {
+		content: cached.resultMarkdown,
+		contentType: 'markdown',
+		executionDuration: cached.durationMs ?? 0
+	}
+}
+
+function promptCachedResultWithNotice(
+	toolName: string,
+	cached: CachedToolResult
+): Promise<'re-execute' | 'use-cached' | 'cancel'> {
+	return new Promise((resolve) => {
+		const NoticeCtor = (globalThis as { Notice?: new (...args: any[]) => any }).Notice
+		if (typeof NoticeCtor !== 'function') {
+			resolve('re-execute')
+			return
+		}
+
+		try {
+			const notice: any = new NoticeCtor('', 0)
+			const root = notice?.noticeEl?.createDiv?.({ cls: 'mcp-cache-notice' }) ?? null
+			const container = root ?? notice?.noticeEl
+			if (!container) {
+				resolve('re-execute')
+				return
+			}
+
+			if (typeof container.empty === 'function') {
+				container.empty()
+			} else if ('innerHTML' in container) {
+				;(container as HTMLElement).innerHTML = ''
+			}
+
+			const ageLabel = cached.executedAt ? formatCacheAgeLabel(cached.executedAt) : 'previously'
+
+			container.createEl?.('p', {
+				text: `Tool "${toolName}" already has a cached result (${ageLabel}).`
+			})
+			container.createEl?.('p', {
+				cls: 'mcp-cache-meta',
+				text: 'Choose how you want to proceed.'
+			})
+
+			const actions = container.createDiv?.({ cls: 'mcp-cache-actions' }) ?? container
+			const cleanup = (choice: 're-execute' | 'use-cached' | 'cancel') => {
+				if (typeof notice?.hide === 'function') {
+					notice.hide()
+				}
+				resolve(choice)
+			}
+
+			actions
+				.createEl?.('button', { text: 'Use Cached', cls: 'mod-cta' })
+				?.addEventListener('click', () => cleanup('use-cached'))
+
+			actions
+				.createEl?.('button', { text: 'Re-execute', cls: 'mod-warning' })
+				?.addEventListener('click', () => cleanup('re-execute'))
+
+			actions
+				.createEl?.('button', { text: 'Cancel' })
+				?.addEventListener('click', () => cleanup('cancel'))
+		} catch {
+			resolve('re-execute')
+		}
+	})
+}
+
+function formatCacheAgeLabel(executedAt: number): string {
+	const diffMs = Date.now() - executedAt
+	if (!Number.isFinite(diffMs) || diffMs < 0) {
+		return 'previously'
+	}
+	const minutes = Math.floor(diffMs / 60000)
+	if (minutes < 1) {
+		return 'just now'
+	}
+	if (minutes < 60) {
+		return `${minutes}m ago`
+	}
+	const hours = Math.floor(minutes / 60)
+	if (hours < 24) {
+		return `${hours}h ago`
+	}
+	const days = Math.floor(hours / 24)
+	return `${days}d ago`
 }

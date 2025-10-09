@@ -132,7 +132,8 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 				yield* coordinator.generateWithTools(formattedMessages, adapter, mcpExec, {
 					documentPath: documentPath || 'unknown.md',
 					editor,
-					statusBarManager: statusBarManager as any
+					statusBarManager: statusBarManager as any,
+					autoUseDocumentCache: true
 				})
 
 				return

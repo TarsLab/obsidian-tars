@@ -51,7 +51,8 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 				yield* coordinator.generateWithTools(formattedMessages, adapter, mcpExec, {
 					documentPath: documentPath || 'unknown.md',
 					statusBarManager: statusBarManager as any,
-					editor: editor as any
+					editor: editor as any,
+					autoUseDocumentCache: true
 				})
 
 				return
