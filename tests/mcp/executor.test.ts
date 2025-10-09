@@ -5,6 +5,8 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ToolExecutor } from '../../src/mcp/executor'
+import type { SessionNotificationHandlers } from '../../src/mcp/executor'
+import type { ExecutionTracker } from '../../src/mcp/types'
 import { MCPServerManager } from '../../src/mcp/managerMCPUse'
 
 describe('ToolExecutor', () => {
@@ -311,6 +313,138 @@ describe('ToolExecutor limits contract tests', () => {
 			// THEN: activeExecutions should remain empty (no additions before error)
 			expect(tracker.activeExecutions.size).toBe(0)
 			expect(tracker.totalExecuted).toBe(0)
+		})
+	})
+
+	describe('Document session tracking', () => {
+		const buildExecutor = (
+			overrides?: Partial<{
+				tracker: ExecutionTracker
+				notifications: SessionNotificationHandlers
+				callResult: unknown
+			}>
+		) => {
+			const tracker: ExecutionTracker =
+				overrides?.tracker ?? {
+					concurrentLimit: 5,
+					sessionLimit: 5,
+					activeExecutions: new Set<string>(),
+					totalExecuted: 0,
+					stopped: false,
+					executionHistory: []
+				}
+
+			const callTool = vi.fn().mockResolvedValue(
+				overrides?.callResult ?? {
+					content: 'ok',
+					contentType: 'text' as const,
+					executionDuration: 10
+				}
+			)
+
+			const mockManager = {
+				getClient: vi.fn().mockReturnValue({ callTool }),
+				listServers: vi.fn().mockReturnValue([{ id: 'test-server', name: 'Test Server' }])
+			} as unknown as MCPServerManager
+
+			const notifications: SessionNotificationHandlers =
+				overrides?.notifications ?? {
+					onLimitReached: vi.fn().mockResolvedValue('cancel'),
+					onSessionReset: vi.fn()
+				}
+
+			return {
+				executor: new ToolExecutor(mockManager, tracker, { sessionNotifications: notifications }),
+				tracker,
+				notifications,
+				callTool
+			}
+		}
+
+		it('maintains independent totals per document', async () => {
+			// Given: executor with unlimited sessions
+			const { executor } = buildExecutor({
+				tracker: {
+					concurrentLimit: 5,
+					sessionLimit: -1,
+					activeExecutions: new Set<string>(),
+					totalExecuted: 0,
+					stopped: false,
+					executionHistory: []
+				}
+			})
+
+			// When: executing tools across two documents
+			await executor.executeTool({
+				serverId: 'test-server',
+				toolName: 'demo',
+				parameters: {},
+				source: 'user-codeblock',
+				documentPath: 'doc-a.md'
+			})
+			await executor.executeTool({
+				serverId: 'test-server',
+				toolName: 'demo',
+				parameters: {},
+				source: 'user-codeblock',
+				documentPath: 'doc-b.md'
+			})
+
+			// Then: each document keeps its own counter without cross-contamination
+			expect(executor.getTotalSessionCount('doc-a.md')).toBe(1)
+			expect(executor.getTotalSessionCount('doc-b.md')).toBe(1)
+			expect(executor.getStats().totalExecuted).toBe(1)
+		})
+
+		it('resets only targeted document and emits notices appropriately', async () => {
+			// Given: executor with mocked notifications
+			const notifications: SessionNotificationHandlers = {
+				onLimitReached: vi.fn().mockResolvedValue('cancel'),
+				onSessionReset: vi.fn()
+			}
+			const { executor } = buildExecutor({ notifications })
+
+			await executor.executeTool({
+				serverId: 'test-server',
+				toolName: 'demo',
+				parameters: {},
+				source: 'user-codeblock',
+				documentPath: 'doc-a.md'
+			})
+			await executor.executeTool({
+				serverId: 'test-server',
+				toolName: 'demo',
+				parameters: {},
+				source: 'user-codeblock',
+				documentPath: 'doc-b.md'
+			})
+
+			// When: resetting doc-a explicitly
+			executor.resetSessionCount('doc-a.md')
+
+			// Then: doc-a is cleared, doc-b preserved, reset notice emitted once
+			expect(executor.getTotalSessionCount('doc-a.md')).toBe(0)
+			expect(executor.getTotalSessionCount('doc-b.md')).toBe(1)
+			expect(notifications.onSessionReset).toHaveBeenCalledWith('doc-a.md')
+		})
+
+		it('clearing document session defers reset notice until document reopens', async () => {
+			// Given: executor with notifications tracking
+			const notifications: SessionNotificationHandlers = {
+				onLimitReached: vi.fn().mockResolvedValue('cancel'),
+				onSessionReset: vi.fn()
+			}
+			const { executor } = buildExecutor({ notifications })
+
+			executor.switchDocument('doc-a.md')
+			executor.clearDocumentSession('doc-a.md')
+
+			// When: switching back to the cleared document
+			expect(notifications.onSessionReset).not.toHaveBeenCalled()
+			executor.switchDocument('doc-a.md')
+
+			// Then: notice fires once replaying into context
+			expect(notifications.onSessionReset).toHaveBeenCalledWith('doc-a.md')
 		})
 	})
 })
