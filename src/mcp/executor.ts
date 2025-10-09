@@ -28,8 +28,25 @@ export interface ToolExecutionResultWithId extends ToolExecutionResult {
 	requestId: string
 }
 
+export interface SessionNotificationHandlers {
+	onLimitReached: (
+		documentPath: string,
+		limit: number,
+		current: number
+	) => Promise<'continue' | 'cancel'>
+	onSessionReset: (documentPath: string) => void
+}
+
+function createDefaultSessionNotifications(): SessionNotificationHandlers {
+	return {
+		onLimitReached: async () => 'cancel',
+		onSessionReset: () => {}
+	}
+}
+
 export interface ToolExecutorOptions {
 	timeout?: number
+	sessionNotifications?: SessionNotificationHandlers
 }
 
 export class ToolExecutor {
@@ -40,6 +57,8 @@ export class ToolExecutor {
 	private statusBarManager?: StatusBarManager
 	private readonly documentSessions = new Map<string, DocumentSessionState>()
 	private currentDocumentPath?: string
+	private readonly sessionNotifications: SessionNotificationHandlers
+	private readonly documentsPendingResetNotice = new Set<string>()
 
 	constructor(
 		manager: MCPServerManager,
@@ -51,6 +70,7 @@ export class ToolExecutor {
 		this.tracker = tracker
 		this.options = { timeout: 30000, ...options }
 		this.statusBarManager = statusBarManager
+		this.sessionNotifications = options.sessionNotifications ?? createDefaultSessionNotifications()
 	}
 
 	/**
@@ -79,13 +99,32 @@ export class ToolExecutor {
 	 */
 	private async executeToolInternal(request: ToolExecutionRequest): Promise<ToolExecutionResult> {
 		const documentPath = this.normalizeDocumentPath(request.documentPath)
-		const documentState = this.setCurrentDocument(documentPath)
+		let documentState = this.setCurrentDocument(documentPath)
 
-		// Check if execution is allowed for this document
+		// Ensure execution is allowed for this document, prompting user when limit reached
 		if (!this.canExecute(documentPath)) {
-			throw new ExecutionLimitError('session', documentState.totalSessionCount, this.tracker.sessionLimit, {
-				documentPath
-			})
+			if (this.isSessionLimitReached(documentPath)) {
+				const decision = await this.sessionNotifications.onLimitReached(
+					documentPath,
+					this.tracker.sessionLimit,
+					documentState.totalSessionCount
+				)
+
+				if (decision === 'continue') {
+					this.resetDocumentSession(documentPath, { emitNotice: true })
+					documentState = this.setCurrentDocument(documentPath)
+				} else {
+					throw new ExecutionLimitError('session', documentState.totalSessionCount, this.tracker.sessionLimit, {
+						documentPath
+					})
+				}
+			}
+
+			if (!this.canExecute(documentPath)) {
+				throw new ExecutionLimitError('session', documentState.totalSessionCount, this.tracker.sessionLimit, {
+					documentPath
+				})
+			}
 		}
 
 		// Get MCP client
@@ -174,15 +213,8 @@ export class ToolExecutor {
 		}
 
 		// Check session limit
-		if (this.tracker.sessionLimit !== -1) {
-			const targetPath = documentPath ?? this.currentDocumentPath
-			if (targetPath) {
-				const docState = this.documentSessions.get(targetPath)
-				const totalExecuted = docState?.totalSessionCount ?? 0
-				if (totalExecuted >= this.tracker.sessionLimit) {
-					return false
-				}
-			}
+		if (!this.hasSessionCapacityFor(documentPath ?? this.currentDocumentPath)) {
+			return false
 		}
 
 		return true
@@ -240,6 +272,7 @@ export class ToolExecutor {
 		this.tracker.executionHistory = []
 		this.documentSessions.clear()
 		this.currentDocumentPath = undefined
+		this.documentsPendingResetNotice.clear()
 	}
 
 	/**
@@ -247,6 +280,31 @@ export class ToolExecutor {
 	 */
 	getHistory(): ExecutionHistoryEntry[] {
 		return [...this.tracker.executionHistory]
+	}
+
+	private hasSessionCapacityFor(documentPath?: string): boolean {
+		if (this.tracker.sessionLimit === -1) {
+			return true
+		}
+
+		if (!documentPath) {
+			return this.tracker.totalExecuted < this.tracker.sessionLimit
+		}
+
+		return this.getDocumentSessionCount(documentPath) < this.tracker.sessionLimit
+	}
+
+	private isSessionLimitReached(documentPath: string): boolean {
+		if (this.tracker.sessionLimit === -1) {
+			return false
+		}
+
+		return this.getDocumentSessionCount(documentPath) >= this.tracker.sessionLimit
+	}
+
+	private getDocumentSessionCount(documentPath: string): number {
+		const docState = this.documentSessions.get(documentPath)
+		return docState?.totalSessionCount ?? 0
 	}
 
 	/**
@@ -327,9 +385,13 @@ export class ToolExecutor {
 	}
 
 	private setCurrentDocument(documentPath: string): DocumentSessionState {
+		const existed = this.documentSessions.has(documentPath)
 		const docState = this.ensureDocumentSession(documentPath)
 		this.currentDocumentPath = documentPath
 		this.tracker.totalExecuted = docState.totalSessionCount
+		if (!existed && this.documentsPendingResetNotice.delete(documentPath)) {
+			this.sessionNotifications.onSessionReset(documentPath)
+		}
 		return docState
 	}
 
@@ -342,19 +404,26 @@ export class ToolExecutor {
 		return docState.totalSessionCount
 	}
 
-	private resetDocumentSession(documentPath: string): void {
+	private resetDocumentSession(documentPath: string, options: { emitNotice?: boolean } = {}): void {
 		const docState = this.documentSessions.get(documentPath)
 		if (docState) {
 			docState.totalSessionCount = 0
 			docState.lastAccessed = Date.now()
 		}
+		this.documentsPendingResetNotice.delete(documentPath)
+		if (options.emitNotice) {
+			this.sessionNotifications.onSessionReset(documentPath)
+		}
 		if (this.currentDocumentPath === documentPath) {
-			this.tracker.totalExecuted = 0
+			this.tracker.totalExecuted = docState?.totalSessionCount ?? 0
 		}
 	}
 
-	private removeDocumentSession(documentPath: string): void {
-		this.documentSessions.delete(documentPath)
+	private removeDocumentSession(documentPath: string, options: { scheduleNotice?: boolean } = {}): void {
+		const existed = this.documentSessions.delete(documentPath)
+		if (options.scheduleNotice && existed) {
+			this.documentsPendingResetNotice.add(documentPath)
+		}
 		if (this.currentDocumentPath === documentPath) {
 			this.currentDocumentPath = undefined
 			this.tracker.totalExecuted = 0
@@ -369,12 +438,12 @@ export class ToolExecutor {
 
 	public clearDocumentSession(documentPath: string): void {
 		const normalized = this.normalizeDocumentPath(documentPath)
-		this.removeDocumentSession(normalized)
+		this.removeDocumentSession(normalized, { scheduleNotice: true })
 	}
 
 	public resetSessionCount(documentPath: string): void {
 		const normalized = this.normalizeDocumentPath(documentPath)
-		this.resetDocumentSession(normalized)
+		this.resetDocumentSession(normalized, { emitNotice: true })
 	}
 
 	public getTotalSessionCount(documentPath: string): number {

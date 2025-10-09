@@ -70,6 +70,7 @@ export * from './utils'
 import type { StatusBarManager } from '../statusBarManager'
 import { CodeBlockProcessor } from './codeBlockProcessor'
 import { ToolExecutor } from './executor'
+import type { SessionNotificationHandlers } from './executor'
 // Import types for function signatures
 import { MCPServerManager } from './managerMCPUse'
 
@@ -80,7 +81,13 @@ export function createMCPManager(): MCPServerManager {
 
 export function createToolExecutor(
 	manager: MCPServerManager,
-	options?: { timeout?: number; concurrentLimit?: number; sessionLimit?: number; statusBarManager?: StatusBarManager }
+	options?: {
+		timeout?: number
+		concurrentLimit?: number
+		sessionLimit?: number
+		statusBarManager?: StatusBarManager
+		sessionNotifications?: SessionNotificationHandlers
+	}
 ): ToolExecutor {
 	const tracker = {
 		concurrentLimit: options?.concurrentLimit ?? DEFAULT_CONCURRENT_LIMIT,
@@ -94,7 +101,10 @@ export function createToolExecutor(
 	return new ToolExecutor(
 		manager,
 		tracker,
-		{ timeout: options?.timeout ?? DEFAULT_MCP_TIMEOUT },
+		{
+			timeout: options?.timeout ?? DEFAULT_MCP_TIMEOUT,
+			sessionNotifications: options?.sessionNotifications
+		},
 		options?.statusBarManager
 	)
 }

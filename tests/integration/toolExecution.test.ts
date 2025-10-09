@@ -193,10 +193,145 @@ timestamp: true`
 			executor.reset()
 
 			// THEN: Stats are reset
-			const stats = executor.getStats()
+		const stats = executor.getStats()
 			expect(stats.totalExecuted).toBe(0)
 			expect(stats.stopped).toBe(false)
 			expect(stats.documentSessions).toEqual([])
+		})
+	})
+
+	describe('Session limit notifications', () => {
+		it('allows user to continue after limit confirmation', async () => {
+			const { ToolExecutor } = await import('../../src/mcp')
+			const mockClient = {
+				callTool: vi.fn().mockResolvedValue({
+					content: 'ok',
+					contentType: 'text' as const,
+					executionDuration: 10
+				})
+			}
+			const mockManager = {
+				getClient: vi.fn().mockReturnValue(mockClient),
+				listServers: vi.fn().mockReturnValue([{ id: 'test-server', name: 'Test Server' }])
+			} as unknown as ReturnType<typeof createMCPManager>
+			const tracker = {
+				concurrentLimit: 5,
+				sessionLimit: 1,
+				activeExecutions: new Set<string>(),
+				totalExecuted: 0,
+				stopped: false,
+				executionHistory: []
+			}
+			const onLimitReached = vi.fn().mockResolvedValue<'continue'>('continue')
+			const onSessionReset = vi.fn()
+			const executor = new ToolExecutor(mockManager, tracker, {
+				sessionNotifications: {
+					onLimitReached,
+					onSessionReset
+				}
+			})
+
+			await executor.executeTool({
+				serverId: 'test-server',
+				toolName: 'demo',
+				parameters: {},
+				source: 'user-codeblock',
+				documentPath: 'test.md'
+			})
+
+			await executor.executeTool({
+				serverId: 'test-server',
+				toolName: 'demo',
+				parameters: {},
+				source: 'user-codeblock',
+				documentPath: 'test.md'
+			})
+
+			expect(onLimitReached).toHaveBeenCalledWith('test.md', 1, 1)
+			expect(onSessionReset).toHaveBeenCalledWith('test.md')
+			expect(mockClient.callTool).toHaveBeenCalledTimes(2)
+		})
+
+		it('aborts execution when user cancels at session limit', async () => {
+			const { ToolExecutor } = await import('../../src/mcp')
+			const mockClient = {
+				callTool: vi.fn().mockResolvedValue({
+					content: 'ok',
+					contentType: 'text' as const,
+					executionDuration: 10
+				})
+			}
+			const mockManager = {
+				getClient: vi.fn().mockReturnValue(mockClient),
+				listServers: vi.fn().mockReturnValue([{ id: 'test-server', name: 'Test Server' }])
+			} as unknown as ReturnType<typeof createMCPManager>
+			const tracker = {
+				concurrentLimit: 5,
+				sessionLimit: 1,
+				activeExecutions: new Set<string>(),
+				totalExecuted: 0,
+				stopped: false,
+				executionHistory: []
+			}
+			const onLimitReached = vi.fn().mockResolvedValue<'cancel'>('cancel')
+			const onSessionReset = vi.fn()
+			const executor = new ToolExecutor(mockManager, tracker, {
+				sessionNotifications: {
+					onLimitReached,
+					onSessionReset
+				}
+			})
+
+			await executor.executeTool({
+				serverId: 'test-server',
+				toolName: 'demo',
+				parameters: {},
+				source: 'user-codeblock',
+				documentPath: 'test.md'
+			})
+
+			await expect(
+				executor.executeTool({
+					serverId: 'test-server',
+					toolName: 'demo',
+					parameters: {},
+					source: 'user-codeblock',
+					documentPath: 'test.md'
+				})
+			).rejects.toThrow(/limit/i)
+
+			expect(onLimitReached).toHaveBeenCalledWith('test.md', 1, 1)
+			expect(onSessionReset).not.toHaveBeenCalled()
+			expect(mockClient.callTool).toHaveBeenCalledTimes(1)
+		})
+
+		it('notifies when document sessions reset after clearing state', async () => {
+			const { ToolExecutor } = await import('../../src/mcp')
+			const mockManager = {
+				getClient: vi.fn(),
+				listServers: vi.fn().mockReturnValue([{ id: 'test-server', name: 'Test Server' }])
+			} as unknown as ReturnType<typeof createMCPManager>
+			const tracker = {
+				concurrentLimit: 5,
+				sessionLimit: 5,
+				activeExecutions: new Set<string>(),
+				totalExecuted: 0,
+				stopped: false,
+				executionHistory: []
+			}
+			const onSessionReset = vi.fn()
+			const executor = new ToolExecutor(mockManager, tracker, {
+				sessionNotifications: {
+					onLimitReached: vi.fn().mockResolvedValue<'cancel'>('cancel'),
+					onSessionReset
+				}
+			})
+
+			executor.switchDocument('note.md')
+			executor.clearDocumentSession('note.md')
+			expect(onSessionReset).not.toHaveBeenCalled()
+			executor.switchDocument('note.md')
+			expect(onSessionReset).toHaveBeenCalledWith('note.md')
 		})
 	})
 })

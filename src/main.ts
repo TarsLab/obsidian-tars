@@ -23,7 +23,8 @@ import {
 	HEALTH_CHECK_INTERVAL,
 	MCPServerManager,
 	migrateServerConfigs,
-	type ToolExecutor
+	type ToolExecutor,
+	type SessionNotificationHandlers
 } from './mcp'
 import { registerDocumentSessionHandlers } from './mcp/documentSessionHandlers'
 import { getTitleFromCmdId, loadTemplateFileCommand, promptTemplateCmd, templateToCmdId } from './prompt'
@@ -33,6 +34,70 @@ import { StatusBarManager } from './statusBarManager'
 import { getMaxTriggerLineLength, TagEditorSuggest, type TagEntry } from './suggest'
 import { MCPParameterSuggest } from './suggests/mcpParameterSuggest'
 import { MCPToolSuggest } from './suggests/mcpToolSuggest'
+
+function createNoticeSessionNotifications(): SessionNotificationHandlers {
+	return {
+		onLimitReached: async (documentPath, limit, current) => {
+			return new Promise((resolve) => {
+				try {
+					const notice: any = new Notice('', 0)
+					const root = notice?.noticeEl?.createDiv?.({ cls: 'mcp-session-notice' }) ?? null
+					const container = root ?? notice?.noticeEl
+					if (!container) {
+						resolve('cancel')
+						return
+					}
+
+					if (typeof container.empty === 'function') {
+						container.empty()
+					} else {
+						if ('innerHTML' in container) {
+							;(container as HTMLElement).innerHTML = ''
+						}
+						if ('textContent' in container) {
+							container.textContent = ''
+						}
+					}
+
+					container.createEl?.('p', {
+						text: `Session limit reached for this document (total across all servers).`
+					})
+					container.createEl?.('p', {
+						cls: 'mcp-session-limit-meta',
+						text: `Document: ${documentPath} — ${current}/${limit}`
+					})
+
+					const actions = container.createDiv?.({ cls: 'mcp-session-actions' }) ?? container
+
+					const cleanup = (result: 'continue' | 'cancel') => {
+						if (typeof notice?.hide === 'function') {
+							notice.hide()
+						}
+						resolve(result)
+					}
+
+					const continueBtn = actions.createEl?.('button', {
+						cls: 'mod-cta',
+						text: 'Continue'
+					})
+					continueBtn?.addEventListener('click', () => cleanup('continue'))
+
+					const cancelBtn = actions.createEl?.('button', { text: 'Cancel' })
+					cancelBtn?.addEventListener('click', () => cleanup('cancel'))
+				} catch {
+					resolve('cancel')
+				}
+			})
+		},
+		onSessionReset: (documentPath) => {
+			try {
+				new Notice(`Session counter reset for ${documentPath}`, 4000)
+			} catch {
+				// Ignore notice failures in environments without UI
+			}
+		}
+	}
+}
 
 export default class TarsPlugin extends Plugin {
 	settings: PluginSettings
@@ -68,12 +133,13 @@ export default class TarsPlugin extends Plugin {
 			this.mcpManager.on('server-retry', () => this.updateMCPStatus())
 
 			// Create tool executor with settings
-			this.mcpExecutor = createToolExecutor(this.mcpManager, {
-				timeout: this.settings.mcpGlobalTimeout,
-				concurrentLimit: this.settings.mcpConcurrentLimit,
-				sessionLimit: this.settings.mcpSessionLimit,
-				statusBarManager: this.statusBarManager
-			})
+				this.mcpExecutor = createToolExecutor(this.mcpManager, {
+					timeout: this.settings.mcpGlobalTimeout,
+					concurrentLimit: this.settings.mcpConcurrentLimit,
+					sessionLimit: this.settings.mcpSessionLimit,
+					statusBarManager: this.statusBarManager,
+					sessionNotifications: createNoticeSessionNotifications()
+				})
 
 			// Create code block processor
 			this.mcpCodeBlockProcessor = new CodeBlockProcessor()
