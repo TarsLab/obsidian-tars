@@ -1,11 +1,12 @@
-import { type App, Notice, Setting, setIcon } from 'obsidian'
+import { type App, type ButtonComponent, Notice, Setting, setIcon } from 'obsidian'
 import { createLogger } from '../logger'
 import type TarsPlugin from '../main'
 import { MCP_CONFIG_EXAMPLES, parseConfigInput, validateConfigInput } from '../mcp/config'
-import type { CommandDisplayModeValue } from '../mcp/displayMode'
+import type { ConversionCapability, ConversionFormat } from '../mcp/displayMode'
 import {
 	CommandDisplayMode,
 	commandToRemoteUrl,
+	detectConversionCapability,
 	isValidRemoteUrl,
 	normalizeDisplayMode,
 	remoteUrlToCommand
@@ -460,17 +461,50 @@ export class MCPServerSettings {
 			})
 		}
 
-		const setSimpleViewFromCommand = () => {
-			const derivedUrl = commandToRemoteUrl(server.configInput || '')
-			simpleInput.value = derivedUrl || ''
+		const buildCommandFromConfig = (input: string): string | null => {
+			const parsed = parseConfigInput(input)
+			if (!parsed || !parsed.mcpUseConfig) {
+				return null
+			}
+			if (parsed.type === 'command') {
+				return input.trim()
+			}
+			const segments = [parsed.mcpUseConfig.command, ...(parsed.mcpUseConfig.args || [])].filter(
+				(segment) => typeof segment === 'string' && segment.length > 0
+			)
+			if (!segments.length) {
+				return null
+			}
+			return segments.join(' ').trim()
 		}
 
-		const setDisplayModeVisibility = (mode: CommandDisplayModeValue) => {
-			if (mode === CommandDisplayMode.Simple) {
+		const deriveRemoteUrlFromConfig = (input: string): string | null => {
+			const parsed = parseConfigInput(input)
+			if (!parsed) {
+				return null
+			}
+			if (parsed.type === 'url') {
+				return parsed.url ?? input.trim()
+			}
+			const command = buildCommandFromConfig(input)
+			if (!command) {
+				return null
+			}
+			return commandToRemoteUrl(command)
+		}
+
+		const updateSimpleInputFromConfig = () => {
+			const derivedUrl = deriveRemoteUrlFromConfig(server.configInput || '')
+			simpleInput.value = derivedUrl || ''
+			updatePreviewFromUrl(simpleInput.value)
+		}
+
+		const setDisplayModeVisibility = (format: ConversionFormat) => {
+			if (format === 'url') {
 				simpleContainer.style.display = ''
 				textareaContainer.style.display = 'none'
 				previewContainer.style.display = ''
-				updatePreviewFromUrl(simpleInput.value)
+				updateSimpleInputFromConfig()
 			} else {
 				simpleContainer.style.display = 'none'
 				textareaContainer.style.display = ''
@@ -479,10 +513,147 @@ export class MCPServerSettings {
 		}
 
 		textarea.value = server.configInput || ''
-		setSimpleViewFromCommand()
-		let currentMode = normalizeDisplayMode(server.displayMode)
-		server.displayMode = currentMode
-		setDisplayModeVisibility(currentMode)
+
+		let conversionCapability: ConversionCapability = detectConversionCapability(server)
+
+		const getAvailableFormats = (capability: ConversionCapability): ConversionFormat[] => {
+			const formats: ConversionFormat[] = []
+			if (capability.canShowAsUrl) formats.push('url')
+			if (capability.canShowAsShell) formats.push('shell')
+			if (capability.canShowAsJson) formats.push('json')
+			return formats
+		}
+
+		const ensureFormat = (format: ConversionFormat, capability: ConversionCapability): ConversionFormat => {
+			const available = getAvailableFormats(capability)
+			if (!available.length) {
+				return 'shell'
+			}
+			if (!available.includes(format)) {
+				return available[0]
+			}
+			return format
+		}
+
+		const getNextFormat = (format: ConversionFormat, capability: ConversionCapability): ConversionFormat => {
+			const available = getAvailableFormats(capability)
+			if (!available.length) {
+				return 'shell'
+			}
+			const index = available.indexOf(format)
+			if (index === -1) {
+				return available[0]
+			}
+			return available[(index + 1) % available.length]
+		}
+
+		const formatLabels: Record<ConversionFormat, string> = {
+			json: 'Show as JSON',
+			shell: 'Show as command',
+			url: 'Show as URL'
+		}
+
+		const toTooltip = (capability: ConversionCapability): string => {
+			const names = getAvailableFormats(capability).map((format) => {
+				if (format === 'url') return 'URL'
+				if (format === 'json') return 'JSON'
+				return 'Shell Command'
+			})
+			if (!names.length) {
+				return 'Only shell command format available'
+			}
+			return `Available formats: ${names.join(' ↔ ')}`
+		}
+
+		const convertConfigTo = (target: ConversionFormat): string | null => {
+			const current = server.configInput || ''
+			const trimmed = current.trim()
+
+			if (target === 'url') {
+				return deriveRemoteUrlFromConfig(trimmed)
+			}
+
+			const parsed = parseConfigInput(trimmed)
+
+			if (target === 'shell') {
+				if (parsed?.type === 'command') {
+					return trimmed
+				}
+				if (parsed?.type === 'url') {
+					return remoteUrlToCommand(parsed.url ?? trimmed)
+				}
+				return buildCommandFromConfig(trimmed)
+			}
+
+			if (target === 'json') {
+				if (parsed?.type === 'json' && !parsed.error) {
+					try {
+						return JSON.stringify(JSON.parse(trimmed), null, 2)
+					} catch (error) {
+						return trimmed
+					}
+				}
+				if (parsed?.mcpUseConfig) {
+					const jsonValue: Record<string, unknown> = {
+						command: parsed.mcpUseConfig.command
+					}
+					if (parsed.mcpUseConfig.args && parsed.mcpUseConfig.args.length > 0) {
+						jsonValue.args = parsed.mcpUseConfig.args
+					}
+					if (parsed.mcpUseConfig.env && Object.keys(parsed.mcpUseConfig.env).length > 0) {
+						jsonValue.env = parsed.mcpUseConfig.env
+					}
+					return JSON.stringify(jsonValue, null, 2)
+				}
+			}
+
+			return null
+		}
+
+		const preferredMode = normalizeDisplayMode(server.displayMode)
+		let currentDisplayFormat: ConversionFormat = conversionCapability.currentFormat
+		if (preferredMode === CommandDisplayMode.Simple && conversionCapability.canShowAsUrl) {
+			currentDisplayFormat = 'url'
+		}
+		currentDisplayFormat = ensureFormat(currentDisplayFormat, conversionCapability)
+		server.displayMode = currentDisplayFormat === 'url' ? CommandDisplayMode.Simple : CommandDisplayMode.Command
+		setDisplayModeVisibility(currentDisplayFormat)
+
+		const updateFormatMetadata = (input: string) => {
+			const trimmed = input.trim()
+			if (!trimmed) {
+				hideError()
+				hideFormatInfo()
+				return
+			}
+			const validationError = validateConfigInput(trimmed)
+			if (validationError) {
+				showError(validationError)
+				hideFormatInfo()
+				return
+			}
+			hideError()
+			showFormatInfo(trimmed)
+		}
+
+		updateFormatMetadata(server.configInput || '')
+
+		let toggleButton: ButtonComponent | null = null
+
+		const updateToggleButton = () => {
+			if (!toggleButton) {
+				return
+			}
+			const available = getAvailableFormats(conversionCapability)
+			if (available.length <= 1) {
+				toggleButton.buttonEl.style.display = 'none'
+				return
+			}
+			toggleButton.buttonEl.style.display = ''
+			const nextFormat = getNextFormat(currentDisplayFormat, conversionCapability)
+			toggleButton.setButtonText(formatLabels[nextFormat])
+			toggleButton.setTooltip(toTooltip(conversionCapability))
+		}
 
 		simpleInput.addEventListener('input', async (event) => {
 			const target = event.target as HTMLInputElement
@@ -495,6 +666,11 @@ export class MCPServerSettings {
 				server.configInput = ''
 				textarea.value = ''
 				await this.plugin.saveSettings()
+				conversionCapability = detectConversionCapability(server)
+				currentDisplayFormat = 'url'
+				server.displayMode = CommandDisplayMode.Simple
+				setDisplayModeVisibility(currentDisplayFormat)
+				updateToggleButton()
 				return
 			}
 			if (!isValidRemoteUrl(trimmed)) {
@@ -504,73 +680,69 @@ export class MCPServerSettings {
 			}
 
 			hideError()
-			const commandValue = remoteUrlToCommand(trimmed)
-			server.configInput = commandValue
-			textarea.value = commandValue
+			server.configInput = trimmed
+			textarea.value = remoteUrlToCommand(trimmed)
 			await this.plugin.saveSettings()
-
-			const validationError = validateConfigInput(commandValue)
-			if (validationError) {
-				showError(validationError)
-				hideFormatInfo()
-				return
-			}
-
-			hideError()
-			showFormatInfo(commandValue)
+			conversionCapability = detectConversionCapability(server)
+			currentDisplayFormat = ensureFormat('url', conversionCapability)
+			server.displayMode = CommandDisplayMode.Simple
+			setDisplayModeVisibility(currentDisplayFormat)
+			updateFormatMetadata(server.configInput)
+			updateToggleButton()
 		})
 
 		textarea.addEventListener('input', async (e) => {
 			const target = e.target as HTMLTextAreaElement
 			server.configInput = target.value
 			await this.plugin.saveSettings()
-
-			const validationError = validateConfigInput(target.value)
-			if (validationError) {
-				showError(validationError)
-				hideFormatInfo()
-			} else {
-				hideError()
-				if (target.value.trim()) {
-					showFormatInfo(target.value)
-				} else {
-					hideFormatInfo()
-				}
-			}
-
-			setSimpleViewFromCommand()
-			if (normalizeDisplayMode(server.displayMode) === CommandDisplayMode.Simple) {
-				updatePreviewFromUrl(simpleInput.value)
-			}
+			updateFormatMetadata(target.value)
+			conversionCapability = detectConversionCapability(server)
+			const derived = conversionCapability.currentFormat === 'url' ? 'shell' : conversionCapability.currentFormat
+			currentDisplayFormat = ensureFormat(derived, conversionCapability)
+			server.displayMode = CommandDisplayMode.Command
+			setDisplayModeVisibility(currentDisplayFormat)
+			updateSimpleInputFromConfig()
+			updateToggleButton()
 		})
 
 		const displayModeSetting = new Setting(containerEl)
-			.setName('Show as command')
-			.setDesc('Toggle between simple URL and command views')
-			.addToggle((toggle) => {
-				toggle.setValue(currentMode === CommandDisplayMode.Command)
-				toggle.onChange(async (value) => {
-					currentMode = value ? CommandDisplayMode.Command : CommandDisplayMode.Simple
-					server.displayMode = currentMode
-					await this.plugin.saveSettings()
-					if (currentMode === CommandDisplayMode.Simple) {
-						setSimpleViewFromCommand()
+			.setName('Configuration format')
+			.setDesc('Cycle through supported representations (URL, command, JSON).')
+			.addButton((btn) => {
+				toggleButton = btn
+				btn.onClick(async () => {
+					const nextFormat = getNextFormat(currentDisplayFormat, conversionCapability)
+					if (nextFormat === currentDisplayFormat) {
+						return
 					}
-					setDisplayModeVisibility(currentMode)
+					const converted = convertConfigTo(nextFormat)
+					if (!converted) {
+						new Notice('Unable to convert configuration to the requested format.')
+						return
+					}
+
+					if (nextFormat === 'url') {
+						simpleInput.value = converted
+						textarea.value = remoteUrlToCommand(converted)
+					} else {
+						textarea.value = converted
+					}
+
+					server.configInput = converted
+					await this.plugin.saveSettings()
+					conversionCapability = detectConversionCapability(server)
+					currentDisplayFormat = ensureFormat(nextFormat, conversionCapability)
+					server.displayMode = currentDisplayFormat === 'url' ? CommandDisplayMode.Simple : CommandDisplayMode.Command
+					setDisplayModeVisibility(currentDisplayFormat)
+					updateSimpleInputFromConfig()
+					updateFormatMetadata(server.configInput)
+					updateToggleButton()
 				})
+				updateToggleButton()
+				return btn
 			})
 
 		containerEl.insertBefore(displayModeSetting.settingEl, configContainer)
-
-		const initialError = validateConfigInput(server.configInput || '')
-		if (initialError) {
-			showError(initialError)
-		} else if (server.configInput) {
-			showFormatInfo(server.configInput)
-			if (currentMode === CommandDisplayMode.Simple) {
-				updatePreviewFromUrl(simpleInput.value)
-			}
-		}
 	}
 
 	private renderQuickAddButtons(containerEl: HTMLElement): void {
