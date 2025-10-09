@@ -25,6 +25,7 @@ import {
 	migrateServerConfigs,
 	type ToolExecutor
 } from './mcp'
+import { registerDocumentSessionHandlers } from './mcp/documentSessionHandlers'
 import { getTitleFromCmdId, loadTemplateFileCommand, promptTemplateCmd, templateToCmdId } from './prompt'
 import { DEFAULT_SETTINGS, type PluginSettings } from './settings'
 import { TarsSettingTab } from './settingTab'
@@ -77,6 +78,8 @@ export default class TarsPlugin extends Plugin {
 			// Create code block processor
 			this.mcpCodeBlockProcessor = new CodeBlockProcessor()
 			this.mcpCodeBlockProcessor.updateServerConfigs(this.settings.mcpServers)
+
+			registerDocumentSessionHandlers(this.app, this.mcpExecutor, (ref) => this.registerEvent(ref))
 
 			// Register code block processors for each server
 			this.settings.mcpServers.forEach((server) => {

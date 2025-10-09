@@ -62,6 +62,7 @@ export {
 	type ToolCallChunk,
 	type ToolResponseParser
 } from './toolResponseParser'
+export { registerDocumentSessionHandlers } from './documentSessionHandlers'
 // Core types
 export * from './types'
 export * from './utils'

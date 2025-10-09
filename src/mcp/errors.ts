@@ -42,11 +42,16 @@ export class TimeoutError extends MCPError {
 }
 
 export class ExecutionLimitError extends MCPError {
-	constructor(limitType: 'concurrent' | 'session', current: number, limit: number) {
+	constructor(
+		limitType: 'concurrent' | 'session',
+		current: number,
+		limit: number,
+		context: Record<string, unknown> = {}
+	) {
 		super(
 			`${limitType.charAt(0).toUpperCase() + limitType.slice(1)} limit reached: ${current}/${limit}`,
 			'EXECUTION_LIMIT_ERROR',
-			{ limitType, current, limit }
+			{ limitType, current, limit, ...context }
 		)
 	}
 }

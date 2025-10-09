@@ -31,7 +31,7 @@ export interface ToolExecutor {
 	 *
 	 * @returns Boolean indicating if new execution can proceed
 	 */
-	canExecute(): boolean
+	canExecute(documentPath?: string): boolean
 
 	/**
 	 * Get current execution statistics.
@@ -42,7 +42,33 @@ export interface ToolExecutor {
 		sessionLimit: number
 		concurrentLimit: number
 		stopped: boolean
+		currentDocumentPath?: string
+		documentSessions: {
+			documentPath: string
+			totalSessionCount: number
+			lastAccessed: number
+		}[]
 	}
+
+	/**
+	 * Switch active document context (updates session counting scope).
+	 */
+	switchDocument(documentPath: string): void
+
+	/**
+	 * Clear session state for a document (when file deleted/closed).
+	 */
+	clearDocumentSession(documentPath: string): void
+
+	/**
+	 * Reset session counter for a specific document.
+	 */
+	resetSessionCount(documentPath: string): void
+
+	/**
+	 * Retrieve total session count for specified document.
+	 */
+	getTotalSessionCount(documentPath: string): number
 
 	/**
 	 * Stop all future executions until reset.

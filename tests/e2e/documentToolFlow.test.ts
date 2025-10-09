@@ -208,11 +208,10 @@ num_results: 5`
 		})
 
 		it('should track execution statistics', async () => {
-			// GIVEN: Multiple tool executions
-			const stats = executor.getStats()
-			const initialCount = stats.totalExecuted
+			// GIVEN: Existing executions across various documents
+			const initialCount = executor.getTotalSessionCount('test.md')
 
-			// WHEN: Execute a tool
+			// WHEN: Execute a tool for the target document
 			const invocation = processor.parseToolInvocation('tool: get_weather\nlocation: Paris', 'Weather Service')
 
 			await executor.executeTool({
@@ -223,10 +222,13 @@ num_results: 5`
 				documentPath: 'test.md'
 			})
 
-			// THEN: Stats are updated
+			// THEN: Document-specific stats are updated without affecting other files
+			const newCount = executor.getTotalSessionCount('test.md')
+			expect(newCount).toBe(initialCount + 1)
 			const newStats = executor.getStats()
-			expect(newStats.totalExecuted).toBe(initialCount + 1)
+			expect(newStats.totalExecuted).toBe(newCount)
 			expect(newStats.activeExecutions).toBe(0)
+			expect(newStats.currentDocumentPath).toBe('test.md')
 		})
 	})
 

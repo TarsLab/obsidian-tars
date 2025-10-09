@@ -8,6 +8,12 @@ import { ExecutionLimitError } from './errors'
 import type { MCPServerManager } from './managerMCPUse'
 import type { ExecutionHistoryEntry, ExecutionTracker, ToolExecutionResult } from './types'
 
+export interface DocumentSessionState {
+	documentPath: string
+	totalSessionCount: number
+	lastAccessed: number
+}
+
 export interface ToolExecutionRequest {
 	serverId: string
 	toolName: string
@@ -32,6 +38,8 @@ export class ToolExecutor {
 	private readonly options: ToolExecutorOptions
 	private readonly activeControllers: Map<string, AbortController> = new Map()
 	private statusBarManager?: StatusBarManager
+	private readonly documentSessions = new Map<string, DocumentSessionState>()
+	private currentDocumentPath?: string
 
 	constructor(
 		manager: MCPServerManager,
@@ -70,9 +78,14 @@ export class ToolExecutor {
 	 * Internal tool execution logic
 	 */
 	private async executeToolInternal(request: ToolExecutionRequest): Promise<ToolExecutionResult> {
-		// Check if execution is allowed
-		if (!this.canExecute()) {
-			throw new ExecutionLimitError('session', this.tracker.totalExecuted, this.tracker.sessionLimit)
+		const documentPath = this.normalizeDocumentPath(request.documentPath)
+		const documentState = this.setCurrentDocument(documentPath)
+
+		// Check if execution is allowed for this document
+		if (!this.canExecute(documentPath)) {
+			throw new ExecutionLimitError('session', documentState.totalSessionCount, this.tracker.sessionLimit, {
+				documentPath
+			})
 		}
 
 		// Get MCP client
@@ -141,7 +154,8 @@ export class ToolExecutor {
 			// Clean up
 			this.tracker.activeExecutions.delete(executionRecord.requestId)
 			this.activeControllers.delete(executionRecord.requestId)
-			this.tracker.totalExecuted++
+			const updatedCount = this.incrementSessionCount(documentPath)
+			this.tracker.totalExecuted = updatedCount
 			this.tracker.executionHistory.push(executionRecord)
 		}
 	}
@@ -149,7 +163,7 @@ export class ToolExecutor {
 	/**
 	 * Check if tool execution is currently allowed
 	 */
-	canExecute(): boolean {
+	canExecute(documentPath?: string): boolean {
 		if (this.tracker.stopped) {
 			return false
 		}
@@ -160,8 +174,15 @@ export class ToolExecutor {
 		}
 
 		// Check session limit
-		if (this.tracker.sessionLimit !== -1 && this.tracker.totalExecuted >= this.tracker.sessionLimit) {
-			return false
+		if (this.tracker.sessionLimit !== -1) {
+			const targetPath = documentPath ?? this.currentDocumentPath
+			if (targetPath) {
+				const docState = this.documentSessions.get(targetPath)
+				const totalExecuted = docState?.totalSessionCount ?? 0
+				if (totalExecuted >= this.tracker.sessionLimit) {
+					return false
+				}
+			}
 		}
 
 		return true
@@ -176,13 +197,17 @@ export class ToolExecutor {
 		sessionLimit: number
 		concurrentLimit: number
 		stopped: boolean
+		currentDocumentPath?: string
+		documentSessions: DocumentSessionState[]
 	} {
 		return {
 			activeExecutions: this.tracker.activeExecutions.size,
 			totalExecuted: this.tracker.totalExecuted,
 			sessionLimit: this.tracker.sessionLimit,
 			concurrentLimit: this.tracker.concurrentLimit,
-			stopped: this.tracker.stopped
+			stopped: this.tracker.stopped,
+			currentDocumentPath: this.currentDocumentPath,
+			documentSessions: Array.from(this.documentSessions.values()).map((session) => ({ ...session }))
 		}
 	}
 
@@ -213,6 +238,8 @@ export class ToolExecutor {
 		this.tracker.stopped = false
 		this.tracker.totalExecuted = 0
 		this.tracker.executionHistory = []
+		this.documentSessions.clear()
+		this.currentDocumentPath = undefined
 	}
 
 	/**
@@ -279,5 +306,79 @@ export class ToolExecutor {
 			duration: 0,
 			status: 'pending' as const
 		}
+	}
+
+	private normalizeDocumentPath(documentPath: string): string {
+		return documentPath && documentPath.trim().length > 0 ? documentPath : '__untitled__'
+	}
+
+	private ensureDocumentSession(documentPath: string): DocumentSessionState {
+		let docState = this.documentSessions.get(documentPath)
+		if (!docState) {
+			docState = {
+				documentPath,
+				totalSessionCount: 0,
+				lastAccessed: Date.now()
+			}
+			this.documentSessions.set(documentPath, docState)
+		}
+		docState.lastAccessed = Date.now()
+		return docState
+	}
+
+	private setCurrentDocument(documentPath: string): DocumentSessionState {
+		const docState = this.ensureDocumentSession(documentPath)
+		this.currentDocumentPath = documentPath
+		this.tracker.totalExecuted = docState.totalSessionCount
+		return docState
+	}
+
+	private incrementSessionCount(documentPath: string): number {
+		const docState = this.ensureDocumentSession(documentPath)
+		docState.totalSessionCount += 1
+		if (this.currentDocumentPath === documentPath) {
+			this.tracker.totalExecuted = docState.totalSessionCount
+		}
+		return docState.totalSessionCount
+	}
+
+	private resetDocumentSession(documentPath: string): void {
+		const docState = this.documentSessions.get(documentPath)
+		if (docState) {
+			docState.totalSessionCount = 0
+			docState.lastAccessed = Date.now()
+		}
+		if (this.currentDocumentPath === documentPath) {
+			this.tracker.totalExecuted = 0
+		}
+	}
+
+	private removeDocumentSession(documentPath: string): void {
+		this.documentSessions.delete(documentPath)
+		if (this.currentDocumentPath === documentPath) {
+			this.currentDocumentPath = undefined
+			this.tracker.totalExecuted = 0
+		}
+	}
+
+	// Public API for document session management (used by plugin lifecycle)
+	public switchDocument(documentPath: string): void {
+		const normalized = this.normalizeDocumentPath(documentPath)
+		this.setCurrentDocument(normalized)
+	}
+
+	public clearDocumentSession(documentPath: string): void {
+		const normalized = this.normalizeDocumentPath(documentPath)
+		this.removeDocumentSession(normalized)
+	}
+
+	public resetSessionCount(documentPath: string): void {
+		const normalized = this.normalizeDocumentPath(documentPath)
+		this.resetDocumentSession(normalized)
+	}
+
+	public getTotalSessionCount(documentPath: string): number {
+		const normalized = this.normalizeDocumentPath(documentPath)
+		return this.documentSessions.get(normalized)?.totalSessionCount ?? 0
 	}
 }

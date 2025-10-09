@@ -132,29 +132,48 @@ timestamp: true`
 				totalExecuted: 0,
 				sessionLimit: 25,
 				concurrentLimit: 3, // Updated from 25 to 3 per factory defaults
-				stopped: false
+				stopped: false,
+				currentDocumentPath: undefined,
+				documentSessions: []
 			})
 		})
 
 		it('should enforce session limits', async () => {
-			// GIVEN: Executor with session limit reached
-			// Simulate 25 executions by directly modifying tracker
+			// GIVEN: Executor with session limit of 1 per document
+			const { ToolExecutor } = await import('../../src/mcp')
 			const tracker = {
-				concurrentLimit: 25,
-				sessionLimit: 25,
+				concurrentLimit: 5,
+				sessionLimit: 1,
 				activeExecutions: new Set<string>(),
-				totalExecuted: 25, // Already at limit
+				totalExecuted: 0,
 				stopped: false,
 				executionHistory: []
 			}
-			toolExecutor = new (await import('../../src/mcp')).ToolExecutor(manager, tracker)
+			const mockClient = {
+				callTool: vi.fn().mockResolvedValue({
+					content: 'ok',
+					contentType: 'text' as const,
+					executionDuration: 10
+				})
+			}
+			const mockManager = {
+				getClient: vi.fn().mockReturnValue(mockClient),
+				listServers: vi.fn().mockReturnValue([{ id: 'test-server', name: 'Test Server' }])
+			} as unknown as ReturnType<typeof createMCPManager>
+			const executor = new ToolExecutor(mockManager, tracker)
 
-			// WHEN: Checking execution capability
-			const canExecute = toolExecutor.canExecute()
+			// WHEN: First execution consumes session allowance for document
+			await executor.executeTool({
+				serverId: 'test-server',
+				toolName: 'demo',
+				parameters: {},
+				source: 'user-codeblock',
+				documentPath: 'note.md'
+			})
 
-			// THEN: Execution is blocked by session limit
-			expect(canExecute).toBe(false)
-			expect(toolExecutor.getStats().totalExecuted).toBe(25)
+			// THEN: Subsequent executions are blocked for same document
+			expect(executor.canExecute('note.md')).toBe(false)
+			expect(executor.getStats().totalExecuted).toBe(1)
 		})
 
 		it('should reset execution tracking', async () => {
@@ -177,6 +196,7 @@ timestamp: true`
 			const stats = executor.getStats()
 			expect(stats.totalExecuted).toBe(0)
 			expect(stats.stopped).toBe(false)
+			expect(stats.documentSessions).toEqual([])
 		})
 	})
 })
