@@ -375,7 +375,7 @@ export class MCPServerSettings {
 
 	private renderConfigurationSection(containerEl: HTMLElement, server: MCPServerConfig): void {
 		// Configuration Input (3 formats)
-		new Setting(containerEl).setName('Configuration').setDesc('Supports 3 formats: Command, Claude JSON, or URL')
+		const configHeaderSetting = new Setting(containerEl).setName('Configuration').setDesc('Supports 3 formats: Command, Claude JSON, or URL')
 
 		const configContainer = containerEl.createDiv({ cls: 'mcp-config-container' })
 
@@ -768,7 +768,8 @@ export class MCPServerSettings {
 				return btn
 			})
 
-		containerEl.insertBefore(displayModeSetting.settingEl, configContainer)
+		// Insert the display mode toggle button after the config header
+		configHeaderSetting.settingEl.insertAdjacentElement('afterend', displayModeSetting.settingEl)
 	}
 
 	private renderQuickAddButtons(containerEl: HTMLElement): void {

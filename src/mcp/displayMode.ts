@@ -100,7 +100,7 @@ export function detectConversionCapability(config: MCPServerConfig): ConversionC
 	const hasRemoteUrl = commandToRemoteUrl(config.configInput || '') !== null
 
 	return {
-		canShowAsJson: false,
+		canShowAsJson: true, // Any valid command can be shown as JSON
 		canShowAsUrl: hasRemoteUrl,
 		canShowAsShell: true,
 		currentFormat: 'shell',
