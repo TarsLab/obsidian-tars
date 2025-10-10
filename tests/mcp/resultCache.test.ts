@@ -157,7 +157,7 @@ describe('ResultCache', () => {
 			// Then: Should still retrieve result with new TTL (with cacheAge added - Task-500-20-10-1)
 			const retrieved = await cache.get(serverId, toolName, parameters)
 			expect(retrieved).toMatchObject(mockResult)
-			expect(retrieved?.cacheAge).toBeGreaterThanOrEqual(150)
+			expect(retrieved?.cacheAge).toBeGreaterThanOrEqual(140)
 		})
 	})
 

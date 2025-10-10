@@ -105,8 +105,18 @@ export class MCPServerSettings {
 			.setName('Enable parallel tool execution')
 			.setDesc('Execute multiple independent tools concurrently for faster responses (default: disabled)')
 			.addToggle((toggle) =>
-				toggle.setValue(this.plugin.settings.mcpParallelExecution ?? false).onChange(async (value) => {
-					this.plugin.settings.mcpParallelExecution = value
+			toggle.setValue(this.plugin.settings.mcpParallelExecution ?? false).onChange(async (value) => {
+				this.plugin.settings.mcpParallelExecution = value
+				await this.plugin.saveSettings()
+			})
+			)
+
+		new Setting(containerEl)
+			.setName('Insert LLM utility section')
+			.setDesc('Add an [!llm] callout with provider/model and available tools for each assistant response (default: enabled).')
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.enableUtilitySection ?? true).onChange(async (value) => {
+					this.plugin.settings.enableUtilitySection = value
 					await this.plugin.saveSettings()
 				})
 			)

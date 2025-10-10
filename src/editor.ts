@@ -27,6 +27,8 @@ import type {
 } from './providers'
 import { withStreamLogging } from './providers/decorator'
 import { APP_FOLDER, availableVendors, type EditorStatus, type PluginSettings } from './settings'
+import type { MCPServerManager } from './mcp/managerMCPUse'
+import { formatUtilitySectionCallout, type UtilitySectionServer } from './mcp/utilitySectionFormatter'
 import type { GenerationStats, StatusBarManager } from './statusBarManager'
 import type { TagRole } from './suggest'
 
@@ -509,6 +511,8 @@ export const generate = async (
 			logger.debug('default system message injected')
 		}
 
+		await insertUtilitySectionIfEnabled(editor, provider, pluginSettings, mcpManager)
+
 		const round = messages.filter((m) => m.role === 'assistant').length + 1
 
 		const sendRequest = await createDecoratedSendRequest(env, vendor, provider)
@@ -615,4 +619,69 @@ const formatTextWithLeadingBreaks = (text: string) => {
 		return ` \n\n${text}`
 	}
 	return text
+}
+
+const isMCPServerManager = (value: unknown): value is MCPServerManager => {
+	return (
+		value !== null &&
+		typeof value === 'object' &&
+		typeof (value as MCPServerManager).getToolDiscoveryCache === 'function'
+	)
+}
+
+async function insertUtilitySectionIfEnabled(
+	editor: Editor,
+	provider: ProviderSettings,
+	pluginSettings?: unknown,
+	mcpManager?: unknown
+): Promise<void> {
+	const typedSettings = pluginSettings as PluginSettings | undefined
+	const isEnabled = typedSettings?.enableUtilitySection ?? true
+	if (!isEnabled) return
+
+	const manager = isMCPServerManager(mcpManager) ? mcpManager : undefined
+	const callout = await buildUtilitySectionCallout(provider, manager)
+	if (!callout) {
+		return
+	}
+
+	const cursor = editor.getCursor('to')
+	const startOffset = editor.posToOffset(cursor)
+	editor.replaceRange(callout, cursor)
+	const newCursor = editor.offsetToPos(startOffset + callout.length)
+	editor.setCursor(newCursor)
+}
+
+async function buildUtilitySectionCallout(
+	provider: ProviderSettings,
+	mcpManager?: MCPServerManager
+): Promise<string> {
+	const providerName = provider.vendor ?? 'Unknown'
+	const modelOption =
+		typeof provider.options === 'object' && provider.options !== null && 'model' in provider.options
+			? (provider.options as { model?: unknown }).model
+			: undefined
+	const modelName = typeof modelOption === 'string' && modelOption.trim().length > 0 ? modelOption : 'unknown'
+
+	const servers: UtilitySectionServer[] = []
+	if (mcpManager) {
+		try {
+			const snapshot = await mcpManager.getToolDiscoveryCache().getSnapshot()
+			for (const server of snapshot.servers) {
+				const toolNames = server.tools.map((tool) => tool.name).filter((name) => name && name.trim().length > 0)
+				servers.push({
+					serverName: server.serverName,
+					toolNames
+				})
+			}
+		} catch (error) {
+			logger.warn('failed to build utility section tool list', error)
+		}
+	}
+
+	return formatUtilitySectionCallout({
+		providerName,
+		modelName,
+		servers
+	})
 }

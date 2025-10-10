@@ -47,6 +47,7 @@ export interface PluginSettings {
 	enableDefaultSystemMsg: boolean
 	defaultSystemMsg: string
 	enableStreamLog: boolean
+	enableUtilitySection: boolean
 	// MCP Server Integration
 	mcpServers: MCPServerConfig[]
 	mcpGlobalTimeout: number
@@ -91,6 +92,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	enableDefaultSystemMsg: false,
 	defaultSystemMsg: '',
 	enableStreamLog: false,
+	enableUtilitySection: true,
 	// MCP Server Integration defaults
 	mcpServers: [],
 	mcpGlobalTimeout: 30000,
