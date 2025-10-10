@@ -100,6 +100,32 @@ export class MCPServerSettings {
 						}
 					})
 			)
+
+		new Setting(containerEl)
+			.setName('Enable parallel tool execution')
+			.setDesc('Execute multiple independent tools concurrently for faster responses (default: disabled)')
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.mcpParallelExecution ?? false).onChange(async (value) => {
+					this.plugin.settings.mcpParallelExecution = value
+					await this.plugin.saveSettings()
+				})
+			)
+
+		new Setting(containerEl)
+			.setName('Max parallel tools')
+			.setDesc('Maximum number of tools to execute in parallel when enabled (default: 3)')
+			.addText((text) =>
+				text
+					.setPlaceholder('3')
+					.setValue(this.plugin.settings.mcpMaxParallelTools?.toString() || '3')
+					.onChange(async (value) => {
+						const limit = parseInt(value, 10)
+						if (!Number.isNaN(limit) && limit > 0) {
+							this.plugin.settings.mcpMaxParallelTools = limit
+							await this.plugin.saveSettings()
+						}
+					})
+			)
 	}
 
 	private renderServerList(containerEl: HTMLElement): void {

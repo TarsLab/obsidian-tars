@@ -69,7 +69,7 @@ const formatEmbed = async (embed: EmbedCache, resolveEmbedAsBinary: ResolveEmbed
 
 const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, resolveEmbedAsBinary: ResolveEmbedAsBinary) {
-		const { parameters, mcpManager, mcpExecutor, documentPath, statusBarManager, ...optionsExcludingParams } = settings
+		const { parameters, mcpManager, mcpExecutor, documentPath, statusBarManager, pluginSettings, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const {
 			apiKey,
@@ -128,12 +128,16 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 				}))
 
 				const editor = (settings as any).editor
+				// biome-ignore lint/suspicious/noExplicitAny: Plugin settings type is not imported
+				const pluginOpts = pluginSettings as any
 
 				yield* coordinator.generateWithTools(formattedMessages, adapter, mcpExec, {
 					documentPath: documentPath || 'unknown.md',
 					editor,
 					statusBarManager: statusBarManager as any,
-					autoUseDocumentCache: true
+					autoUseDocumentCache: true,
+					parallelExecution: pluginOpts?.mcpParallelExecution ?? false,
+					maxParallelTools: pluginOpts?.mcpMaxParallelTools ?? 3
 				})
 
 				return

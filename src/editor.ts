@@ -469,7 +469,8 @@ export const generate = async (
 	editorStatus: EditorStatus,
 	requestController: RequestController,
 	mcpManager?: unknown,
-	mcpExecutor?: unknown
+	mcpExecutor?: unknown,
+	pluginSettings?: unknown
 ) => {
 	try {
 		const vendor = availableVendors.find((v) => v.name === provider.vendor)
@@ -483,6 +484,7 @@ export const generate = async (
 			provider.options.mcpExecutor = mcpExecutor
 			provider.options.documentPath = env.filePath
 			provider.options.statusBarManager = statusBarManager
+			provider.options.pluginSettings = pluginSettings
 		}
 
 		provider.options.editor = editor

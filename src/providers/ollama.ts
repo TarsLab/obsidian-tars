@@ -6,7 +6,7 @@ const logger = createLogger('providers:ollama')
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, _resolveEmbedAsBinary: ResolveEmbedAsBinary) {
-		const { parameters, mcpManager, mcpExecutor, documentPath, statusBarManager, editor, ...optionsExcludingParams } =
+		const { parameters, mcpManager, mcpExecutor, documentPath, statusBarManager, editor, pluginSettings, ...optionsExcludingParams } =
 			settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { baseURL, model, ...remains } = options
@@ -41,11 +41,16 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 					embeds: msg.embeds
 				}))
 
+				// biome-ignore lint/suspicious/noExplicitAny: Plugin settings type is not imported
+				const pluginOpts = pluginSettings as any
+
 				yield* coordinator.generateWithTools(formattedMessages, adapter, mcpExec, {
 					documentPath: documentPath || 'unknown.md',
 					statusBarManager: statusBarManager as any,
 					editor: editor as any,
-					autoUseDocumentCache: true
+					autoUseDocumentCache: true,
+					parallelExecution: pluginOpts?.mcpParallelExecution ?? false,
+					maxParallelTools: pluginOpts?.mcpMaxParallelTools ?? 3
 				})
 
 				return

@@ -58,6 +58,8 @@ export interface PluginSettings {
 	mcpRetryMaxDelay: number
 	mcpRetryBackoffMultiplier: number
 	mcpRetryJitter: boolean
+	mcpParallelExecution: boolean
+	mcpMaxParallelTools: number
 	uiState?: {
 		mcpServersExpanded?: boolean
 		systemMessageExpanded?: boolean
@@ -100,6 +102,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	mcpRetryMaxDelay: 30000,
 	mcpRetryBackoffMultiplier: 2,
 	mcpRetryJitter: true,
+	mcpParallelExecution: false,
+	mcpMaxParallelTools: 3,
 	uiState: {
 		mcpServersExpanded: false,
 		systemMessageExpanded: false,

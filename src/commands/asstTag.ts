@@ -73,7 +73,8 @@ export const asstTagCmd = (
 					settings.editorStatus,
 					requestController,
 					mcpManager,
-					mcpExecutor
+					mcpExecutor,
+					settings
 				)
 				return
 			}
@@ -100,7 +101,8 @@ export const asstTagCmd = (
 					settings.editorStatus,
 					requestController,
 					mcpManager,
-					mcpExecutor
+					mcpExecutor,
+					settings
 				)
 			} else if (role === 'assistant') {
 				// If it's an asstTag, prompt the user whether to regenerate
@@ -153,7 +155,8 @@ export const asstTagCmd = (
 					settings.editorStatus,
 					requestController,
 					mcpManager,
-					mcpExecutor
+					mcpExecutor,
+					settings
 				)
 			}
 		} catch (error) {
@@ -203,7 +206,8 @@ const regenerate = async (
 		settings.editorStatus,
 		requestController,
 		mcpManager,
-		mcpExecutor
+		mcpExecutor,
+		settings
 	)
 }
 

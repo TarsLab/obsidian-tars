@@ -215,7 +215,8 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 				this.settings.editorStatus,
 				this.requestController,
 				this.mcpManager,
-				this.mcpExecutor
+				this.mcpExecutor,
+				this.settings
 			)
 		} catch (error) {
 			this.logger.error('failed to trigger assistant generation', error)

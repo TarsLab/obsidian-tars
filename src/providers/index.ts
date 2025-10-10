@@ -52,6 +52,7 @@ export interface BaseOptions {
 	documentPath?: string // Current document path for tool execution context
 	statusBarManager?: unknown // StatusBarManager for error logging
 	editor?: unknown // Active Obsidian editor for markdown persistence
+	pluginSettings?: unknown // Plugin settings for parallel execution configuration
 }
 
 export interface ProviderSettings {

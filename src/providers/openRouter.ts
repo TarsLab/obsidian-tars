@@ -9,7 +9,7 @@ const logger = createLogger('providers:openrouter')
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, resolveEmbedAsBinary: ResolveEmbedAsBinary) {
-		const { parameters, mcpManager, mcpExecutor, documentPath, ...optionsExcludingParams } = settings
+		const { parameters, mcpManager, mcpExecutor, documentPath, pluginSettings, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, baseURL, model, ...remains } = options
 		if (!apiKey) throw new Error(t('API key is required'))
@@ -51,9 +51,14 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 					embeds: msg.embeds
 				}))
 
+				// biome-ignore lint/suspicious/noExplicitAny: Plugin settings type is not imported
+				const pluginOpts = pluginSettings as any
+
 				yield* coordinator.generateWithTools(formattedMessages, adapter, mcpExec, {
 					documentPath: documentPath || 'unknown.md',
-					autoUseDocumentCache: true
+					autoUseDocumentCache: true,
+					parallelExecution: pluginOpts?.mcpParallelExecution ?? false,
+					maxParallelTools: pluginOpts?.mcpMaxParallelTools ?? 3
 				})
 
 				return

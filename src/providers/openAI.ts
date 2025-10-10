@@ -8,7 +8,7 @@ const logger = createLogger('providers:openai')
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, resolveEmbedAsBinary: ResolveEmbedAsBinary) {
-		const { parameters, mcpManager, mcpExecutor, documentPath, ...optionsExcludingParams } = settings
+		const { parameters, mcpManager, mcpExecutor, documentPath, pluginSettings, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, baseURL, model, ...remains } = options
 		if (!apiKey) throw new Error(t('API key is required'))
@@ -22,6 +22,8 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 				const mcpMgr = mcpManager as any
 				// biome-ignore lint/suspicious/noExplicitAny: MCP types are optional dependencies
 				const mcpExec = mcpExecutor as any
+				// biome-ignore lint/suspicious/noExplicitAny: Plugin settings type is not imported
+				const pluginOpts = pluginSettings as any
 
 				const client = new OpenAI({
 					apiKey,
@@ -48,7 +50,9 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 
 				yield* coordinator.generateWithTools(formattedMessages, adapter, mcpExec, {
 					documentPath: documentPath || 'unknown.md',
-					autoUseDocumentCache: true
+					autoUseDocumentCache: true,
+					parallelExecution: pluginOpts?.mcpParallelExecution ?? false,
+					maxParallelTools: pluginOpts?.mcpMaxParallelTools ?? 3
 				})
 
 				return
