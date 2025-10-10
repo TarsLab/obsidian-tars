@@ -9,6 +9,7 @@
  * 5. Continue until LLM generates final text response
  */
 
+import pLimit from 'p-limit'
 import type { Editor } from 'obsidian'
 import { createLogger } from '../logger'
 import type { StatusBarManager } from '../statusBarManager'
@@ -85,6 +86,8 @@ export interface GenerateOptions {
 		cached: import('./toolResultCache').CachedToolResult
 	) => Promise<'re-execute' | 'use-cached' | 'cancel'>
 	autoUseDocumentCache?: boolean
+	parallelExecution?: boolean
+	maxParallelTools?: number
 }
 
 function insertToolCallMarkdown(
@@ -141,6 +144,152 @@ function insertToolResultMarkdown(editor: Editor, result: ToolExecutionResult): 
 
 export class ToolCallingCoordinator {
 	/**
+	 * Execute a single tool call
+	 * Returns both successful results and errors
+	 */
+	private async executeSingleTool(
+		toolCall: ToolCall,
+		adapter: ProviderAdapter,
+		executor: ToolExecutor,
+		context: {
+			turn: number
+			documentPath: string
+			documentCache: DocumentToolCache | null
+			editor?: Editor
+			onToolCall?: (toolName: string) => void
+			onToolResult?: (toolName: string, duration: number) => void
+			statusBarManager?: StatusBarManager
+			onPromptCachedResult?: (
+				toolName: string,
+				cached: CachedToolResult
+			) => Promise<'re-execute' | 'use-cached' | 'cancel'>
+			autoUseDocumentCache: boolean
+		}
+	): Promise<{ toolCall: ToolCall; result?: ToolExecutionResult; error?: Error; cancelled?: boolean }> {
+		const {
+			turn,
+			documentPath,
+			documentCache,
+			editor,
+			onToolCall,
+			onToolResult,
+			statusBarManager,
+			onPromptCachedResult,
+			autoUseDocumentCache
+		} = context
+
+		logger.debug('preparing tool execution', {
+			turn,
+			tool: toolCall.name,
+			argumentKeys: Object.keys(toolCall.arguments || {})
+		})
+
+		// Find server
+		const serverInfo = adapter.findServer(toolCall.name)
+		if (!serverInfo) {
+			logger.warn('no server found for requested tool', { tool: toolCall.name })
+			return { toolCall, error: new Error(`No server found for tool: ${toolCall.name}`) }
+		}
+
+		logger.debug('resolved tool server', {
+			tool: toolCall.name,
+			serverId: serverInfo.id,
+			serverName: serverInfo.name
+		})
+
+		// Check cache
+		let cachedResult: CachedToolResult | null = null
+		if (documentCache && editor) {
+			cachedResult = documentCache.findExistingResult(
+				editor,
+				serverInfo.id,
+				toolCall.name,
+				toolCall.arguments || {}
+			)
+		}
+
+		// Handle cache decision
+		let decision: 'execute' | 'use-cached' | 'cancel' = 'execute'
+		if (cachedResult) {
+			if (autoUseDocumentCache) {
+				decision = 'use-cached'
+			} else {
+				const handler = onPromptCachedResult ?? promptCachedResultWithNotice
+				const choice = await handler(toolCall.name, cachedResult)
+				if (choice === 'use-cached') {
+					decision = 'use-cached'
+				} else if (choice === 'cancel') {
+					decision = 'cancel'
+				}
+			}
+		}
+
+		if (decision === 'cancel') {
+			logger.info('tool execution cancelled by user via cache decision', {
+				tool: toolCall.name,
+				documentPath
+			})
+			return { toolCall, cancelled: true }
+		}
+
+		if (decision === 'use-cached' && cachedResult) {
+			logger.info('using cached tool result', {
+				tool: toolCall.name,
+				documentPath,
+				executedAt: cachedResult.executedAt
+			})
+			const cachedExecution = convertCachedResultToToolExecution(cachedResult)
+			onToolResult?.(toolCall.name, cachedExecution.executionDuration)
+			return { toolCall, result: cachedExecution }
+		}
+
+		// Notify about tool execution
+		onToolCall?.(toolCall.name)
+		if (editor) {
+			insertToolCallMarkdown(editor, toolCall.name, serverInfo, toolCall.arguments)
+		}
+
+		try {
+			logger.debug('invoking tool executor', { tool: toolCall.name })
+			// Execute the tool
+			const result = await executor.executeTool({
+				serverId: serverInfo.id,
+				toolName: toolCall.name,
+				parameters: toolCall.arguments,
+				source: 'ai-autonomous',
+				documentPath
+			})
+
+			logger.debug('tool execution succeeded', {
+				tool: toolCall.name,
+				executionDuration: result.executionDuration,
+				contentType: result.contentType,
+				contentLength: typeof result.content === 'string' ? result.content.length : JSON.stringify(result.content).length
+			})
+
+			// Notify about tool result
+			onToolResult?.(toolCall.name, result.executionDuration)
+			if (editor) {
+				insertToolResultMarkdown(editor, result)
+			}
+
+			return { toolCall, result }
+		} catch (error) {
+			logger.error('tool execution failed', { tool: toolCall.name, error })
+			// Log to status bar error buffer
+			statusBarManager?.logError('tool', `Tool execution failed in AI conversation: ${toolCall.name}`, error as Error, {
+				toolName: toolCall.name,
+				serverId: serverInfo.id,
+				serverName: serverInfo.name,
+				documentPath,
+				source: 'ai-autonomous'
+			})
+
+			return { toolCall, error: error as Error }
+		}
+	}
+
+	/**
 	 * Generate response with automatic tool calling
 	 *
 	 * This is the main entry point for LLM generation with tool support.
@@ -160,13 +309,17 @@ export class ToolCallingCoordinator {
 			editor,
 			statusBarManager,
 			onPromptCachedResult,
-			autoUseDocumentCache = false
+			autoUseDocumentCache = false,
+			parallelExecution = false,
+			maxParallelTools = 3
 		} = options
 
 		logger.debug('starting generation loop', {
 			initialMessageCount: messages.length,
 			maxTurns,
-			documentPath
+			documentPath,
+			parallelExecution,
+			maxParallelTools
 		})
 
 		const conversation = [...messages]
@@ -236,124 +389,76 @@ export class ToolCallingCoordinator {
 					tool_calls: toolCalls
 				})
 
-				// Execute each tool call
-				for (const toolCall of toolCalls) {
-					logger.debug('preparing tool execution', {
+				// Execution context for tool calls
+				const execContext = {
+					turn: turn + 1,
+					documentPath,
+					documentCache,
+					editor,
+					onToolCall,
+					onToolResult,
+					statusBarManager,
+					onPromptCachedResult,
+					autoUseDocumentCache
+				}
+
+				// Execute tools either in parallel or sequentially
+				let execResults: Array<{ toolCall: ToolCall; result?: ToolExecutionResult; error?: Error; cancelled?: boolean }>
+
+				if (parallelExecution) {
+					logger.debug('executing tools in parallel', {
 						turn: turn + 1,
-						tool: toolCall.name,
-						argumentKeys: Object.keys(toolCall.arguments || {})
-					})
-					const serverInfo = adapter.findServer(toolCall.name)
-					if (!serverInfo) {
-						logger.warn('no server found for requested tool', { tool: toolCall.name })
-						continue
-					}
-
-					logger.debug('resolved tool server', {
-						tool: toolCall.name,
-						serverId: serverInfo.id,
-						serverName: serverInfo.name
+						toolCount: toolCalls.length,
+						maxParallelTools
 					})
 
-					let cachedResult: CachedToolResult | null = null
-					if (documentCache && editor) {
-						cachedResult = documentCache.findExistingResult(
-							editor,
-							serverInfo.id,
-							toolCall.name,
-							toolCall.arguments || {}
-						)
-					}
+					// Use p-limit to control concurrency
+					const limit = pLimit(maxParallelTools)
 
-					let decision: 'execute' | 'use-cached' | 'cancel' = 'execute'
-					if (cachedResult) {
-						if (autoUseDocumentCache) {
-							decision = 'use-cached'
-						} else {
-							const handler = onPromptCachedResult ?? promptCachedResultWithNotice
-							const choice = await handler(toolCall.name, cachedResult)
-							if (choice === 'use-cached') {
-								decision = 'use-cached'
-							} else if (choice === 'cancel') {
-								decision = 'cancel'
-							}
-						}
-					}
+					// Create limited execution promises
+					const promises = toolCalls.map((toolCall) =>
+						limit(() => this.executeSingleTool(toolCall, adapter, executor, execContext))
+					)
 
-					if (decision === 'cancel') {
-						logger.info('tool execution cancelled by user via cache decision', {
-							tool: toolCall.name,
-							documentPath
-						})
+					// Wait for all to complete (including failures)
+					execResults = await Promise.all(promises)
+
+					logger.debug('parallel execution complete', {
+						turn: turn + 1,
+						total: execResults.length,
+						succeeded: execResults.filter((r) => r.result).length,
+						failed: execResults.filter((r) => r.error).length,
+						cancelled: execResults.filter((r) => r.cancelled).length
+					})
+				} else {
+					logger.debug('executing tools sequentially', {
+						turn: turn + 1,
+						toolCount: toolCalls.length
+					})
+
+					// Execute sequentially
+					execResults = []
+					for (const toolCall of toolCalls) {
+						const result = await this.executeSingleTool(toolCall, adapter, executor, execContext)
+						execResults.push(result)
+					}
+				}
+
+				// Process results and add to conversation
+				for (const { toolCall, result, error, cancelled } of execResults) {
+					if (cancelled) {
+						// Skip cancelled executions
 						continue
 					}
 
-					if (decision === 'use-cached' && cachedResult) {
-						logger.info('using cached tool result', {
-							tool: toolCall.name,
-							documentPath,
-							executedAt: cachedResult.executedAt
-						})
-						const cachedExecution = convertCachedResultToToolExecution(cachedResult)
-						onToolResult?.(toolCall.name, cachedExecution.executionDuration)
-						const toolMessage = adapter.formatToolResult(toolCall.id, cachedExecution)
-						conversation.push(toolMessage)
-						continue
-					}
-
-					// Notify about tool execution
-					onToolCall?.(toolCall.name)
-					if (editor) {
-						insertToolCallMarkdown(editor, toolCall.name, serverInfo, toolCall.arguments)
-					}
-
-					try {
-						logger.debug('invoking tool executor', { tool: toolCall.name })
-						// Execute the tool
-						const result = await executor.executeTool({
-							serverId: serverInfo.id,
-							toolName: toolCall.name,
-							parameters: toolCall.arguments,
-							source: 'ai-autonomous',
-							documentPath
-						})
-
-						logger.debug('tool execution succeeded', {
-							tool: toolCall.name,
-							executionDuration: result.executionDuration,
-							contentType: result.contentType,
-							contentLength:
-								typeof result.content === 'string' ? result.content.length : JSON.stringify(result.content).length
-						})
-
-						// Notify about tool result
-						onToolResult?.(toolCall.name, result.executionDuration)
-						if (editor) {
-							insertToolResultMarkdown(editor, result)
-						}
-
-						// Add tool result to conversation
+					if (result) {
+						// Success - add result to conversation
 						const toolMessage = adapter.formatToolResult(toolCall.id, result)
 						conversation.push(toolMessage)
-					} catch (error) {
-						logger.error('tool execution failed', { tool: toolCall.name, error })
-						// Log to status bar error buffer
-						statusBarManager?.logError(
-							'tool',
-							`Tool execution failed in AI conversation: ${toolCall.name}`,
-							error as Error,
-							{
-								toolName: toolCall.name,
-								serverId: serverInfo.id,
-								serverName: serverInfo.name,
-								documentPath,
-								source: 'ai-autonomous'
-							}
-						)
-
-						// Add error message to conversation so LLM knows tool failed
+					} else if (error) {
+						// Failure - add error message to conversation
 						const errorMessage = adapter.formatToolResult(toolCall.id, {
-							content: { error: error instanceof Error ? error.message : String(error) },
+							content: { error: error.message },
 							contentType: 'json',
 							executionDuration: 0
 						})
