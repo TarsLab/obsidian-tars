@@ -311,7 +311,7 @@ export class ToolCallingCoordinator {
 			onPromptCachedResult,
 			autoUseDocumentCache = false,
 			parallelExecution = false,
-			maxParallelTools = 3
+			maxParallelTools = parallelExecution ? 3 : 1
 		} = options
 
 		logger.debug('starting generation loop', {
@@ -402,47 +402,32 @@ export class ToolCallingCoordinator {
 					autoUseDocumentCache
 				}
 
-				// Execute tools either in parallel or sequentially
-				let execResults: Array<{ toolCall: ToolCall; result?: ToolExecutionResult; error?: Error; cancelled?: boolean }>
+				// Execute tools with controlled concurrency (1 = sequential, >1 = parallel)
+				logger.debug('executing tools', {
+					turn: turn + 1,
+					toolCount: toolCalls.length,
+					maxParallelTools,
+					mode: maxParallelTools === 1 ? 'sequential' : 'parallel'
+				})
 
-				if (parallelExecution) {
-					logger.debug('executing tools in parallel', {
-						turn: turn + 1,
-						toolCount: toolCalls.length,
-						maxParallelTools
-					})
+				// Use p-limit to control concurrency
+				const limit = pLimit(maxParallelTools)
 
-					// Use p-limit to control concurrency
-					const limit = pLimit(maxParallelTools)
+				// Create limited execution promises
+				const promises = toolCalls.map((toolCall) =>
+					limit(() => this.executeSingleTool(toolCall, adapter, executor, execContext))
+				)
 
-					// Create limited execution promises
-					const promises = toolCalls.map((toolCall) =>
-						limit(() => this.executeSingleTool(toolCall, adapter, executor, execContext))
-					)
+				// Wait for all to complete (including failures)
+				const execResults = await Promise.all(promises)
 
-					// Wait for all to complete (including failures)
-					execResults = await Promise.all(promises)
-
-					logger.debug('parallel execution complete', {
-						turn: turn + 1,
-						total: execResults.length,
-						succeeded: execResults.filter((r) => r.result).length,
-						failed: execResults.filter((r) => r.error).length,
-						cancelled: execResults.filter((r) => r.cancelled).length
-					})
-				} else {
-					logger.debug('executing tools sequentially', {
-						turn: turn + 1,
-						toolCount: toolCalls.length
-					})
-
-					// Execute sequentially
-					execResults = []
-					for (const toolCall of toolCalls) {
-						const result = await this.executeSingleTool(toolCall, adapter, executor, execContext)
-						execResults.push(result)
-					}
-				}
+				logger.debug('tool execution complete', {
+					turn: turn + 1,
+					total: execResults.length,
+					succeeded: execResults.filter((r) => r.result).length,
+					failed: execResults.filter((r) => r.error).length,
+					cancelled: execResults.filter((r) => r.cancelled).length
+				})
 
 				// Process results and add to conversation
 				for (const { toolCall, result, error, cancelled } of execResults) {
