@@ -127,11 +127,7 @@ export function findToolNameInBlock(editor: EditorLike, blockStartLine: number, 
 	return null
 }
 
-export function collectUsedParameters(
-	editor: EditorLike,
-	blockStartLine: number,
-	cursorLine: number
-): Set<string> {
+export function collectUsedParameters(editor: EditorLike, blockStartLine: number, cursorLine: number): Set<string> {
 	const used = new Set<string>()
 	for (let lineIndex = blockStartLine + 1; lineIndex < cursorLine; lineIndex++) {
 		const rawLine = editor.getLine(lineIndex) ?? ''
@@ -167,7 +163,9 @@ export function extractParameterDefinitions(tool: ToolDefinition): ParameterDefi
 	}
 
 	const requiredRaw = (schema.required as unknown) ?? []
-	const required = Array.isArray(requiredRaw) ? (requiredRaw.filter((value) => typeof value === 'string') as string[]) : []
+	const required = Array.isArray(requiredRaw)
+		? (requiredRaw.filter((value) => typeof value === 'string') as string[])
+		: []
 
 	const entries = Object.entries(properties)
 	return entries.map(([name, value]) => {
@@ -183,7 +181,8 @@ export function extractParameterDefinitions(tool: ToolDefinition): ParameterDefi
 			}
 		}
 
-		const example = paramSchema['example'] ??
+		const example =
+			paramSchema['example'] ??
 			(Array.isArray(paramSchema['examples']) && paramSchema['examples'].length > 0
 				? (paramSchema['examples'][0] as unknown)
 				: undefined)
@@ -263,7 +262,9 @@ export function buildRequiredParameterInsertion(
 	usedParameterNames: Set<string>,
 	indentation: string
 ): RequiredParameterInsertionPlan {
-	const requiredDefinitions = definitions.filter((definition) => definition.required && !usedParameterNames.has(definition.name))
+	const requiredDefinitions = definitions.filter(
+		(definition) => definition.required && !usedParameterNames.has(definition.name)
+	)
 	if (requiredDefinitions.length === 0) {
 		return { lines: [], cursorColumn: null }
 	}

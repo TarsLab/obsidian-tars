@@ -29,11 +29,7 @@ export interface ToolExecutionResultWithId extends ToolExecutionResult {
 }
 
 export interface SessionNotificationHandlers {
-	onLimitReached: (
-		documentPath: string,
-		limit: number,
-		current: number
-	) => Promise<'continue' | 'cancel'>
+	onLimitReached: (documentPath: string, limit: number, current: number) => Promise<'continue' | 'cancel'>
 	onSessionReset: (documentPath: string) => void
 }
 
@@ -247,7 +243,11 @@ export class ToolExecutor {
 	 * Update execution limits in response to settings changes
 	 */
 	updateLimits(limits: { concurrentLimit?: number; sessionLimit?: number }): void {
-		if (typeof limits.concurrentLimit === 'number' && Number.isFinite(limits.concurrentLimit) && limits.concurrentLimit > 0) {
+		if (
+			typeof limits.concurrentLimit === 'number' &&
+			Number.isFinite(limits.concurrentLimit) &&
+			limits.concurrentLimit > 0
+		) {
 			this.tracker.concurrentLimit = limits.concurrentLimit
 		}
 

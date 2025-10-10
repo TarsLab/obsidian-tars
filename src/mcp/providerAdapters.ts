@@ -5,12 +5,12 @@
  * generic ToolCallingCoordinator.
  */
 
-export { buildToolServerMapping } from './adapters/toolMapping'
-export { ClaudeProviderAdapter, type ClaudeAdapterConfig } from './adapters/ClaudeProviderAdapter'
+export { type ClaudeAdapterConfig, ClaudeProviderAdapter } from './adapters/ClaudeProviderAdapter'
+export { type OllamaAdapterConfig, OllamaProviderAdapter } from './adapters/OllamaProviderAdapter'
 export {
 	createOpenAIAdapter,
 	createOpenAIAdapterWithMapping,
 	type OpenAIAdapterConfigSimple
 } from './adapters/OpenAIAdapterFactory'
-export { type OllamaAdapterConfig, OllamaProviderAdapter } from './adapters/OllamaProviderAdapter'
 export { type OpenAIAdapterConfig, OpenAIProviderAdapter } from './adapters/OpenAIProviderAdapter'
+export { buildToolServerMapping } from './adapters/toolMapping'

@@ -1,5 +1,5 @@
-import type { MCPServerConfig, ConfigDisplayMode } from './types'
 import { parseConfigInput } from './config'
+import type { ConfigDisplayMode, MCPServerConfig } from './types'
 
 export const CommandDisplayMode = {
 	Simple: 'simple' as ConfigDisplayMode,

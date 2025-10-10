@@ -1,8 +1,8 @@
 import type { App, Editor, EditorPosition, EditorRange, EditorSelection, TagCache } from 'obsidian'
-import { createLogger } from '../logger'
 import { t } from 'src/lang/helper'
 import type { PluginSettings } from 'src/settings'
 import type { TagRole } from 'src/suggest'
+import { createLogger } from '../logger'
 
 const logger = createLogger('commands:tag-utils')
 

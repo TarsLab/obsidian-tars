@@ -47,7 +47,7 @@ export class MCPServerSettings {
 		this.renderServerList(containerEl)
 		this.renderQuickAddButtons(containerEl)
 		this.renderAddNewServerButton(containerEl)
-}
+	}
 
 	private renderGlobalSettings(containerEl: HTMLElement): void {
 		// Global MCP settings

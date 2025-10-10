@@ -9,10 +9,10 @@ import {
 	normalizePath,
 	Platform
 } from 'obsidian'
-import { createLogger } from '../logger'
 import { refineRange } from 'src/commands/tagUtils'
 import { t } from 'src/lang/helper'
 import { APP_FOLDER, type PluginSettings } from 'src/settings'
+import { createLogger } from '../logger'
 import { ReporterModal } from './modal'
 import { findChangedTemplates, getPromptTemplatesFromFile, type PromptTemplate } from './template'
 

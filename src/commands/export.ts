@@ -1,9 +1,9 @@
 import { type App, Notice, normalizePath } from 'obsidian'
-import { createLogger } from '../logger'
 import { buildRunEnv, extractConversationsTextOnly } from 'src/editor'
 import { t } from 'src/lang/helper'
 import type { Message } from 'src/providers'
 import type { PluginSettings } from 'src/settings'
+import { createLogger } from '../logger'
 
 export const exportCmdId = 'export-to-jsonl'
 

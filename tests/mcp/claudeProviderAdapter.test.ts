@@ -72,7 +72,7 @@ describe('ClaudeProviderAdapter', () => {
 	let mockMcpManager: MCPServerManager
 	let adapter: ClaudeProviderAdapter
 	let controller: AbortController
- 	let mockToolCache: ReturnType<typeof createMockToolCache>['cache']
+	let mockToolCache: ReturnType<typeof createMockToolCache>['cache']
 
 	beforeEach(() => {
 		mockAnthropicClient = new Anthropic({ apiKey: 'test-key' })

@@ -128,10 +128,7 @@ async function detectOllamaUrl(): Promise<string> {
 	}
 
 	// Add standard localhost URLs
-	candidateUrls.push(
-		'http://localhost:11434',
-		'http://127.0.0.1:11434'
-	)
+	candidateUrls.push('http://localhost:11434', 'http://127.0.0.1:11434')
 
 	// Add local network IPs (for Ollama running on same network)
 	const localIPs = getLocalNetworkIPs()

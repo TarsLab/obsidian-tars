@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-
-import { ToolDiscoveryCache } from '../../src/mcp/toolDiscoveryCache'
 import { MCPServerManager } from '../../src/mcp/managerMCPUse'
+import { ToolDiscoveryCache } from '../../src/mcp/toolDiscoveryCache'
 import type { MCPServerConfig, ToolDefinition } from '../../src/mcp/types'
 
 afterEach(() => {

@@ -1,5 +1,5 @@
 import {
-	App,
+	type App,
 	type Editor,
 	type EditorPosition,
 	EditorSuggest,
@@ -36,7 +36,11 @@ export class MCPParameterSuggest extends EditorSuggest<ParameterSuggestion> {
 	private activeToolName: string | null = null
 	private usedParameterNames: Set<string> = new Set()
 
-	constructor(app: App, private readonly mcpManager: MCPServerManager, getServerConfigs: () => MCPServerConfig[]) {
+	constructor(
+		app: App,
+		private readonly mcpManager: MCPServerManager,
+		getServerConfigs: () => MCPServerConfig[]
+	) {
 		super(app)
 		this.getServerConfigs = getServerConfigs
 	}
@@ -74,10 +78,7 @@ export class MCPParameterSuggest extends EditorSuggest<ParameterSuggestion> {
 		try {
 			const snapshot = await this.mcpManager.getToolDiscoveryCache().getSnapshot()
 			const serverEntry = snapshot.servers.find((server) => {
-				return (
-					server.serverId === this.activeServerId ||
-					server.serverName === this.activeServerName
-				)
+				return server.serverId === this.activeServerId || server.serverName === this.activeServerName
 			})
 
 			if (!serverEntry) {
@@ -136,7 +137,11 @@ export class MCPParameterSuggest extends EditorSuggest<ParameterSuggestion> {
 
 		const charFollowingColon = updatedLine.charAt(insertionEnd.ch + 1)
 		if (charFollowingColon && charFollowingColon !== ' ') {
-			editor.replaceRange(' ', { line: start.line, ch: insertionEnd.ch + 1 }, { line: start.line, ch: insertionEnd.ch + 1 })
+			editor.replaceRange(
+				' ',
+				{ line: start.line, ch: insertionEnd.ch + 1 },
+				{ line: start.line, ch: insertionEnd.ch + 1 }
+			)
 		}
 	}
 

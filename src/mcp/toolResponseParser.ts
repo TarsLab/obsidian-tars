@@ -6,7 +6,7 @@
  * for OpenAI, Claude, Ollama, etc.
  */
 
-import OpenAI from 'openai'
+import type OpenAI from 'openai'
 import { createLogger } from '../logger'
 import { logError } from './utils'
 
@@ -181,17 +181,17 @@ export class OpenAIToolResponseParser implements ToolResponseParser<OpenAI.ChatC
 		for (const accumulated of this.toolCalls.values()) {
 			if (accumulated.id && accumulated.name && accumulated.arguments) {
 				try {
-						const parsedArgs = JSON.parse(accumulated.arguments)
+					const parsedArgs = JSON.parse(accumulated.arguments)
 					this.finishedToolCalls.push({
 						id: accumulated.id,
 						name: accumulated.name,
 						arguments: parsedArgs
 					})
-					} catch (error) {
-						logError(`Failed to parse tool call arguments: ${accumulated.arguments}`, error)
-						// Still add the tool call with raw string arguments
-						this.finishedToolCalls.push({
-							id: accumulated.id,
+				} catch (error) {
+					logError(`Failed to parse tool call arguments: ${accumulated.arguments}`, error)
+					// Still add the tool call with raw string arguments
+					this.finishedToolCalls.push({
+						id: accumulated.id,
 						name: accumulated.name,
 						arguments: { _raw: accumulated.arguments }
 					})
@@ -216,9 +216,7 @@ type ClaudeStreamEvent =
 	| {
 			type: 'content_block_delta'
 			index: number
-			delta:
-				| { type: 'text_delta'; text: string }
-				| { type: 'input_json_delta'; partial_json: string }
+			delta: { type: 'text_delta'; text: string } | { type: 'input_json_delta'; partial_json: string }
 	  }
 	| {
 			type: 'content_block_stop'

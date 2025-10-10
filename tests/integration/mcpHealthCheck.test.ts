@@ -96,7 +96,8 @@ describe('MCP Health Check Timer Orchestration', () => {
 
 	it('should handle health check errors gracefully without stopping timer', async () => {
 		// GIVEN: A health check that fails
-		const mockPerformHealthCheck = vi.fn()
+		const mockPerformHealthCheck = vi
+			.fn()
 			.mockRejectedValueOnce(new Error('Health check failed'))
 			.mockResolvedValueOnce(undefined) // Second call succeeds
 

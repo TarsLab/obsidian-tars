@@ -1,7 +1,7 @@
 import { type Command, type Editor, type MarkdownView, Notice, Platform } from 'obsidian'
-import { createLogger } from '../logger'
 import { t } from 'src/lang/helper'
 import { toNewChatMark } from 'src/suggest'
+import { createLogger } from '../logger'
 import type { TagCmdMeta } from './tagCmd'
 
 const logger = createLogger('commands:new-chat-tag')

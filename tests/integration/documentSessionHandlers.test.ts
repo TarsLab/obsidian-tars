@@ -5,8 +5,8 @@
  * ToolExecutor scoped to the active Obsidian document.
  */
 
-import { describe, expect, it, vi, beforeEach } from 'vitest'
 import type { App, EventRef, TFile, WorkspaceLeaf } from 'obsidian'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ToolExecutor } from '../../src/mcp'
 import { registerDocumentSessionHandlers } from '../../src/mcp/documentSessionHandlers'
 

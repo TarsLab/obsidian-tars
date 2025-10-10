@@ -3,7 +3,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { toMCPUseServerConfig, toMCPUseConfig, canUseMCPUse, partitionConfigs } from '../../src/mcp/mcpUseAdapter'
+import { canUseMCPUse, partitionConfigs, toMCPUseConfig, toMCPUseServerConfig } from '../../src/mcp/mcpUseAdapter'
 import type { MCPServerConfig } from '../../src/mcp/types'
 
 describe('toMCPUseServerConfig', () => {

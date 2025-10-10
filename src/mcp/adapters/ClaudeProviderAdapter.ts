@@ -6,10 +6,9 @@ import type {
 	ToolResultBlockParam,
 	ToolUseBlockParam
 } from '@anthropic-ai/sdk/resources/messages/messages'
-
-import type { Message, ProviderAdapter, ToolExecutionResult } from '../toolCallingCoordinator'
 import type { MCPServerManager } from '../managerMCPUse'
-import { ToolDiscoveryCache } from '../toolDiscoveryCache'
+import type { Message, ProviderAdapter, ToolExecutionResult } from '../toolCallingCoordinator'
+import type { ToolDiscoveryCache } from '../toolDiscoveryCache'
 import { ClaudeToolResponseParser } from '../toolResponseParser'
 import type { ToolServerInfo } from '../types'
 
@@ -79,7 +78,7 @@ export class ClaudeProviderAdapter implements ProviderAdapter<ClaudeStreamEvent>
 			}
 		}
 		return this.toolMapping.get(toolName) ?? null
-}
+	}
 
 	async *sendRequest(messages: Message[]): AsyncGenerator<ClaudeStreamEvent> {
 		const tools = await this.buildTools()

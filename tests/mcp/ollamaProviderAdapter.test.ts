@@ -4,9 +4,9 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { OllamaProviderAdapter } from '../../src/mcp/providerAdapters'
-import type { MCPServerManager } from '../../src/mcp/managerMCPUse'
 import type { ToolExecutor } from '../../src/mcp/executor'
+import type { MCPServerManager } from '../../src/mcp/managerMCPUse'
+import { OllamaProviderAdapter } from '../../src/mcp/providerAdapters'
 
 // Mock Ollama client
 const createMockOllamaClient = () => ({
@@ -73,27 +73,27 @@ const createMockToolCache = () => {
 }
 
 // Mock MCP manager
-const createMockMCPManager = (toolCache: ReturnType<typeof createMockToolCache>['cache']): MCPServerManager => ({
-	listServers: vi.fn().mockReturnValue([
-		{ id: 'test-server', name: 'Test Server', enabled: true }
-	]),
-	getClient: vi.fn().mockReturnValue({
-		listTools: vi.fn().mockResolvedValue([])
-	}),
-	getToolDiscoveryCache: vi.fn().mockReturnValue(toolCache),
-	on: vi.fn().mockReturnThis(),
-	emit: vi.fn()
-	// biome-ignore lint/suspicious/noExplicitAny: mock
-} as any)
+const createMockMCPManager = (toolCache: ReturnType<typeof createMockToolCache>['cache']): MCPServerManager =>
+	({
+		listServers: vi.fn().mockReturnValue([{ id: 'test-server', name: 'Test Server', enabled: true }]),
+		getClient: vi.fn().mockReturnValue({
+			listTools: vi.fn().mockResolvedValue([])
+		}),
+		getToolDiscoveryCache: vi.fn().mockReturnValue(toolCache),
+		on: vi.fn().mockReturnThis(),
+		emit: vi.fn()
+		// biome-ignore lint/suspicious/noExplicitAny: mock
+	}) as any
 
 // Mock executor
-const createMockExecutor = (): ToolExecutor => ({
-	executeTool: vi.fn(),
-	canExecute: vi.fn().mockReturnValue(true)
-	// biome-ignore lint/suspicious/noExplicitAny: mock
-} as any)
+const createMockExecutor = (): ToolExecutor =>
+	({
+		executeTool: vi.fn(),
+		canExecute: vi.fn().mockReturnValue(true)
+		// biome-ignore lint/suspicious/noExplicitAny: mock
+	}) as any
 
-	describe('OllamaProviderAdapter', () => {
+describe('OllamaProviderAdapter', () => {
 	let adapter: OllamaProviderAdapter
 	let mockOllamaClient: ReturnType<typeof createMockOllamaClient>
 	let mockMCPManager: MCPServerManager
@@ -120,7 +120,7 @@ const createMockExecutor = (): ToolExecutor => ({
 		})
 	})
 
-		describe('Initialization', () => {
+	describe('Initialization', () => {
 		it('should build tool-to-server mapping', async () => {
 			// When: Initializing adapter
 			await adapter.initialize()
@@ -269,11 +269,11 @@ const createMockExecutor = (): ToolExecutor => ({
 			await adapter.initialize()
 
 			const mockStream = (async function* () {
-		yield { message: { content: 'Start' }, done: false }
-			// Signal abort after first chunk
-			controller.abort()
-		yield { message: { content: 'Should not see this' }, done: false }
-		})()
+				yield { message: { content: 'Start' }, done: false }
+				// Signal abort after first chunk
+				controller.abort()
+				yield { message: { content: 'Should not see this' }, done: false }
+			})()
 
 			// biome-ignore lint/suspicious/noExplicitAny: mock
 			vi.mocked(mockOllamaClient.chat as any).mockResolvedValue(mockStream)
@@ -310,12 +310,14 @@ const createMockExecutor = (): ToolExecutor => ({
 
 			const chunk = {
 				message: {
-					tool_calls: [{
-						function: {
-							name: 'get_weather',
-							arguments: { location: 'London' }
+					tool_calls: [
+						{
+							function: {
+								name: 'get_weather',
+								arguments: { location: 'London' }
+							}
 						}
-					}]
+					]
 				}
 			}
 
@@ -335,12 +337,14 @@ const createMockExecutor = (): ToolExecutor => ({
 
 			const chunk = {
 				message: {
-					tool_calls: [{
-						function: {
-							name: 'get_code_context_exa',
-							arguments: { query: 'test', tokensNum: '1000' }
+					tool_calls: [
+						{
+							function: {
+								name: 'get_code_context_exa',
+								arguments: { query: 'test', tokensNum: '1000' }
+							}
 						}
-					}]
+					]
 				}
 			}
 

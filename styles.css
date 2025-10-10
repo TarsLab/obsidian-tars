@@ -516,7 +516,7 @@ summary.tars-setting-h4 {
 }
 
 .tars-collapsible__summary::before {
-	content: '▸';
+	content: "▸";
 	font-size: 0.8em;
 	transition: transform 0.15s ease;
 }

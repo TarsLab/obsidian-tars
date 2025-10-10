@@ -1,12 +1,12 @@
-import OpenAI from 'openai'
 import type { EmbedCache } from 'obsidian'
+import type OpenAI from 'openai'
 
 import type { ToolExecutor } from '../executor'
 import type { MCPServerManager } from '../managerMCPUse'
-import { ToolDiscoveryCache } from '../toolDiscoveryCache'
 import type { Message, ProviderAdapter, ToolExecutionResult } from '../toolCallingCoordinator'
-import type { ToolServerInfo } from '../types'
+import type { ToolDiscoveryCache } from '../toolDiscoveryCache'
 import { OpenAIToolResponseParser } from '../toolResponseParser'
+import type { ToolServerInfo } from '../types'
 
 export interface OpenAIAdapterConfig {
 	mcpManager: MCPServerManager
@@ -101,7 +101,7 @@ export class OpenAIProviderAdapter implements ProviderAdapter<OpenAI.ChatComplet
 			}
 		}
 		return null
-}
+	}
 
 	formatToolResult(toolCallId: string, result: ToolExecutionResult): Message {
 		return {

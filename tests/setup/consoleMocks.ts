@@ -1,5 +1,5 @@
-import { afterAll, afterEach, beforeAll, vi } from 'vitest'
 import { Writable } from 'node:stream'
+import { afterAll, afterEach, beforeAll, vi } from 'vitest'
 
 type ConsoleMethod = 'log' | 'info' | 'debug' | 'warn' | 'error'
 

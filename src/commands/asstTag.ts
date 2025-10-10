@@ -9,13 +9,13 @@ import {
 	Platform,
 	Setting
 } from 'obsidian'
-import { createLogger } from '../logger'
 import { buildRunEnv, generate, type RequestController } from 'src/editor'
 import { t } from 'src/lang/helper'
 import type { ProviderSettings } from 'src/providers'
 import type { PluginSettings } from 'src/settings'
 import type { StatusBarManager } from 'src/statusBarManager'
 import { toSpeakMark } from 'src/suggest'
+import { createLogger } from '../logger'
 import type { TagCmdMeta } from './tagCmd'
 import {
 	fetchTagMeta,
@@ -106,11 +106,33 @@ export const asstTagCmd = (
 				// If it's an asstTag, prompt the user whether to regenerate
 				if (settings.confirmRegenerate) {
 					const onConfirm = async () => {
-						await regenerate(app, settings, statusBarManager, requestController, editor, provider, range, mark, mcpManager, mcpExecutor)
+						await regenerate(
+							app,
+							settings,
+							statusBarManager,
+							requestController,
+							editor,
+							provider,
+							range,
+							mark,
+							mcpManager,
+							mcpExecutor
+						)
 					}
 					new ConfirmModal(app, onConfirm).open()
 				} else {
-					await regenerate(app, settings, statusBarManager, requestController, editor, provider, range, mark, mcpManager, mcpExecutor)
+					await regenerate(
+						app,
+						settings,
+						statusBarManager,
+						requestController,
+						editor,
+						provider,
+						range,
+						mark,
+						mcpManager,
+						mcpExecutor
+					)
 				}
 			} else {
 				// If it's a userTag, systemTag (warn later), newChat mixed, etc., add a new line, insert assistant tag. Let subsequent code handle the judgment
@@ -172,7 +194,17 @@ const regenerate = async (
 		ch: 0
 	})
 	const env = await buildRunEnv(app, settings)
-	await generate(env, editor, provider, messagesEndOffset, statusBarManager, settings.editorStatus, requestController, mcpManager, mcpExecutor)
+	await generate(
+		env,
+		editor,
+		provider,
+		messagesEndOffset,
+		statusBarManager,
+		settings.editorStatus,
+		requestController,
+		mcpManager,
+		mcpExecutor
+	)
 }
 
 class ConfirmModal extends Modal {

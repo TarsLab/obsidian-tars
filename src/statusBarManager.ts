@@ -287,7 +287,6 @@ class MCPStatusModal extends Modal {
 	}
 }
 
-
 class GenerationStatsModal extends Modal {
 	constructor(
 		app: App,
@@ -318,13 +317,7 @@ class GenerationStatsModal extends Modal {
 					stack: this.errorLog[0]?.stack,
 					timestamp: this.errorLog[0]?.timestamp || new Date()
 				}
-				new ErrorDetailModal(
-					this.app,
-					currentError,
-					this.errorLog,
-					this.onClearLogs,
-					this.onRemoveLog
-				).open()
+				new ErrorDetailModal(this.app, currentError, this.errorLog, this.onClearLogs, this.onRemoveLog).open()
 			}
 		}
 

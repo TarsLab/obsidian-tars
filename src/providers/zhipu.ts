@@ -1,7 +1,7 @@
 import * as jose from 'jose'
 import OpenAI from 'openai'
-import { createLogger } from '../logger'
 import { t } from 'src/lang/helper'
+import { createLogger } from '../logger'
 import type { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 
 interface Token {

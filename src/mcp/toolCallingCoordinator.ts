@@ -13,8 +13,8 @@ import type { Editor } from 'obsidian'
 import { createLogger } from '../logger'
 import type { StatusBarManager } from '../statusBarManager'
 import type { ToolExecutor } from './executor'
-import { DocumentToolCache, type CachedToolResult } from './toolResultCache'
 import type { ToolCall, ToolResponseParser } from './toolResponseParser'
+import { type CachedToolResult, DocumentToolCache } from './toolResultCache'
 import type { ToolServerInfo } from './types'
 
 const logger = createLogger('mcp:tool-coordinator')
@@ -81,8 +81,8 @@ export interface GenerateOptions {
 	statusBarManager?: StatusBarManager
 	onPromptCachedResult?: (
 		toolName: string,
-	cached: import('./toolResultCache').CachedToolResult
-) => Promise<'re-execute' | 'use-cached' | 'cancel'>
+		cached: import('./toolResultCache').CachedToolResult
+	) => Promise<'re-execute' | 'use-cached' | 'cancel'>
 	autoUseDocumentCache?: boolean
 }
 
@@ -478,9 +478,7 @@ function promptCachedResultWithNotice(
 				.createEl?.('button', { text: 'Re-execute', cls: 'mod-warning' })
 				?.addEventListener('click', () => cleanup('re-execute'))
 
-			actions
-				.createEl?.('button', { text: 'Cancel' })
-				?.addEventListener('click', () => cleanup('cancel'))
+			actions.createEl?.('button', { text: 'Cancel' })?.addEventListener('click', () => cleanup('cancel'))
 		} catch {
 			resolve('re-execute')
 		}

@@ -12,8 +12,7 @@ describe('OpenAIToolResponseParser - Detailed Implementation Tests', () => {
 		parser = new OpenAIToolResponseParser()
 	})
 
-	afterEach(() => {
-	})
+	afterEach(() => {})
 
 	describe('Text-only responses', () => {
 		it('should parse simple text chunks', () => {

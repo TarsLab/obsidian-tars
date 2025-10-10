@@ -176,7 +176,7 @@ describe('ToolCallingCoordinator', () => {
 						return null
 					}),
 					hasCompleteToolCalls: vi.fn(() => parserHasToolCalls),
-					getToolCalls: vi.fn(() => parserHasToolCalls ? [mockToolCall] : []),
+					getToolCalls: vi.fn(() => (parserHasToolCalls ? [mockToolCall] : [])),
 					reset: vi.fn()
 				}),
 				findServer: (_toolName: string) => ({ id: 'weather-server', name: 'Weather Server' }),

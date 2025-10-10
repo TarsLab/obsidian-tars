@@ -5,7 +5,9 @@
 
 // Core classes
 export { CodeBlockProcessor } from './codeBlockProcessor'
+export { registerDocumentSessionHandlers } from './documentSessionHandlers'
 export * from './errors'
+export type { SessionNotificationHandlers } from './executor'
 export { ToolExecutor } from './executor'
 export { MCPServerManager } from './managerMCPUse' // Using mcp-use library
 // Migration
@@ -62,17 +64,15 @@ export {
 	type ToolCallChunk,
 	type ToolResponseParser
 } from './toolResponseParser'
-export { registerDocumentSessionHandlers } from './documentSessionHandlers'
-export type { SessionNotificationHandlers } from './executor'
-export { DocumentToolCache, type CachedToolResult } from './toolResultCache'
+export { type CachedToolResult, DocumentToolCache } from './toolResultCache'
 // Core types
 export * from './types'
 export * from './utils'
 
 import type { StatusBarManager } from '../statusBarManager'
 import { CodeBlockProcessor } from './codeBlockProcessor'
-import { ToolExecutor } from './executor'
 import type { SessionNotificationHandlers } from './executor'
+import { ToolExecutor } from './executor'
 // Import types for function signatures
 import { MCPServerManager } from './managerMCPUse'
 

@@ -44,9 +44,7 @@ export class DocumentToolCache {
 		return (
 			this.getAllResults(editor).find(
 				(result) =>
-					result.serverId === serverId &&
-					result.toolName === toolName &&
-					result.parameterHash === parameterHash
+					result.serverId === serverId && result.toolName === toolName && result.parameterHash === parameterHash
 			) ?? null
 		)
 	}

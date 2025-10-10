@@ -130,12 +130,14 @@ describe('Ollama Tool Format Compatibility', () => {
 		// Ollama format: arguments are already parsed objects
 		const chunk = {
 			message: {
-				tool_calls: [{
-					function: {
-						name: 'get_weather',
-						arguments: { location: 'London', units: 'celsius' } // Already parsed!
+				tool_calls: [
+					{
+						function: {
+							name: 'get_weather',
+							arguments: { location: 'London', units: 'celsius' } // Already parsed!
+						}
 					}
-				}]
+				]
 			}
 		}
 

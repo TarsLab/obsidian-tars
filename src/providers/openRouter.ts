@@ -1,7 +1,7 @@
-import OpenAI from 'openai'
 import type { EmbedCache } from 'obsidian'
-import { createLogger } from '../logger'
+import OpenAI from 'openai'
 import { t } from 'src/lang/helper'
+import { createLogger } from '../logger'
 import type { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 import { arrayBufferToBase64, getMimeTypeFromFilename } from './utils'
 
@@ -51,15 +51,10 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 					embeds: msg.embeds
 				}))
 
-				yield* coordinator.generateWithTools(
-					formattedMessages,
-					adapter,
-					mcpExec,
-					{
-						documentPath: documentPath || 'unknown.md',
-						autoUseDocumentCache: true
-					}
-				)
+				yield* coordinator.generateWithTools(formattedMessages, adapter, mcpExec, {
+					documentPath: documentPath || 'unknown.md',
+					autoUseDocumentCache: true
+				})
 
 				return
 			} catch (error) {
@@ -88,7 +83,7 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
-				'Authorization': `Bearer ${apiKey}`
+				Authorization: `Bearer ${apiKey}`
 			},
 			body: JSON.stringify({ ...requestBody, stream: true }),
 			signal: controller.signal

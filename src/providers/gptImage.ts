@@ -1,7 +1,7 @@
 import { Notice } from 'obsidian'
 import OpenAI from 'openai'
-import { createLogger } from '../logger'
 import { t } from 'src/lang/helper'
+import { createLogger } from '../logger'
 import type { BaseOptions, Message, ResolveEmbedAsBinary, SaveAttachment, SendRequest, Vendor } from '.'
 import { getMimeTypeFromFilename } from './utils'
 

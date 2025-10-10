@@ -5,13 +5,14 @@
  * order-independent matching for cached executions.
  */
 
-import { describe, expect, it } from 'vitest'
 import type { Editor } from 'obsidian'
+import { describe, expect, it } from 'vitest'
 import { DocumentToolCache } from '../../src/mcp/toolResultCache'
 
-const buildEditor = (content: string): Editor => ({
-	getValue: () => content
-} as unknown as Editor)
+const buildEditor = (content: string): Editor =>
+	({
+		getValue: () => content
+	}) as unknown as Editor
 
 describe('DocumentToolCache', () => {
 	const cache = new DocumentToolCache()
@@ -59,8 +60,8 @@ describe('DocumentToolCache', () => {
 		expect(existing?.parameterHash).toBe(cache.hashParameters({ location: 'Paris', units: 'metric' }))
 		expect(existing?.resultMarkdown).toContain('"forecast": "Sunny"')
 		expect(existing?.executedAt).toBe(Date.parse('2025-10-09T12:34:56.000Z'))
-	expect(existing?.calloutRange.startLine).toBe(0)
-	expect(existing?.resultRange?.startLine ?? 0).toBeGreaterThan((existing?.calloutRange.endLine ?? 0))
+		expect(existing?.calloutRange.startLine).toBe(0)
+		expect(existing?.resultRange?.startLine ?? 0).toBeGreaterThan(existing?.calloutRange.endLine ?? 0)
 	})
 
 	it('returns all cached results in document', () => {

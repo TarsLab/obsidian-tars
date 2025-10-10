@@ -1,5 +1,5 @@
 import {
-	App,
+	type App,
 	type Editor,
 	type EditorPosition,
 	EditorSuggest,
@@ -35,7 +35,11 @@ export class MCPToolSuggest extends EditorSuggest<ToolSuggestion> {
 	private activeServerName: string | null = null
 	private activeServerId: string | null = null
 
-	constructor(app: App, private readonly mcpManager: MCPServerManager, getServerConfigs: () => MCPServerConfig[]) {
+	constructor(
+		app: App,
+		private readonly mcpManager: MCPServerManager,
+		getServerConfigs: () => MCPServerConfig[]
+	) {
 		super(app)
 		this.getServerConfigs = getServerConfigs
 	}
@@ -68,10 +72,7 @@ export class MCPToolSuggest extends EditorSuggest<ToolSuggestion> {
 		try {
 			const snapshot = await this.mcpManager.getToolDiscoveryCache().getSnapshot()
 			const serverEntry = snapshot.servers.find((server) => {
-				return (
-					server.serverId === this.activeServerId ||
-					server.serverName === this.activeServerName
-				)
+				return server.serverId === this.activeServerId || server.serverName === this.activeServerName
 			})
 
 			if (!serverEntry) {
@@ -158,7 +159,10 @@ export class MCPToolSuggest extends EditorSuggest<ToolSuggestion> {
 		let cursorCh = cursorColumn ?? firstParamLine.length
 		if (cursorColumn === null) {
 			const colonIndex = firstParamLine.indexOf(':')
-			cursorCh = colonIndex === -1 ? firstParamLine.length : colonIndex + 1 + (firstParamLine.charAt(colonIndex + 1) === ' ' ? 1 : 0)
+			cursorCh =
+				colonIndex === -1
+					? firstParamLine.length
+					: colonIndex + 1 + (firstParamLine.charAt(colonIndex + 1) === ' ' ? 1 : 0)
 		}
 		editor.setCursor({ line: firstParamLineIndex, ch: cursorCh })
 	}

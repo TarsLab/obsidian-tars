@@ -4,10 +4,10 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ToolExecutor } from '../../src/mcp/executor'
 import type { SessionNotificationHandlers } from '../../src/mcp/executor'
-import type { ExecutionTracker } from '../../src/mcp/types'
+import { ToolExecutor } from '../../src/mcp/executor'
 import { MCPServerManager } from '../../src/mcp/managerMCPUse'
+import type { ExecutionTracker } from '../../src/mcp/types'
 
 describe('ToolExecutor', () => {
 	describe('constructor options', () => {
@@ -324,15 +324,14 @@ describe('ToolExecutor limits contract tests', () => {
 				callResult: unknown
 			}>
 		) => {
-			const tracker: ExecutionTracker =
-				overrides?.tracker ?? {
-					concurrentLimit: 5,
-					sessionLimit: 5,
-					activeExecutions: new Set<string>(),
-					totalExecuted: 0,
-					stopped: false,
-					executionHistory: []
-				}
+			const tracker: ExecutionTracker = overrides?.tracker ?? {
+				concurrentLimit: 5,
+				sessionLimit: 5,
+				activeExecutions: new Set<string>(),
+				totalExecuted: 0,
+				stopped: false,
+				executionHistory: []
+			}
 
 			const callTool = vi.fn().mockResolvedValue(
 				overrides?.callResult ?? {
@@ -347,11 +346,10 @@ describe('ToolExecutor limits contract tests', () => {
 				listServers: vi.fn().mockReturnValue([{ id: 'test-server', name: 'Test Server' }])
 			} as unknown as MCPServerManager
 
-			const notifications: SessionNotificationHandlers =
-				overrides?.notifications ?? {
-					onLimitReached: vi.fn().mockResolvedValue('cancel'),
-					onSessionReset: vi.fn()
-				}
+			const notifications: SessionNotificationHandlers = overrides?.notifications ?? {
+				onLimitReached: vi.fn().mockResolvedValue('cancel'),
+				onSessionReset: vi.fn()
+			}
 
 			return {
 				executor: new ToolExecutor(mockManager, tracker, { sessionNotifications: notifications }),

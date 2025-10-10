@@ -193,7 +193,7 @@ timestamp: true`
 			executor.reset()
 
 			// THEN: Stats are reset
-		const stats = executor.getStats()
+			const stats = executor.getStats()
 			expect(stats.totalExecuted).toBe(0)
 			expect(stats.stopped).toBe(false)
 			expect(stats.documentSessions).toEqual([])

@@ -27,9 +27,7 @@ function buildDockerRunCommand(config: {
 			continue
 		}
 		const needsQuoting = /\s/.test(value)
-		const formattedValue = needsQuoting
-			? `"${value.replace(/"/g, '\\"')}"`
-			: value
+		const formattedValue = needsQuoting ? `"${value.replace(/"/g, '\\"')}"` : value
 		args.push('-e', `${key}=${formattedValue}`)
 	}
 
@@ -93,12 +91,14 @@ export function migrateServerConfig(config: LegacyMCPServerConfig): MCPServerCon
 
 	// Migrate from dockerConfig (old format 2)
 	if (config.dockerConfig) {
-		const dockerCommand = buildDockerRunCommand(config.dockerConfig as {
-			image?: string
-			containerName?: string
-			command?: string[]
-			env?: Record<string, string>
-		})
+		const dockerCommand = buildDockerRunCommand(
+			config.dockerConfig as {
+				image?: string
+				containerName?: string
+				command?: string[]
+				env?: Record<string, string>
+			}
+		)
 
 		if (dockerCommand) {
 			return {

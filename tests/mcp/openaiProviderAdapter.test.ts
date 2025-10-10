@@ -69,9 +69,7 @@ const createMockToolCache = () => {
 }
 
 const createMockMCPManager = (toolCache: ReturnType<typeof createMockToolCache>['cache']) => ({
-	listServers: vi.fn().mockReturnValue([
-		{ id: 'server1', name: 'Server 1', enabled: true }
-	]),
+	listServers: vi.fn().mockReturnValue([{ id: 'server1', name: 'Server 1', enabled: true }]),
 	getClient: vi.fn().mockReturnValue({
 		listTools: vi.fn().mockResolvedValue([])
 	}),
@@ -114,7 +112,7 @@ describe('OpenAIProviderAdapter', () => {
 		})
 	})
 
-		describe('Initialization', () => {
+	describe('Initialization', () => {
 		it('should initialize and build tool mapping', async () => {
 			// When: Initializing adapter
 			await adapter.initialize()

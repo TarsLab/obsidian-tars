@@ -13,7 +13,9 @@ vi.mock('mcp-use', () => {
 	class MockMCPClient {
 		private readonly serverConfigs: Record<string, { command: string; args: string[]; env?: Record<string, string> }>
 
-		static fromDict(config: { mcpServers: Record<string, { command: string; args: string[]; env?: Record<string, string> }> }) {
+		static fromDict(config: {
+			mcpServers: Record<string, { command: string; args: string[]; env?: Record<string, string> }>
+		}) {
 			return new MockMCPClient(config.mcpServers ?? {})
 		}
 
@@ -52,9 +54,7 @@ describe('MCP Server Failure Tracking', () => {
 	const getConsoleErrors = () => globalThis.__CONSOLE_ERROR_MESSAGES__
 
 	const expectErrorLoggedFor = (serverId: string) => {
-		expect(
-			getConsoleErrors().some((msg) => msg.includes(`Failed to create session for ${serverId}`))
-		).toBe(true)
+		expect(getConsoleErrors().some((msg) => msg.includes(`Failed to create session for ${serverId}`))).toBe(true)
 	}
 
 	beforeEach(() => {

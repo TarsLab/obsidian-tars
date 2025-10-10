@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { Notice, Platform, requestUrl } from 'obsidian'
-import { createLogger } from '../logger'
 import { t } from 'src/lang/helper'
+import { createLogger } from '../logger'
 import type { BaseOptions, Message, Optional, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 
 const logger = createLogger('providers:qianfan')

@@ -3,10 +3,10 @@ import type { Ollama } from 'ollama/browser'
 import { createLogger } from '../../logger'
 import type { ToolExecutor } from '../executor'
 import type { MCPServerManager } from '../managerMCPUse'
-import { ToolDiscoveryCache } from '../toolDiscoveryCache'
 import type { Message, ProviderAdapter, ToolExecutionResult } from '../toolCallingCoordinator'
-import type { ToolServerInfo } from '../types'
+import type { ToolDiscoveryCache } from '../toolDiscoveryCache'
 import { OllamaToolResponseParser } from '../toolResponseParser'
+import type { ToolServerInfo } from '../types'
 
 const logger = createLogger('mcp:ollama-adapter')
 const streamLogger = createLogger('mcp:ollama-adapter:stream')
@@ -98,7 +98,7 @@ export class OllamaProviderAdapter implements ProviderAdapter<OllamaChunk> {
 			}
 		}
 		return this.toolMapping.get(toolName) ?? null
-}
+	}
 
 	async *sendRequest(messages: Message[]): AsyncGenerator<OllamaChunk> {
 		logger.debug('starting sendRequest', { messageCount: messages.length })
@@ -230,10 +230,7 @@ export class OllamaProviderAdapter implements ProviderAdapter<OllamaChunk> {
 				return {
 					role: 'tool',
 					tool_call_id: msg.tool_call_id,
-					content:
-						typeof msg.content === 'string'
-							? msg.content
-							: JSON.stringify(msg.content)
+					content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
 				}
 			}
 

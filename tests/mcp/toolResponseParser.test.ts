@@ -56,12 +56,7 @@ describe('ToolResponseParser Interface', () => {
 	describe('Contract tests', () => {
 		it('should define the required interface methods', () => {
 			// GIVEN: A tool response parser interface
-			const requiredMethods = [
-				'parseChunk',
-				'hasCompleteToolCalls',
-				'getToolCalls',
-				'reset'
-			]
+			const requiredMethods = ['parseChunk', 'hasCompleteToolCalls', 'getToolCalls', 'reset']
 
 			// THEN: All required methods should be part of the interface
 			// This is a compile-time check - if this compiles, the interface is correct
@@ -139,11 +134,13 @@ describe('OpenAI Tool Response Parser', () => {
 		it('should parse text content from delta', () => {
 			// GIVEN: OpenAI chunk with text content
 			const chunk: OpenAIChunk = {
-				choices: [{
-					delta: {
-						content: 'Hello world'
+				choices: [
+					{
+						delta: {
+							content: 'Hello world'
+						}
 					}
-				}]
+				]
 			}
 
 			// WHEN: Parsing the chunk
@@ -174,15 +171,19 @@ describe('OpenAI Tool Response Parser', () => {
 		it('should start accumulating tool call when index and id arrive', () => {
 			// GIVEN: First chunk of a tool call (index and id)
 			const chunk: OpenAIChunk = {
-				choices: [{
-					delta: {
-						tool_calls: [{
-							index: 0,
-							id: 'call_abc123',
-							type: 'function'
-						}]
+				choices: [
+					{
+						delta: {
+							tool_calls: [
+								{
+									index: 0,
+									id: 'call_abc123',
+									type: 'function'
+								}
+							]
+						}
 					}
-				}]
+				]
 			}
 
 			// WHEN: Parsing the chunk
@@ -202,16 +203,20 @@ describe('OpenAI Tool Response Parser', () => {
 		it('should accumulate function name', () => {
 			// GIVEN: Tool call with function name
 			const chunk: OpenAIChunk = {
-				choices: [{
-					delta: {
-						tool_calls: [{
-							index: 0,
-							function: {
-								name: 'get_weather'
-							}
-						}]
+				choices: [
+					{
+						delta: {
+							tool_calls: [
+								{
+									index: 0,
+									function: {
+										name: 'get_weather'
+									}
+								}
+							]
+						}
 					}
-				}]
+				]
 			}
 
 			// WHEN: Parsing after initial chunk
@@ -228,45 +233,61 @@ describe('OpenAI Tool Response Parser', () => {
 			// GIVEN: Arguments arriving in chunks
 			const chunks: OpenAIChunk[] = [
 				{
-					choices: [{
-						delta: {
-							tool_calls: [{
-								index: 0,
-								id: 'call_123',
-								function: { name: 'get_weather' }
-							}]
+					choices: [
+						{
+							delta: {
+								tool_calls: [
+									{
+										index: 0,
+										id: 'call_123',
+										function: { name: 'get_weather' }
+									}
+								]
+							}
 						}
-					}]
+					]
 				},
 				{
-					choices: [{
-						delta: {
-							tool_calls: [{
-								index: 0,
-								function: { arguments: '{"loc' }
-							}]
+					choices: [
+						{
+							delta: {
+								tool_calls: [
+									{
+										index: 0,
+										function: { arguments: '{"loc' }
+									}
+								]
+							}
 						}
-					}]
+					]
 				},
 				{
-					choices: [{
-						delta: {
-							tool_calls: [{
-								index: 0,
-								function: { arguments: 'ation":"' }
-							}]
+					choices: [
+						{
+							delta: {
+								tool_calls: [
+									{
+										index: 0,
+										function: { arguments: 'ation":"' }
+									}
+								]
+							}
 						}
-					}]
+					]
 				},
 				{
-					choices: [{
-						delta: {
-							tool_calls: [{
-								index: 0,
-								function: { arguments: 'London"}' }
-							}]
+					choices: [
+						{
+							delta: {
+								tool_calls: [
+									{
+										index: 0,
+										function: { arguments: 'London"}' }
+									}
+								]
+							}
 						}
-					}]
+					]
 				}
 			]
 
@@ -295,24 +316,28 @@ describe('OpenAI Tool Response Parser', () => {
 			// GIVEN: Multiple tool calls in same response (different indices)
 			const chunks: OpenAIChunk[] = [
 				{
-					choices: [{
-						delta: {
-							tool_calls: [
-								{ index: 0, id: 'call_1', function: { name: 'tool_a' } },
-								{ index: 1, id: 'call_2', function: { name: 'tool_b' } }
-							]
+					choices: [
+						{
+							delta: {
+								tool_calls: [
+									{ index: 0, id: 'call_1', function: { name: 'tool_a' } },
+									{ index: 1, id: 'call_2', function: { name: 'tool_b' } }
+								]
+							}
 						}
-					}]
+					]
 				},
 				{
-					choices: [{
-						delta: {
-							tool_calls: [
-								{ index: 0, function: { arguments: '{"a":1}' } },
-								{ index: 1, function: { arguments: '{"b":2}' } }
-							]
+					choices: [
+						{
+							delta: {
+								tool_calls: [
+									{ index: 0, function: { arguments: '{"a":1}' } },
+									{ index: 1, function: { arguments: '{"b":2}' } }
+								]
+							}
 						}
-					}]
+					]
 				}
 			]
 
@@ -336,15 +361,19 @@ describe('OpenAI Tool Response Parser', () => {
 			// GIVEN: Tool call with invalid JSON arguments
 			const chunks: OpenAIChunk[] = [
 				{
-					choices: [{
-						delta: {
-							tool_calls: [{
-								index: 0,
-								id: 'call_123',
-								function: { name: 'bad_tool', arguments: '{invalid json' }
-							}]
+					choices: [
+						{
+							delta: {
+								tool_calls: [
+									{
+										index: 0,
+										id: 'call_123',
+										function: { name: 'bad_tool', arguments: '{invalid json' }
+									}
+								]
+							}
 						}
-					}]
+					]
 				}
 			]
 
@@ -501,12 +530,14 @@ describe('Ollama Tool Response Parser', () => {
 			// GIVEN: Ollama response with tool call
 			const chunk = {
 				message: {
-					tool_calls: [{
-						function: {
-							name: 'get_weather',
-							arguments: { location: 'London' }
+					tool_calls: [
+						{
+							function: {
+								name: 'get_weather',
+								arguments: { location: 'London' }
+							}
 						}
-					}]
+					]
 				}
 			}
 
@@ -525,12 +556,14 @@ describe('Ollama Tool Response Parser', () => {
 			// NOTE: Unlike OpenAI, Ollama sends arguments as parsed JSON object
 			const chunk = {
 				message: {
-					tool_calls: [{
-						function: {
-							name: 'calculate',
-							arguments: { x: 5, y: 10, operation: 'add' }
+					tool_calls: [
+						{
+							function: {
+								name: 'calculate',
+								arguments: { x: 5, y: 10, operation: 'add' }
+							}
 						}
-					}]
+					]
 				}
 			}
 

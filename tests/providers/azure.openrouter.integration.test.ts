@@ -107,13 +107,16 @@ describe('Integration - OpenAI SDK Compatibility', () => {
 
 		// Verify they can be instantiated (will fail in test env but type-checks)
 		expect(() => new OpenAI({ apiKey: 'test', dangerouslyAllowBrowser: true })).not.toThrow()
-		expect(() => new AzureOpenAI({
-			apiKey: 'test',
-			endpoint: 'https://test.azure.com',
-			apiVersion: '2024-02-01',
-			deployment: 'gpt-4',
-			dangerouslyAllowBrowser: true
-		})).not.toThrow()
+		expect(
+			() =>
+				new AzureOpenAI({
+					apiKey: 'test',
+					endpoint: 'https://test.azure.com',
+					apiVersion: '2024-02-01',
+					deployment: 'gpt-4',
+					dangerouslyAllowBrowser: true
+				})
+		).not.toThrow()
 	})
 
 	it('should export ToolCallingCoordinator and OpenAIProviderAdapter for reuse', async () => {
@@ -162,15 +165,18 @@ describe('Integration - OpenAI SDK Compatibility', () => {
 			}
 		}
 
-		expect(() => new mcp.OpenAIProviderAdapter({
-			// biome-ignore lint/suspicious/noExplicitAny: test mock
-			mcpManager: mockMcpManager as any,
-			// biome-ignore lint/suspicious/noExplicitAny: test mock
-			mcpExecutor: mockMcpExecutor as any,
-			// biome-ignore lint/suspicious/noExplicitAny: test mock
-			openaiClient: mockClient as any,
-			controller: new AbortController(),
-			resolveEmbedAsBinary: async () => new ArrayBuffer(0)
-		})).not.toThrow()
+		expect(
+			() =>
+				new mcp.OpenAIProviderAdapter({
+					// biome-ignore lint/suspicious/noExplicitAny: test mock
+					mcpManager: mockMcpManager as any,
+					// biome-ignore lint/suspicious/noExplicitAny: test mock
+					mcpExecutor: mockMcpExecutor as any,
+					// biome-ignore lint/suspicious/noExplicitAny: test mock
+					openaiClient: mockClient as any,
+					controller: new AbortController(),
+					resolveEmbedAsBinary: async () => new ArrayBuffer(0)
+				})
+		).not.toThrow()
 	})
 })

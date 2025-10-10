@@ -1,18 +1,17 @@
 import { describe, expect, it } from 'vitest'
-
+import type { ToolDefinition } from '../../src/mcp/types'
 import {
+	buildParameterPlaceholder,
+	buildRequiredParameterInsertion,
 	collectUsedParameters,
 	detectMCPCodeBlockContext,
 	extractParameterDefinitions,
 	filterParameters,
 	filterTools,
 	findToolNameInBlock,
-	buildParameterPlaceholder,
-	buildRequiredParameterInsertion,
 	parseParameterLine,
 	parseToolLine
 } from '../../src/suggests/mcpToolSuggestHelpers'
-import type { ToolDefinition } from '../../src/mcp/types'
 
 type EditorPosition = { line: number; ch: number }
 
@@ -40,9 +39,7 @@ describe('Required parameter insertion planning', () => {
 
 	it('skips parameters that already exist and returns empty plan when none remain', () => {
 		// Given: Required parameter already present in document
-		const definitions = [
-			{ name: 'query', type: 'string', required: true, description: '', example: 'term' }
-		]
+		const definitions = [{ name: 'query', type: 'string', required: true, description: '', example: 'term' }]
 		const used = new Set<string>(['query'])
 
 		// When: Building insertion plan

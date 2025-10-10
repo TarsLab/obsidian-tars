@@ -1,5 +1,5 @@
-import { logWarning } from './utils'
 import type { MCPServerConfig, ToolDefinition, ToolServerInfo } from './types'
+import { logWarning } from './utils'
 
 export interface ToolServerAccessor {
 	listServers(): MCPServerConfig[]

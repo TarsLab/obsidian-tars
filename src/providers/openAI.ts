@@ -1,6 +1,6 @@
 import OpenAI from 'openai'
-import { createLogger } from '../logger'
 import { t } from 'src/lang/helper'
+import { createLogger } from '../logger'
 import type { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 import { convertEmbedToImageUrl } from './utils'
 
@@ -42,17 +42,14 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 				const coordinator = new ToolCallingCoordinator()
 
 				// Convert messages to coordinator format
-				const formattedMessages = await Promise.all(messages.map((msg) => formatMsgForCoordinator(msg, resolveEmbedAsBinary)))
-
-				yield* coordinator.generateWithTools(
-					formattedMessages,
-					adapter,
-					mcpExec,
-					{
-						documentPath: documentPath || 'unknown.md',
-						autoUseDocumentCache: true
-					}
+				const formattedMessages = await Promise.all(
+					messages.map((msg) => formatMsgForCoordinator(msg, resolveEmbedAsBinary))
 				)
+
+				yield* coordinator.generateWithTools(formattedMessages, adapter, mcpExec, {
+					documentPath: documentPath || 'unknown.md',
+					autoUseDocumentCache: true
+				})
 
 				return
 			} catch (error) {

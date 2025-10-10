@@ -1,6 +1,6 @@
 import { normalizePath } from 'obsidian'
-import { createLogger } from '../logger'
 import { APP_FOLDER } from 'src/settings'
+import { createLogger } from '../logger'
 import type { CreatePlainText, SendRequest } from '.'
 
 interface TextWithTime {

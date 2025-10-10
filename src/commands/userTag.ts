@@ -1,8 +1,8 @@
 import { type App, type Command, type Editor, type MarkdownView, Notice, Platform } from 'obsidian'
-import { createLogger } from '../logger'
 import { t } from 'src/lang/helper'
 import type { PluginSettings } from 'src/settings'
 import { toSpeakMark } from 'src/suggest'
+import { createLogger } from '../logger'
 import type { TagCmdMeta } from './tagCmd'
 import { fetchTagMeta, insertMarkToBegin, insertMarkToEmptyLines, isEmptyLines, replaceTag } from './tagUtils'
 

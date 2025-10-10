@@ -15,8 +15,8 @@ import {
 	type TagCache,
 	type Vault
 } from 'obsidian'
-import { createLogger } from './logger'
 import { t } from 'src/lang/helper'
+import { createLogger } from './logger'
 import type {
 	CreatePlainText,
 	Message,

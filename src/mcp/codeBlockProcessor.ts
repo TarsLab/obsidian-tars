@@ -258,10 +258,7 @@ export class CodeBlockProcessor {
 
 			return params
 		} catch (error) {
-			throw new YAMLParseError(
-				undefined,
-				error instanceof Error ? error.message : String(error)
-			)
+			throw new YAMLParseError(undefined, error instanceof Error ? error.message : String(error))
 		}
 	}
 

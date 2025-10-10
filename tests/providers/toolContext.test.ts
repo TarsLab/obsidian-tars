@@ -108,7 +108,17 @@ describe('Provider MCP tool integration', () => {
 		it('should have added MCP tool support to OpenAI-compatible providers', () => {
 			// This is a meta-test verifying that we've updated the providers
 			// The actual providers accept mcpManager/mcpExecutor via destructuring
-			const providerNames = ['OpenAI', 'DeepSeek', 'Azure', 'Ollama', 'OpenRouter', 'Qwen', 'SiliconFlow', 'Kimi', 'Grok']
+			const providerNames = [
+				'OpenAI',
+				'DeepSeek',
+				'Azure',
+				'Ollama',
+				'OpenRouter',
+				'Qwen',
+				'SiliconFlow',
+				'Kimi',
+				'Grok'
+			]
 
 			for (const providerName of providerNames) {
 				// If providerSupportsTools returns true, we should have tool injection code

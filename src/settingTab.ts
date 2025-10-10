@@ -12,7 +12,7 @@ import { kimiVendor } from './providers/kimi'
 import { ollamaVendor } from './providers/ollama'
 import { openRouterVendor } from './providers/openRouter'
 import { siliconFlowVendor } from './providers/siliconflow'
-import { getCapabilityEmoji } from './providers/utils'
+import { getCapabilityEmoji, testProviderConnection } from './providers/utils'
 import { availableVendors, DEFAULT_SETTINGS } from './settings'
 import { MCPServerSettings } from './settings/MCPServerSettings'
 
@@ -411,6 +411,9 @@ export class TarsSettingTab extends PluginSettingTab {
 			this.addModelTextSection(details, settings.options, capabilities)
 		}
 
+		// Test connection button
+		this.addTestConnectionSection(details, vendor, settings.options)
+
 		if (vendor.name !== ollamaVendor.name) {
 			this.addAPIkeySection(
 				details,
@@ -706,6 +709,53 @@ export class TarsSettingTab extends PluginSettingTab {
 						}
 					})
 			)
+
+	addTestConnectionSection = (details: HTMLDetailsElement, vendor: Vendor, options: BaseOptions) => {
+		new Setting(details)
+			.setName('Test connection')
+			.setDesc('Verify API key and network connectivity')
+			.addButton((btn) => {
+				btn
+					.setButtonText('Test')
+					.setClass('mod-cta')
+					.onClick(async () => {
+						// Save button reference for updates
+						const originalText = btn.buttonEl.textContent || 'Test'
+						btn.setDisabled(true).setButtonText('Testing...')
+
+						try {
+							const result = await testProviderConnection(vendor, options)
+
+							if (result.success) {
+								// Show success message with details
+								let message = `✅ ${result.message}`
+								if (result.models && result.models.length > 0) {
+									message += ` (${result.models.length} models available)`
+								}
+								if (result.latency !== undefined) {
+									message += ` - ${result.latency}ms`
+								}
+								new Notice(message, 5000)
+								btn.setButtonText('✅ Connected')
+								setTimeout(() => btn.setButtonText(originalText), 3000)
+							} else {
+								// Show error message
+								new Notice(`❌ ${result.message}`, 8000)
+								btn.setButtonText('❌ Failed')
+								setTimeout(() => btn.setButtonText(originalText), 3000)
+							}
+						} catch (error) {
+							// Handle unexpected errors
+							const errorMsg = error instanceof Error ? error.message : String(error)
+							new Notice(`❌ Test failed: ${errorMsg}`, 8000)
+							btn.setButtonText('❌ Error')
+							setTimeout(() => btn.setButtonText(originalText), 3000)
+						} finally {
+							btn.setDisabled(false)
+						}
+					})
+			})
+	}
 
 	addGptImageSections = (details: HTMLDetailsElement, options: GptImageOptions) => {
 		new Setting(details)

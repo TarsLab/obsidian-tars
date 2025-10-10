@@ -170,9 +170,7 @@ describe('OpenAI Provider - Tool Calling Integration', () => {
 	describe('End-to-end flow', () => {
 		it('should complete full tool calling conversation', async () => {
 			// GIVEN: User asks question requiring tool
-			const initialMessages = [
-				{ role: 'user' as const, content: 'What files are in my vault?' }
-			]
+			const initialMessages = [{ role: 'user' as const, content: 'What files are in my vault?' }]
 
 			// WHEN: LLM requests tool, tool executes, LLM responds
 			// THEN: Final conversation should include:

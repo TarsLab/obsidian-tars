@@ -1,4 +1,4 @@
-import { Editor, Notice, Plugin } from 'obsidian'
+import { type Editor, Notice, Plugin } from 'obsidian'
 import { createLogger } from './logger'
 
 const logger = createLogger('plugin')
@@ -23,8 +23,8 @@ import {
 	HEALTH_CHECK_INTERVAL,
 	MCPServerManager,
 	migrateServerConfigs,
-	type ToolExecutor,
-	type SessionNotificationHandlers
+	type SessionNotificationHandlers,
+	type ToolExecutor
 } from './mcp'
 import { registerDocumentSessionHandlers } from './mcp/documentSessionHandlers'
 import { getTitleFromCmdId, loadTemplateFileCommand, promptTemplateCmd, templateToCmdId } from './prompt'
@@ -133,13 +133,13 @@ export default class TarsPlugin extends Plugin {
 			this.mcpManager.on('server-retry', () => this.updateMCPStatus())
 
 			// Create tool executor with settings
-				this.mcpExecutor = createToolExecutor(this.mcpManager, {
-					timeout: this.settings.mcpGlobalTimeout,
-					concurrentLimit: this.settings.mcpConcurrentLimit,
-					sessionLimit: this.settings.mcpSessionLimit,
-					statusBarManager: this.statusBarManager,
-					sessionNotifications: createNoticeSessionNotifications()
-				})
+			this.mcpExecutor = createToolExecutor(this.mcpManager, {
+				timeout: this.settings.mcpGlobalTimeout,
+				concurrentLimit: this.settings.mcpConcurrentLimit,
+				sessionLimit: this.settings.mcpSessionLimit,
+				statusBarManager: this.statusBarManager,
+				sessionNotifications: createNoticeSessionNotifications()
+			})
 
 			// Create code block processor
 			this.mcpCodeBlockProcessor = new CodeBlockProcessor()
@@ -244,33 +244,37 @@ export default class TarsPlugin extends Plugin {
 			}, HEALTH_CHECK_INTERVAL)
 
 			// Start initialization in background - don't block plugin activation
-			this.mcpManager.initialize(this.settings.mcpServers, {
-				failureThreshold: this.settings.mcpFailureThreshold,
-				retryPolicy: {
-					maxAttempts: this.settings.mcpRetryMaxAttempts,
-					initialDelay: this.settings.mcpRetryInitialDelay,
-					maxDelay: this.settings.mcpRetryMaxDelay,
-					backoffMultiplier: this.settings.mcpRetryBackoffMultiplier,
-					jitter: this.settings.mcpRetryJitter,
-					transientErrorCodes: [
-						'ECONNREFUSED',
-						'ECONNRESET',
-						'ETIMEDOUT',
-						'ENOTFOUND',
-						'ECONNABORTED',
-						'EPIPE',
-						'ECONNREFUSED',
-						'ENETUNREACH',
-						'EHOSTUNREACH'
-					]
-				},
-				statusBarManager: this.statusBarManager
-			}).catch(error => {
-				logger.error('mcp initialization failed (background)', error)
-				new Notice('Some MCP servers failed to start. Check console for details.')
-			})
+			this.mcpManager
+				.initialize(this.settings.mcpServers, {
+					failureThreshold: this.settings.mcpFailureThreshold,
+					retryPolicy: {
+						maxAttempts: this.settings.mcpRetryMaxAttempts,
+						initialDelay: this.settings.mcpRetryInitialDelay,
+						maxDelay: this.settings.mcpRetryMaxDelay,
+						backoffMultiplier: this.settings.mcpRetryBackoffMultiplier,
+						jitter: this.settings.mcpRetryJitter,
+						transientErrorCodes: [
+							'ECONNREFUSED',
+							'ECONNRESET',
+							'ETIMEDOUT',
+							'ENOTFOUND',
+							'ECONNABORTED',
+							'EPIPE',
+							'ECONNREFUSED',
+							'ENETUNREACH',
+							'EHOSTUNREACH'
+						]
+					},
+					statusBarManager: this.statusBarManager
+				})
+				.catch((error) => {
+					logger.error('mcp initialization failed (background)', error)
+					new Notice('Some MCP servers failed to start. Check console for details.')
+				})
 
-			logger.info('mcp integration setup complete, initializing servers in background', { serverCount: this.settings.mcpServers.length })
+			logger.info('mcp integration setup complete, initializing servers in background', {
+				serverCount: this.settings.mcpServers.length
+			})
 		}
 
 		// Update MCP status in status bar if MCP manager is initialized
@@ -535,7 +539,9 @@ export default class TarsPlugin extends Plugin {
 
 		// Get current document session count (Feature-900-50-5-1)
 		const currentDocPath = this.app.workspace.getActiveFile()?.path
-		const currentDocumentSessions = currentDocPath ? this.mcpExecutor?.getDocumentSessionCount(currentDocPath) : undefined
+		const currentDocumentSessions = currentDocPath
+			? this.mcpExecutor?.getDocumentSessionCount(currentDocPath)
+			: undefined
 		const sessionLimit = this.settings.mcpSessionLimit
 
 		this.statusBarManager.setMCPStatus({
@@ -666,7 +672,10 @@ export default class TarsPlugin extends Plugin {
 
 				renderSuggestion(item: { server: string; serverId: string; tool: any }, el: HTMLElement) {
 					el.createDiv({ text: `${item.tool.name}`, cls: 'suggestion-title' })
-					el.createDiv({ text: `${item.server}${item.tool.description ? ` - ${item.tool.description}` : ''}`, cls: 'suggestion-note' })
+					el.createDiv({
+						text: `${item.server}${item.tool.description ? ` - ${item.tool.description}` : ''}`,
+						cls: 'suggestion-note'
+					})
 				}
 
 				onChooseSuggestion(item: { server: string; serverId: string; tool: any }) {

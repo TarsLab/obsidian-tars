@@ -98,15 +98,15 @@ describe('ToolCallingCoordinator integration: markdown persistence', () => {
 			// consume generator
 		}
 
-	expect(editor.content).toContain('> [!tool]- Tool Call (Weather Server: getWeather)')
-	expect(editor.content).toContain('> Tool: getWeather')
-	expect(editor.content).toContain('> Server Name: Weather Server')
-	expect(editor.content).toContain('> Server ID: server-weather')
-	expect(editor.content).toContain('> ```json')
-	expect(editor.content).toContain('>   "city": "London"')
-	expect(editor.content).toContain('> [!tool]- Tool Result (1234ms)')
-	expect(editor.content).toMatch(/> Executed: .+Z/)
-	expect(editor.content).toContain('>   "forecast": "Sunny"')
+		expect(editor.content).toContain('> [!tool]- Tool Call (Weather Server: getWeather)')
+		expect(editor.content).toContain('> Tool: getWeather')
+		expect(editor.content).toContain('> Server Name: Weather Server')
+		expect(editor.content).toContain('> Server ID: server-weather')
+		expect(editor.content).toContain('> ```json')
+		expect(editor.content).toContain('>   "city": "London"')
+		expect(editor.content).toContain('> [!tool]- Tool Result (1234ms)')
+		expect(editor.content).toMatch(/> Executed: .+Z/)
+		expect(editor.content).toContain('>   "forecast": "Sunny"')
 	})
 
 	it('should reuse cached tool result when user chooses cached option', async () => {

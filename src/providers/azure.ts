@@ -1,6 +1,6 @@
 import { AzureOpenAI } from 'openai'
-import { createLogger } from '../logger'
 import { t } from 'src/lang/helper'
+import { createLogger } from '../logger'
 import type { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 import { CALLOUT_BLOCK_END, CALLOUT_BLOCK_START } from './utils'
 
@@ -55,15 +55,10 @@ const sendRequestFunc = (settings: AzureOptions): SendRequest =>
 					embeds: msg.embeds
 				}))
 
-				yield* coordinator.generateWithTools(
-					formattedMessages,
-					adapter,
-					mcpExec,
-					{
-						documentPath: documentPath || 'unknown.md',
-						autoUseDocumentCache: true
-					}
-				)
+				yield* coordinator.generateWithTools(formattedMessages, adapter, mcpExec, {
+					documentPath: documentPath || 'unknown.md',
+					autoUseDocumentCache: true
+				})
 
 				return
 			} catch (error) {
@@ -101,7 +96,10 @@ const sendRequestFunc = (settings: AzureOptions): SendRequest =>
 			{
 				signal: controller.signal
 			}
-		)) as AsyncIterable<{ usage?: { prompt_tokens?: number; completion_tokens?: number }; choices: Array<{ delta?: { content?: string } }> }>
+		)) as AsyncIterable<{
+			usage?: { prompt_tokens?: number; completion_tokens?: number }
+			choices: Array<{ delta?: { content?: string } }>
+		}>
 
 		let isReasoning = false
 		let thinkBegin = false // 过滤掉重复的 <think>

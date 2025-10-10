@@ -2,8 +2,8 @@ import { createLogger } from '../../logger'
 import type { ToolExecutor } from '../executor'
 import type { MCPServerManager } from '../managerMCPUse'
 import type { Message, ProviderAdapter, ToolExecutionResult } from '../toolCallingCoordinator'
-import type { ToolServerInfo } from '../types'
 import { OpenAIToolResponseParser } from '../toolResponseParser'
+import type { ToolServerInfo } from '../types'
 import type { OpenAIAdapterConfig } from './OpenAIProviderAdapter'
 
 const logger = createLogger('mcp:openai-adapter-factory')
@@ -13,7 +13,9 @@ export interface OpenAIAdapterConfigSimple {
 	mcpExecutor: ToolExecutor
 }
 
-export function createOpenAIAdapter(config: OpenAIAdapterConfig): Pick<ProviderAdapter, 'getParser' | 'findServer' | 'formatToolResult'> {
+export function createOpenAIAdapter(
+	config: OpenAIAdapterConfig
+): Pick<ProviderAdapter, 'getParser' | 'findServer' | 'formatToolResult'> {
 	const { mcpManager } = config
 
 	return {
@@ -45,9 +47,7 @@ export function createOpenAIAdapter(config: OpenAIAdapterConfig): Pick<ProviderA
 			return {
 				role: 'tool',
 				tool_call_id: toolCallId,
-				content: typeof result.content === 'string'
-					? result.content
-					: JSON.stringify(result.content)
+				content: typeof result.content === 'string' ? result.content : JSON.stringify(result.content)
 			}
 		}
 	}
@@ -70,9 +70,7 @@ export async function createOpenAIAdapterWithMapping(
 			return {
 				role: 'tool',
 				tool_call_id: toolCallId,
-				content: typeof result.content === 'string'
-					? result.content
-					: JSON.stringify(result.content)
+				content: typeof result.content === 'string' ? result.content : JSON.stringify(result.content)
 			}
 		}
 	}

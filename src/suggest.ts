@@ -9,9 +9,9 @@ import {
 	Platform,
 	type TFile
 } from 'obsidian'
-import { createLogger } from './logger'
 import { buildRunEnv, generate, type RequestController } from './editor'
 import { t } from './lang/helper'
+import { createLogger } from './logger'
 import type { PluginSettings } from './settings'
 import type { StatusBarManager } from './statusBarManager'
 
@@ -192,7 +192,10 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 			this.close()
 			return
 		}
-		this.logger.debug('assistant suggestion selected', { tag: element.tag, hasNewline: element.replacement.includes('\n') })
+		this.logger.debug('assistant suggestion selected', {
+			tag: element.tag,
+			hasNewline: element.replacement.includes('\n')
+		})
 
 		try {
 			const provider = this.settings.providers.find((p) => p.tag === element.tag)

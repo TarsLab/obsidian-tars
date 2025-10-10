@@ -1,6 +1,6 @@
 import { type Content, GoogleGenerativeAI } from '@google/generative-ai'
-import { createLogger } from '../logger'
 import { t } from 'src/lang/helper'
+import { createLogger } from '../logger'
 import type { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 
 const logger = createLogger('providers:gemini')

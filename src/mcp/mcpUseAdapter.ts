@@ -35,9 +35,7 @@ export function toMCPUseServerConfig(config: MCPServerConfig): Record<string, MC
 
 	if (!mcpUse) {
 		const parsed = parseConfigInput(config.configInput)
-		throw new Error(
-			(parsed?.error) || `Could not convert server ${config.id} to mcp-use format`
-		)
+		throw new Error(parsed?.error || `Could not convert server ${config.id} to mcp-use format`)
 	}
 
 	// Use config.id as server key for consistency with session management

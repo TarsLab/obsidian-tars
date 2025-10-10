@@ -6,15 +6,8 @@ const logger = createLogger('providers:ollama')
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, _resolveEmbedAsBinary: ResolveEmbedAsBinary) {
-		const {
-			parameters,
-			mcpManager,
-			mcpExecutor,
-			documentPath,
-			statusBarManager,
-			editor,
-			...optionsExcludingParams
-		} = settings
+		const { parameters, mcpManager, mcpExecutor, documentPath, statusBarManager, editor, ...optionsExcludingParams } =
+			settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { baseURL, model, ...remains } = options
 
