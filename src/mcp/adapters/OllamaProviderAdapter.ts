@@ -3,10 +3,10 @@ import type { Ollama } from 'ollama/browser'
 import { createLogger } from '../../logger'
 import type { ToolExecutor } from '../executor'
 import type { MCPServerManager } from '../managerMCPUse'
-import type { Message, ProviderAdapter, ToolExecutionResult } from '../toolCallingCoordinator'
+import type { Message, ProviderAdapter } from '../toolCallingCoordinator'
 import type { ToolDiscoveryCache } from '../toolDiscoveryCache'
 import { OllamaToolResponseParser } from '../toolResponseParser'
-import type { ToolServerInfo } from '../types'
+import type { ToolExecutionResult, ToolServerInfo } from '../types'
 
 const logger = createLogger('mcp:ollama-adapter')
 const streamLogger = createLogger('mcp:ollama-adapter:stream')

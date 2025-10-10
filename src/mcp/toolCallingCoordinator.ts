@@ -10,14 +10,15 @@
  */
 
 import pLimit from 'p-limit'
-import type { Editor } from 'obsidian'
+import type { Editor, EditorPosition } from 'obsidian'
+import { stringify as stringifyYAML } from 'yaml'
+
 import { createLogger } from '../logger'
 import type { StatusBarManager } from '../statusBarManager'
 import type { ToolExecutor } from './executor'
 import type { ToolCall, ToolResponseParser } from './toolResponseParser'
 import { type CachedToolResult, DocumentToolCache } from './toolResultCache'
-import { formatToolResultAsMarkdown } from './toolResultFormatter'
-import type { ToolServerInfo } from './types'
+import type { ToolExecutionResult, ToolServerInfo } from './types'
 
 const logger = createLogger('mcp:tool-coordinator')
 
@@ -38,14 +39,6 @@ export interface ToolExecutionRequest {
 	parameters: Record<string, unknown>
 	source: 'user-codeblock' | 'ai-autonomous'
 	documentPath: string
-}
-
-export interface ToolExecutionResult {
-	content: unknown
-	contentType: 'text' | 'json' | 'markdown' | 'image'
-	executionDuration: number
-	cached?: boolean
-	cacheAge?: number // Age in milliseconds when retrieved from cache
 }
 
 /**
@@ -92,52 +85,128 @@ export interface GenerateOptions {
 	maxParallelTools?: number
 }
 
+interface ToolCallBlockInsertion {
+	start: EditorPosition
+	end: EditorPosition
+	text: string
+	header: string
+}
+
+const formatParametersAsYAML = (parameters: Record<string, unknown>): string[] => {
+	if (!parameters || Object.keys(parameters).length === 0) {
+		return []
+	}
+
+	try {
+		const yaml = stringifyYAML(parameters, { indent: 2 }).trimEnd()
+		return yaml.length > 0 ? yaml.split('\n') : []
+	} catch (error) {
+		logger.warn('failed to stringify tool parameters to yaml, falling back to JSON string', error)
+		const fallback = JSON.stringify(parameters, null, 2)
+		return fallback.split('\n')
+	}
+}
+
+const computeEndPosition = (editor: Editor, start: EditorPosition, text: string): EditorPosition => {
+	const startOffset = editor.posToOffset(start)
+	const endOffset = startOffset + text.length
+	return editor.offsetToPos(endOffset)
+}
+
 function insertToolCallMarkdown(
 	editor: Editor,
 	toolName: string,
 	server: ToolServerInfo,
 	parameters: Record<string, unknown>
-): void {
+): ToolCallBlockInsertion {
 	const cursor = editor.getCursor()
-	const paramsJson = JSON.stringify(parameters, null, 2)
-	const bodyLines = [
-		`Tool: ${toolName}`,
-		`Server Name: ${server.name}`,
-		`Server ID: ${server.id}`,
-		'```json',
-		...paramsJson.split('\n'),
-		'```'
-	]
-	const calloutLines = [`> [!tool]- Tool Call (${server.name}: ${toolName})`, ...bodyLines.map((line) => `> ${line}`)]
+	const start: EditorPosition = { line: cursor.line, ch: cursor.ch }
+
+	const yamlParameterLines = formatParametersAsYAML(parameters)
+	const calloutLines: string[] = []
+	calloutLines.push(`> [!tool] Tool Call (${server.name}: ${toolName})`)
+	calloutLines.push(`> Server ID: ${server.id}`)
+	calloutLines.push(`> \`\`\`${server.name}`)
+	calloutLines.push(`> tool: ${toolName}`)
+	for (const line of yamlParameterLines) {
+		calloutLines.push(`> ${line}`)
+	}
+	calloutLines.push('> ```')
+
 	const markdown = `\n${calloutLines.join('\n')}\n`
 	editor.replaceRange(markdown, cursor)
 
-	const lines = markdown.split('\n')
-	const newCursor = {
-		line: cursor.line + lines.length - 1,
-		ch: lines.length === 1 ? cursor.ch + markdown.length : lines[lines.length - 1].length
+	const end = computeEndPosition(editor, start, markdown)
+	editor.setCursor(end)
+
+	return {
+		start,
+		end,
+		text: markdown,
+		header: calloutLines[0]
 	}
-	editor.setCursor(newCursor)
 }
 
-function insertToolResultMarkdown(editor: Editor, result: ToolExecutionResult): void {
-	const cursor = editor.getCursor()
+const formatResultContent = (result: ToolExecutionResult): string => {
+	const { content, contentType } = result
 
-	// Use shared formatter with collapsible and timestamp options
-	const markdown = formatToolResultAsMarkdown(result, {
-		collapsible: true,
-		showMetadata: false, // Duration already shown in callout header
-		includeTimestamp: true
-	})
-
-	editor.replaceRange(markdown, cursor)
-
-	const lines = markdown.split('\n')
-	const newCursor = {
-		line: cursor.line + lines.length - 1,
-		ch: lines.length === 1 ? cursor.ch + markdown.length : lines[lines.length - 1].length
+	switch (contentType) {
+		case 'json':
+			return JSON.stringify(content, null, 2)
+		case 'markdown':
+		case 'text':
+			return typeof content === 'string' ? content : String(content)
+		case 'image':
+			return typeof content === 'string' ? content : JSON.stringify(content)
+		default:
+			return typeof content === 'string' ? content : JSON.stringify(content, null, 2)
 	}
-	editor.setCursor(newCursor)
+}
+
+const buildMetadataLines = (result: ToolExecutionResult): string[] => {
+	const lines: string[] = []
+	lines.push(`> Duration: ${result.executionDuration}ms`)
+	if (typeof result.tokensUsed === 'number') {
+		lines.push(`> Tokens: ${result.tokensUsed}`)
+	}
+	if (result.cached) {
+		const age = typeof result.cacheAge === 'number' ? ` (${Math.round(result.cacheAge)}ms old)` : ''
+		lines.push(`> Cached: yes${age}`)
+	}
+	lines.push(`> Executed: ${new Date().toISOString()}`)
+	return lines
+}
+
+function insertToolResultMarkdown(
+	editor: Editor,
+	block: ToolCallBlockInsertion,
+	result: ToolExecutionResult
+): ToolCallBlockInsertion {
+	const metadataLines = buildMetadataLines(result)
+	const formattedResult = formatResultContent(result)
+	const resultLines = formattedResult.split('\n')
+
+	const calloutResultLines = [
+		...metadataLines,
+		'> Results:',
+		'> ```',
+		...resultLines.map((line) => `> ${line}`),
+		'> ```'
+	]
+
+	const baseText = block.text.endsWith('\n') ? block.text : `${block.text}\n`
+	const combinedText = `${baseText}${calloutResultLines.join('\n')}\n`
+
+	editor.replaceRange(combinedText, block.start, block.end)
+	const newEnd = computeEndPosition(editor, block.start, combinedText)
+	editor.setCursor(newEnd)
+
+	return {
+		start: block.start,
+		end: newEnd,
+		text: combinedText,
+		header: block.header
+	}
 }
 
 // ============================================================================
@@ -247,8 +316,9 @@ export class ToolCallingCoordinator {
 
 		// Notify about tool execution
 		onToolCall?.(toolCall.name)
+		let calloutBlock: ToolCallBlockInsertion | null = null
 		if (editor) {
-			insertToolCallMarkdown(editor, toolCall.name, serverInfo, toolCall.arguments)
+			calloutBlock = insertToolCallMarkdown(editor, toolCall.name, serverInfo, toolCall.arguments || {})
 		}
 
 		try {
@@ -271,8 +341,8 @@ export class ToolCallingCoordinator {
 
 			// Notify about tool result
 			onToolResult?.(toolCall.name, result.executionDuration)
-			if (editor) {
-				insertToolResultMarkdown(editor, result)
+			if (editor && calloutBlock) {
+				insertToolResultMarkdown(editor, calloutBlock, result)
 			}
 
 			return { toolCall, result }
@@ -286,6 +356,10 @@ export class ToolCallingCoordinator {
 				documentPath,
 				source: 'ai-autonomous'
 			})
+
+			if (editor && calloutBlock) {
+				editor.replaceRange('', calloutBlock.start, calloutBlock.end)
+			}
 
 			return { toolCall, error: error as Error }
 		}

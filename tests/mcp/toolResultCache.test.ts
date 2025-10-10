@@ -17,20 +17,17 @@ const buildEditor = (content: string): Editor =>
 describe('DocumentToolCache', () => {
 	const cache = new DocumentToolCache()
 
-	const doc = `> [!tool]- Tool Call (Weather Server: getWeather)
-> Tool: getWeather
-> Server Name: Weather Server
+	const doc = `> [!tool] Tool Call (Weather Server: getWeather)
 > Server ID: weather-server
-> \`\`\`json
-> {
->   "location": "Paris",
->   "units": "metric"
-> }
+> \`\`\`Weather Server
+> tool: getWeather
+> location: Paris
+> units: metric
 > \`\`\`
-
-> [!tool]- Tool Result (150ms)
+> Duration: 150ms
 > Executed: 2025-10-09T12:34:56.000Z
-> \`\`\`json
+> Results:
+> \`\`\`
 > {
 >   "forecast": "Sunny",
 >   "temperature": 24
@@ -61,24 +58,21 @@ describe('DocumentToolCache', () => {
 		expect(existing?.resultMarkdown).toContain('"forecast": "Sunny"')
 		expect(existing?.executedAt).toBe(Date.parse('2025-10-09T12:34:56.000Z'))
 		expect(existing?.calloutRange.startLine).toBe(0)
-		expect(existing?.resultRange?.startLine ?? 0).toBeGreaterThan(existing?.calloutRange.endLine ?? 0)
+		expect(existing?.resultRange?.startLine ?? 0).toBeGreaterThan(existing?.calloutRange.startLine ?? -1)
 	})
 
 	it('returns all cached results in document', () => {
-		const multiDoc = `${doc}\n> [!tool]- Tool Call (Math Server: add)
-> Tool: add
-> Server Name: Math Server
+		const multiDoc = `${doc}\n> [!tool] Tool Call (Math Server: add)
 > Server ID: math-server
-> \`\`\`json
-> {
->   "a": 1,
->   "b": 2
-> }
+> \`\`\`Math Server
+> tool: add
+> a: 1
+> b: 2
 > \`\`\`
-
-> [!tool]- Tool Result (5ms)
+> Duration: 5ms
 > Executed: 2025-10-09T13:00:00.000Z
-> \`\`\`json
+> Results:
+> \`\`\`
 > {
 >   "result": 3
 > }

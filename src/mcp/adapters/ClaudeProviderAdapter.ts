@@ -7,10 +7,10 @@ import type {
 	ToolUseBlockParam
 } from '@anthropic-ai/sdk/resources/messages/messages'
 import type { MCPServerManager } from '../managerMCPUse'
-import type { Message, ProviderAdapter, ToolExecutionResult } from '../toolCallingCoordinator'
+import type { Message, ProviderAdapter } from '../toolCallingCoordinator'
 import type { ToolDiscoveryCache } from '../toolDiscoveryCache'
 import { ClaudeToolResponseParser } from '../toolResponseParser'
-import type { ToolServerInfo } from '../types'
+import type { ToolExecutionResult, ToolServerInfo } from '../types'
 
 export interface ClaudeAdapterConfig {
 	mcpManager: MCPServerManager

@@ -34,9 +34,36 @@ class MockEditor {
 		this.cursor = { ...position }
 	}
 
-	replaceRange(text: string, _from: unknown, _to?: unknown) {
-		this.content += text
-		this.cursor.ch = this.content.length
+	replaceRange(text: string, from?: { line: number; ch: number }, to?: { line: number; ch: number }) {
+		const startPos = from ?? this.cursor
+		const startOffset = this.posToOffset(startPos)
+		const endOffset = to ? this.posToOffset(to) : startOffset
+		this.content = `${this.content.slice(0, startOffset)}${text}${this.content.slice(endOffset)}`
+		const newOffset = startOffset + text.length
+		this.cursor = this.offsetToPos(newOffset)
+	}
+
+	posToOffset(pos: { line: number; ch: number }) {
+		const lines = this.content.split('\n')
+		let offset = 0
+		for (let line = 0; line < pos.line; line++) {
+			offset += (lines[line]?.length ?? 0) + 1
+		}
+		return offset + pos.ch
+	}
+
+	offsetToPos(offset: number) {
+		const lines = this.content.split('\n')
+		let remaining = offset
+		for (let line = 0; line < lines.length; line++) {
+			const length = lines[line]?.length ?? 0
+			if (remaining <= length) {
+				return { line, ch: remaining }
+			}
+			remaining -= length + 1
+		}
+		const lastLine = Math.max(0, lines.length - 1)
+		return { line: lastLine, ch: (lines[lastLine]?.length ?? 0) }
 	}
 }
 
@@ -98,13 +125,15 @@ describe('ToolCallingCoordinator integration: markdown persistence', () => {
 			// consume generator
 		}
 
-		expect(editor.content).toContain('> [!tool]- Tool Call (Weather Server: getWeather)')
-		expect(editor.content).toContain('> Tool: getWeather')
-		expect(editor.content).toContain('> Server Name: Weather Server')
+		expect(editor.content).toContain('> [!tool] Tool Call (Weather Server: getWeather)')
 		expect(editor.content).toContain('> Server ID: server-weather')
-		expect(editor.content).toContain('> ```json')
-		expect(editor.content).toContain('>   "city": "London"')
-		expect(editor.content).toContain('> [!tool]- Tool Result (1234ms)')
+		expect(editor.content).toContain('> ```Weather Server')
+		expect(editor.content).toContain('> tool: getWeather')
+		expect(editor.content).toContain('> city: London')
+		expect(editor.content).toContain('> Duration: 1234ms')
+		expect(editor.content).toContain('> Results:')
+		expect(editor.content).toContain('> {')
+		expect(editor.content).toContain('>   "forecast": "Sunny"')
 		expect(editor.content).toMatch(/> Executed: .+Z/)
 		expect(editor.content).toContain('>   "forecast": "Sunny"')
 	})
@@ -146,19 +175,16 @@ describe('ToolCallingCoordinator integration: markdown persistence', () => {
 
 		const coordinator = new ToolCallingCoordinator()
 		const editor = new MockEditor()
-		editor.content = `> [!tool]- Tool Call (Weather Server: getWeather)
-> Tool: getWeather
-> Server Name: Weather Server
+		editor.content = `> [!tool] Tool Call (Weather Server: getWeather)
 > Server ID: weather-server
-> \`\`\`json
-> {
->   "city": "Paris"
-> }
+> \`\`\`Weather Server
+> tool: getWeather
+> city: Paris
 > \`\`\`
-
-> [!tool]- Tool Result (180ms)
+> Duration: 180ms
 > Executed: 2025-10-09T12:00:00.000Z
-> \`\`\`json
+> Results:
+> \`\`\`
 > {
 >   "forecast": "Cloudy"
 > }

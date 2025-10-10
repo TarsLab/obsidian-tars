@@ -1,5 +1,6 @@
 import { createHash } from 'crypto'
 import type { Editor } from 'obsidian'
+import { parse as parseYAML } from 'yaml'
 
 export interface CachedToolResult {
 	serverId: string
@@ -14,23 +15,19 @@ export interface CachedToolResult {
 	resultRange?: { startLine: number; endLine: number }
 }
 
-interface ParsedCallBlock {
+interface ParsedCalloutBlock {
 	toolName: string
 	serverId: string
 	serverName: string
 	parameters: Record<string, unknown>
 	parameterHash: string
-	startLine: number
-	endLine: number
-}
-
-interface ParsedResultBlock {
-	toolName?: string
 	durationMs?: number
 	executedAt?: number
-	markdown: string
+	resultMarkdown: string
 	startLine: number
 	endLine: number
+	resultStartLine?: number
+	resultEndLine?: number
 }
 
 export class DocumentToolCache {
@@ -83,106 +80,195 @@ export class DocumentToolCache {
 
 	private parseDocument(value: string): CachedToolResult[] {
 		const lines = value.split('\n')
-		const callBlocks: ParsedCallBlock[] = []
 		const results: CachedToolResult[] = []
-
-		let pendingCall: ParsedCallBlock | undefined
 
 		for (let index = 0; index < lines.length; index++) {
 			const line = lines[index]
-
-			if (line.startsWith('> [!tool]- Tool Call')) {
-				const parsedCall = this.parseCallBlock(lines, index)
-				if (parsedCall) {
-					callBlocks.push(parsedCall)
-					pendingCall = parsedCall
-					index = parsedCall.endLine
-				}
+			if (!line.trimStart().startsWith('> [!tool]')) {
 				continue
 			}
 
-			if (line.startsWith('> [!tool]- Tool Result')) {
-				const parsedResult = this.parseResultBlock(lines, index)
-				if (parsedResult) {
-					const relatedCall = this.findRelatedCall(callBlocks, pendingCall, parsedResult.startLine)
-					if (relatedCall) {
-						results.push({
-							serverId: relatedCall.serverId,
-							serverName: relatedCall.serverName,
-							toolName: relatedCall.toolName,
-							parameters: relatedCall.parameters,
-							parameterHash: relatedCall.parameterHash,
-							durationMs: parsedResult.durationMs,
-							executedAt: parsedResult.executedAt,
-							resultMarkdown: parsedResult.markdown,
-							calloutRange: { startLine: relatedCall.startLine, endLine: relatedCall.endLine },
-							resultRange: { startLine: parsedResult.startLine, endLine: parsedResult.endLine }
-						})
-						if (pendingCall === relatedCall) {
-							pendingCall = undefined
-						}
-					}
-					index = parsedResult.endLine
-				}
+			const parsed = this.parseCalloutBlock(lines, index)
+			if (parsed) {
+				results.push({
+					serverId: parsed.serverId,
+					serverName: parsed.serverName,
+					toolName: parsed.toolName,
+					parameters: parsed.parameters,
+					parameterHash: parsed.parameterHash,
+					durationMs: parsed.durationMs,
+					executedAt: parsed.executedAt,
+					resultMarkdown: parsed.resultMarkdown,
+					calloutRange: { startLine: parsed.startLine, endLine: parsed.endLine },
+					resultRange:
+						parsed.resultStartLine !== undefined && parsed.resultEndLine !== undefined
+							? { startLine: parsed.resultStartLine, endLine: parsed.resultEndLine }
+							: undefined
+				})
+				index = parsed.endLine
 			}
 		}
 
 		return results
 	}
 
-	private parseCallBlock(lines: string[], startLine: number): ParsedCallBlock | null {
-		let toolName = ''
-		let serverName = ''
-		let serverId = ''
-		const paramsLines: string[] = []
-		let inJson = false
+	private parseCalloutBlock(lines: string[], startLine: number): ParsedCalloutBlock | null {
+		const blockLines: string[] = []
 		let endLine = startLine
 
-		for (let index = startLine + 1; index < lines.length; index++) {
+		for (let index = startLine; index < lines.length; index++) {
 			const line = lines[index]
-			if (!line.startsWith('>')) {
-				endLine = index - 1
+			if (!line.trimStart().startsWith('>')) {
 				break
 			}
-
+			blockLines.push(line)
 			endLine = index
-			const content = this.stripPrefix(line)
+		}
 
-			if (!inJson && content.startsWith('Tool:')) {
-				toolName = content.replace('Tool:', '').trim()
+		if (blockLines.length === 0) {
+			return null
+		}
+
+		const stripped = blockLines.map((line) => this.stripPrefix(line))
+		const header = stripped[0]
+		if (!header?.startsWith('[!tool]')) {
+			return null
+		}
+
+		let serverId = ''
+		let serverName = ''
+		let toolName = ''
+
+		const headerDetailMatch = header.match(/^\[!tool\]\s*Tool Call \((.+)\)$/)
+		if (headerDetailMatch) {
+			const detail = headerDetailMatch[1]
+			const colonIndex = detail.lastIndexOf(':')
+			if (colonIndex !== -1) {
+				const headerServer = detail.slice(0, colonIndex).trim()
+				const headerTool = detail.slice(colonIndex + 1).trim()
+				if (headerServer) {
+					serverName = headerServer
+				}
+				if (headerTool) {
+					toolName = headerTool
+				}
+			}
+		}
+		let durationMs: number | undefined
+		let executedAt: number | undefined
+		let resultMarkdown = ''
+		let resultStartLine: number | undefined
+		let resultEndLine: number | undefined
+
+		let inToolCode = false
+		let inResultCode = false
+		let resultsSection = false
+		const toolCodeLines: string[] = []
+		const resultLines: string[] = []
+
+		for (let offset = 1; offset < stripped.length; offset++) {
+			const rawLine = stripped[offset]
+			const trimmed = rawLine.trim()
+			const absoluteLine = startLine + offset
+
+			if (inToolCode) {
+				if (trimmed.startsWith('```')) {
+					inToolCode = false
+				} else {
+					toolCodeLines.push(rawLine)
+				}
 				continue
 			}
 
-			if (!inJson && content.startsWith('Server Name:')) {
-				serverName = content.replace('Server Name:', '').trim()
+			if (inResultCode) {
+				if (trimmed.startsWith('```')) {
+					inResultCode = false
+					resultEndLine = absoluteLine
+				} else {
+					resultLines.push(rawLine)
+				}
 				continue
 			}
 
-			if (!inJson && content.startsWith('Server ID:')) {
-				serverId = content.replace('Server ID:', '').trim()
+			if (trimmed.length === 0) {
 				continue
 			}
 
-			if (content.startsWith('```json')) {
-				inJson = true
+			if (trimmed.startsWith('Server ID:')) {
+				serverId = trimmed.replace('Server ID:', '').trim()
 				continue
 			}
 
-			if (inJson && content.startsWith('```')) {
-				inJson = false
+			if (trimmed.startsWith('Duration:')) {
+				const match = trimmed.match(/Duration:\s*(\d+)ms/i)
+				if (match) {
+					durationMs = Number.parseInt(match[1], 10)
+				}
 				continue
 			}
 
-			if (inJson) {
-				paramsLines.push(content)
+			if (trimmed.startsWith('Executed:')) {
+				const iso = trimmed.replace('Executed:', '').trim()
+				const parsed = Date.parse(iso)
+				executedAt = Number.isNaN(parsed) ? undefined : parsed
+				continue
+			}
+
+			if (trimmed.startsWith('```')) {
+				const language = trimmed.slice(3).trim()
+				if (!resultsSection) {
+					inToolCode = true
+					serverName = language || serverName
+				} else {
+					inResultCode = true
+					resultStartLine = absoluteLine
+				}
+				continue
+			}
+
+			if (trimmed.toLowerCase() === 'results:') {
+				resultsSection = true
+				resultStartLine = absoluteLine
+				continue
 			}
 		}
 
-		const paramsJson = paramsLines.join('\n') || '{}'
-		let parameters: Record<string, unknown> = {}
+		if (toolCodeLines.length === 0) {
+			return null
+		}
+
+		const toolYamlSource = toolCodeLines.join('\n')
+		let parsedYaml: Record<string, unknown> | null = null
 		try {
-			parameters = JSON.parse(paramsJson) as Record<string, unknown>
+			const parsed = parseYAML(toolYamlSource)
+			if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+				parsedYaml = parsed as Record<string, unknown>
+			}
 		} catch {
+			parsedYaml = null
+		}
+
+		if (!parsedYaml) {
+			return null
+		}
+
+		const { tool, ...rest } = parsedYaml
+		if (typeof tool === 'string') {
+			toolName = tool
+		} else if (!toolName) {
+			toolName = ''
+		}
+
+		const parameters = rest
+		const parameterHash = this.hashParameters(parameters)
+
+		if (resultLines.length === 0) {
+			return null
+		}
+
+		resultMarkdown = resultLines.join('\n').trim()
+
+		if (!serverId || !toolName) {
 			return null
 		}
 
@@ -191,68 +277,15 @@ export class DocumentToolCache {
 			serverId,
 			serverName,
 			parameters,
-			parameterHash: this.hashParameters(parameters),
-			startLine,
-			endLine
-		}
-	}
-
-	private parseResultBlock(lines: string[], startLine: number): ParsedResultBlock | null {
-		const header = lines[startLine]
-		const durationMatch = header.match(/\((\d+)ms\)/)
-		const durationMs = durationMatch ? Number.parseInt(durationMatch[1], 10) : undefined
-
-		let executedAt: number | undefined
-		const bodyLines: string[] = []
-		let endLine = startLine
-
-		for (let index = startLine + 1; index < lines.length; index++) {
-			const line = lines[index]
-			if (!line.startsWith('>')) {
-				endLine = index - 1
-				break
-			}
-
-			endLine = index
-			const content = this.stripPrefix(line)
-
-			if (content.startsWith('Executed:')) {
-				const iso = content.replace('Executed:', '').trim()
-				const parsed = Date.parse(iso)
-				executedAt = Number.isNaN(parsed) ? undefined : parsed
-				continue
-			}
-
-			bodyLines.push(content)
-		}
-
-		return {
-			toolName: undefined,
+			parameterHash,
 			durationMs,
 			executedAt,
-			markdown: bodyLines.join('\n').trim(),
+			resultMarkdown,
 			startLine,
-			endLine
+			endLine,
+			resultStartLine,
+			resultEndLine
 		}
-	}
-
-	private findRelatedCall(
-		calls: ParsedCallBlock[],
-		pending: ParsedCallBlock | undefined,
-		resultStartLine: number
-	): ParsedCallBlock | null {
-		if (pending && pending.endLine < resultStartLine) {
-			return pending
-		}
-
-		for (let index = calls.length - 1; index >= 0; index--) {
-			const call = calls[index]
-			if (call.endLine < resultStartLine) {
-				return call
-			}
-		}
-
-		return null
 	}
 
 	private stripPrefix(line: string): string {

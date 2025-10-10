@@ -3,10 +3,10 @@ import type OpenAI from 'openai'
 
 import type { ToolExecutor } from '../executor'
 import type { MCPServerManager } from '../managerMCPUse'
-import type { Message, ProviderAdapter, ToolExecutionResult } from '../toolCallingCoordinator'
+import type { Message, ProviderAdapter } from '../toolCallingCoordinator'
 import type { ToolDiscoveryCache } from '../toolDiscoveryCache'
 import { OpenAIToolResponseParser } from '../toolResponseParser'
-import type { ToolServerInfo } from '../types'
+import type { ToolExecutionResult, ToolServerInfo } from '../types'
 
 export interface OpenAIAdapterConfig {
 	mcpManager: MCPServerManager

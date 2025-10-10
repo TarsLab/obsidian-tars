@@ -724,7 +724,7 @@ export default class TarsPlugin extends Plugin {
 			}
 
 			new ToolPickerModal(this.app, allTools, (selected) => {
-				this.generateAndInsertTemplate(editor, selected.server, selected.tool)
+				this.generateAndInsertTemplate(editor, selected.server, selected.serverId, selected.tool)
 			}).open()
 		} catch (error) {
 			logger.error('failed to insert tool call template', error)
@@ -735,18 +735,13 @@ export default class TarsPlugin extends Plugin {
 	/**
 	 * Generate and insert tool call template with parameter placeholders
 	 */
-	private generateAndInsertTemplate(editor: Editor, serverName: string, tool: any) {
+	private generateAndInsertTemplate(editor: Editor, serverName: string, serverId: string, tool: any) {
 		const { buildParameterPlaceholder } = require('./suggests/mcpToolSuggestHelpers')
 
-		// Build template lines
-		const lines: string[] = [`\`\`\`${serverName}`, `tool: ${tool.name}`]
-
-		// Extract parameters from inputSchema
 		const inputSchema = tool.inputSchema || {}
 		const properties = inputSchema.properties || {}
 		const required = inputSchema.required || []
 
-		// Generate parameter lines with placeholders
 		const parameters = Object.keys(properties).map((name) => {
 			const property = properties[name]
 			return {
@@ -758,30 +753,45 @@ export default class TarsPlugin extends Plugin {
 			}
 		})
 
-		// Add required parameters first, then optional ones
 		const sortedParams = parameters.sort((a, b) => {
 			if (a.required && !b.required) return -1
 			if (!a.required && b.required) return 1
 			return 0
 		})
 
+		const calloutLines: string[] = []
+		calloutLines.push(`> [!tool] Tool Call (${serverName}: ${tool.name})`)
+		calloutLines.push(`> Server ID: ${serverId}`)
+		calloutLines.push(`> \`\`\`${serverName}`)
+		calloutLines.push(`> tool: ${tool.name}`)
+
+		let firstParamIndex = -1
 		for (const param of sortedParams) {
 			const placeholder = buildParameterPlaceholder(param)
 			const comment = param.required ? '' : ' # optional'
-			lines.push(`${param.name}: ${placeholder}${comment}`)
+			const line = `> ${param.name}: ${placeholder}${comment}`
+			if (firstParamIndex === -1) {
+				firstParamIndex = calloutLines.length
+			}
+			calloutLines.push(line)
 		}
 
-		lines.push('```')
+		calloutLines.push('> ```')
 
-		// Insert template at cursor
 		const cursor = editor.getCursor()
-		const template = lines.join('\n')
+		const template = `\n${calloutLines.join('\n')}\n`
 		editor.replaceRange(template, cursor)
 
-		// Move cursor to first parameter value position (after "tool: ")
-		editor.setCursor({
-			line: cursor.line + 2,
-			ch: `${sortedParams[0]?.name || 'tool'}: `.length
-		})
+		if (firstParamIndex >= 0) {
+			const lineNumber = cursor.line + 1 + firstParamIndex
+			const paramLine = calloutLines[firstParamIndex]
+			const colonSegment = `${sortedParams[0]?.name}: `
+			const prefix = `> ${colonSegment}`
+			const ch = paramLine.startsWith(prefix) ? prefix.length : paramLine.length
+			editor.setCursor({ line: lineNumber, ch })
+		} else {
+			const endOffset = editor.posToOffset(cursor) + template.length
+			editor.setCursor(editor.offsetToPos(endOffset))
+		}
 	}
 }

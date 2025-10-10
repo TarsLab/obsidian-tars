@@ -61,7 +61,9 @@ Tasks:
 ## Tasks 2025-10-10
 
 - extract MCP servers hosting logic into own monorepo package. It should be library that taking care of running MCP servers, executing specific tools, etc. Think deeper what can we include into this library (refactor existing code).
-
+- Make Provider Controls section with buttons: Test and Remove.
+- Change MCP Server controls section button "Delete" text to "Remove".
+- 
 
 ## Commit Message Sample:
 
