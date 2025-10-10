@@ -74,6 +74,7 @@ export class ResultCache {
 
 	/**
 	 * Get a cached result if available and not expired
+	 * Returns result with cacheAge populated (Task-500-20-10-1)
 	 */
 	async get(
 		serverId: string,
@@ -97,7 +98,11 @@ export class ResultCache {
 		}
 
 		this.hits++
-		return entry.result
+		// Return result with cache age populated
+		return {
+			...entry.result,
+			cacheAge: age
+		}
 	}
 
 	/**

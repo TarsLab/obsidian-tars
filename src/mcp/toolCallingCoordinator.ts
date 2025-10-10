@@ -44,6 +44,8 @@ export interface ToolExecutionResult {
 	content: unknown
 	contentType: 'text' | 'json' | 'markdown' | 'image'
 	executionDuration: number
+	cached?: boolean
+	cacheAge?: number // Age in milliseconds when retrieved from cache
 }
 
 /**

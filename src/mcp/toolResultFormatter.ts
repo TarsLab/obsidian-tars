@@ -34,6 +34,30 @@ export interface FormatOptions {
 }
 
 /**
+ * Format cache age for display
+ * @internal
+ */
+function formatCacheAge(ageMs: number): string {
+	if (ageMs < 1000) {
+		return 'just now'
+	}
+	const seconds = Math.floor(ageMs / 1000)
+	if (seconds < 60) {
+		return `${seconds}s ago`
+	}
+	const minutes = Math.floor(seconds / 60)
+	if (minutes < 60) {
+		return `${minutes}m ago`
+	}
+	const hours = Math.floor(minutes / 60)
+	if (hours < 24) {
+		return `${hours}h ago`
+	}
+	const days = Math.floor(hours / 24)
+	return `${days}d ago`
+}
+
+/**
  * Format tool execution result content based on content type
  */
 export function formatResultContent(result: ToolExecutionResult): string {
@@ -81,11 +105,21 @@ export function formatToolResultAsMarkdown(result: ToolExecutionResult, options:
 	}
 	metadataParts.push(`Type: ${result.contentType}`)
 
+	// Add cache indicator to metadata (Task-500-20-10-1)
+	if (result.cached) {
+		if (result.cacheAge !== undefined) {
+			metadataParts.push(`Cached (${formatCacheAge(result.cacheAge)})`)
+		} else {
+			metadataParts.push('Cached')
+		}
+	}
+
 	const metadataLine = metadataParts.join(', ')
 
 	// Build callout
 	const calloutSymbol = collapsible ? '-' : '+'
-	const calloutLines: string[] = [`> [!tool]${calloutSymbol} Tool Result (${result.executionDuration}ms)`]
+	const cacheIndicator = result.cached ? ' 📦' : ''
+	const calloutLines: string[] = [`> [!tool]${calloutSymbol} Tool Result (${result.executionDuration}ms)${cacheIndicator}`]
 
 	if (showMetadata) {
 		calloutLines.push(`> ${metadataLine}`)
@@ -123,8 +157,18 @@ export function renderToolResultToDOM(
 	if (showMetadata) {
 		const metadata = resultContainer.createDiv({ cls: 'mcp-metadata' })
 
+		// Build metadata text with cache indicator (Task-500-20-10-1)
+		let metadataText = `Duration: ${result.executionDuration}ms, Type: ${result.contentType}`
+		if (result.cached) {
+			if (result.cacheAge !== undefined) {
+				metadataText += `, Cached (${formatCacheAge(result.cacheAge)})`
+			} else {
+				metadataText += ', Cached'
+			}
+		}
+
 		metadata.createSpan({
-			text: `Duration: ${result.executionDuration}ms, Type: ${result.contentType}`,
+			text: metadataText,
 			cls: 'mcp-duration'
 		})
 
@@ -163,10 +207,11 @@ export function renderToolResultToDOM(
 			break
 	}
 
-	// Add status indicator
+	// Add status indicator with cache indicator (Task-500-20-10-1)
 	const statusIndicator = resultContainer.createDiv({ cls: 'mcp-status' })
+	const statusText = result.cached ? '✅ Success 📦 Cached' : '✅ Success'
 	statusIndicator.createSpan({
-		text: '✅ Success',
+		text: statusText,
 		cls: 'mcp-status-success'
 	})
 }

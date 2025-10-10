@@ -140,7 +140,11 @@ export class ToolExecutor {
 		if (cachedResult) {
 			// Still increment session count for cache hits
 			this.incrementSessionCount(documentPath)
-			return cachedResult
+			// Mark result as cached (Task-500-20-10-1)
+			return {
+				...cachedResult,
+				cached: true
+			}
 		}
 
 		// Get MCP client

@@ -222,6 +222,34 @@ export default class TarsPlugin extends Plugin {
 				}
 			})
 
+			// Register Clear MCP Tool Result Cache command (Task-500-20-10-2)
+			this.addCommand({
+				id: 'clear-mcp-tool-cache',
+				name: 'Clear MCP Tool Result Cache',
+				callback: () => {
+					if (!this.mcpExecutor) {
+						new Notice('MCP Executor not initialized')
+						return
+					}
+
+					try {
+						const stats = this.mcpExecutor.getCacheStats()
+						this.mcpExecutor.clearCache()
+						new Notice(
+							`Tool result cache cleared (${stats.size} entries removed, ${stats.hits} previous hits)`
+						)
+						logger.info('mcp tool result cache cleared', {
+							clearedEntries: stats.size,
+							previousHits: stats.hits,
+							previousMisses: stats.misses
+						})
+					} catch (error) {
+						logger.error('failed to clear mcp tool cache', error)
+						new Notice('Failed to clear tool result cache')
+					}
+				}
+			})
+
 			// Register Insert MCP Tool Call command (Feature-400-40)
 			this.addCommand({
 				id: 'insert-mcp-tool-call',
@@ -544,6 +572,17 @@ export default class TarsPlugin extends Plugin {
 			: undefined
 		const sessionLimit = this.settings.mcpSessionLimit
 
+		// Get cache statistics (Task-500-20-10-3)
+		const cacheStats = this.mcpExecutor
+			? {
+					hits: this.mcpExecutor.getCacheStats().hits,
+					misses: this.mcpExecutor.getCacheStats().misses,
+					size: this.mcpExecutor.getCacheStats().size,
+					hitRate: this.mcpExecutor.getCacheHitRate(),
+					oldestEntryAge: this.mcpExecutor.getCacheStats().oldestEntryAge
+			  }
+			: undefined
+
 		this.statusBarManager.setMCPStatus({
 			runningServers,
 			totalServers,
@@ -553,6 +592,7 @@ export default class TarsPlugin extends Plugin {
 			activeExecutions,
 			currentDocumentSessions,
 			sessionLimit,
+			cacheStats,
 			servers: serverDetails
 		})
 	}

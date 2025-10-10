@@ -31,8 +31,9 @@ describe('ResultCache', () => {
 			await cache.set(serverId, toolName, parameters, mockResult)
 			const retrieved = await cache.get(serverId, toolName, parameters)
 
-			// Then: Should retrieve the same result
-			expect(retrieved).toEqual(mockResult)
+			// Then: Should retrieve the same result (with cacheAge added - Task-500-20-10-1)
+			expect(retrieved).toMatchObject(mockResult)
+			expect(retrieved?.cacheAge).toBeGreaterThanOrEqual(0)
 		})
 
 		it('should generate same key regardless of parameter order', async () => {
@@ -45,9 +46,10 @@ describe('ResultCache', () => {
 			// When: Storing with first order
 			await cache.set(serverId, toolName, params1, mockResult)
 
-			// Then: Should retrieve with second order
+			// Then: Should retrieve with second order (with cacheAge added - Task-500-20-10-1)
 			const retrieved = await cache.get(serverId, toolName, params2)
-			expect(retrieved).toEqual(mockResult)
+			expect(retrieved).toMatchObject(mockResult)
+			expect(retrieved?.cacheAge).toBeGreaterThanOrEqual(0)
 		})
 
 		it('should generate different keys for different parameters', async () => {
@@ -72,9 +74,9 @@ describe('ResultCache', () => {
 			await cache.set(serverId, toolName, params1, result1)
 			await cache.set(serverId, toolName, params2, result2)
 
-			// Then: Should retrieve correct results
-			expect(await cache.get(serverId, toolName, params1)).toEqual(result1)
-			expect(await cache.get(serverId, toolName, params2)).toEqual(result2)
+			// Then: Should retrieve correct results (with cacheAge added - Task-500-20-10-1)
+			expect(await cache.get(serverId, toolName, params1)).toMatchObject(result1)
+			expect(await cache.get(serverId, toolName, params2)).toMatchObject(result2)
 		})
 
 		it('should generate different keys for different servers', async () => {
@@ -99,9 +101,9 @@ describe('ResultCache', () => {
 			await cache.set(server1, toolName, parameters, result1)
 			await cache.set(server2, toolName, parameters, result2)
 
-			// Then: Should retrieve correct results per server
-			expect(await cache.get(server1, toolName, parameters)).toEqual(result1)
-			expect(await cache.get(server2, toolName, parameters)).toEqual(result2)
+			// Then: Should retrieve correct results per server (with cacheAge added - Task-500-20-10-1)
+			expect(await cache.get(server1, toolName, parameters)).toMatchObject(result1)
+			expect(await cache.get(server2, toolName, parameters)).toMatchObject(result2)
 		})
 	})
 
@@ -117,8 +119,9 @@ describe('ResultCache', () => {
 			await cache.set(serverId, toolName, parameters, mockResult)
 			const retrieved = await cache.get(serverId, toolName, parameters)
 
-			// Then: Should retrieve result
-			expect(retrieved).toEqual(mockResult)
+			// Then: Should retrieve result (with cacheAge added - Task-500-20-10-1)
+			expect(retrieved).toMatchObject(mockResult)
+			expect(retrieved?.cacheAge).toBeGreaterThanOrEqual(0)
 		})
 
 		it('should return null for expired entries', async () => {
@@ -151,9 +154,10 @@ describe('ResultCache', () => {
 			// Wait 150ms (past original TTL, within new TTL)
 			await new Promise((resolve) => setTimeout(resolve, 150))
 
-			// Then: Should still retrieve result with new TTL
+			// Then: Should still retrieve result with new TTL (with cacheAge added - Task-500-20-10-1)
 			const retrieved = await cache.get(serverId, toolName, parameters)
-			expect(retrieved).toEqual(mockResult)
+			expect(retrieved).toMatchObject(mockResult)
+			expect(retrieved?.cacheAge).toBeGreaterThanOrEqual(150)
 		})
 	})
 
@@ -264,7 +268,7 @@ describe('ResultCache', () => {
 
 			// Then: Only server-1 entries should be removed
 			expect(await cache.get('server-1', 'tool', { param: 'value' })).toBeNull()
-			expect(await cache.get('server-2', 'tool', { param: 'value' })).toEqual(result2)
+			expect(await cache.get('server-2', 'tool', { param: 'value' })).toMatchObject(result2)
 		})
 
 		it('should clear entries for specific tool', async () => {
@@ -288,7 +292,7 @@ describe('ResultCache', () => {
 
 			// Then: Only tool-1 entries should be removed
 			expect(await cache.get('server', 'tool-1', { param: 'value' })).toBeNull()
-			expect(await cache.get('server', 'tool-2', { param: 'value' })).toEqual(result2)
+			expect(await cache.get('server', 'tool-2', { param: 'value' })).toMatchObject(result2)
 		})
 
 		it('should purge expired entries only', async () => {
@@ -315,9 +319,9 @@ describe('ResultCache', () => {
 			// When: Purging expired
 			cache.purgeExpired()
 
-			// Then: Only fresh entry should remain
+			// Then: Only fresh entry should remain (with cacheAge added - Task-500-20-10-1)
 			expect(await cache.get('server', 'tool', { id: 'stale' })).toBeNull()
-			expect(await cache.get('server', 'tool', { id: 'fresh' })).toEqual(freshResult)
+			expect(await cache.get('server', 'tool', { id: 'fresh' })).toMatchObject(freshResult)
 			expect(cache.getStats().size).toBe(1)
 		})
 	})

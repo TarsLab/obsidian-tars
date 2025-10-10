@@ -54,6 +54,14 @@ export interface MCPStatusInfo {
 	activeExecutions?: number
 	currentDocumentSessions?: number
 	sessionLimit?: number
+	/** Cache statistics (Task-500-20-10-3) */
+	cacheStats?: {
+		hits: number
+		misses: number
+		size: number
+		hitRate: number
+		oldestEntryAge: number | null
+	}
 	servers: Array<{
 		id: string
 		name: string
@@ -230,6 +238,18 @@ class MCPStatusModal extends Modal {
 		summary.createEl('p', {
 			text: `Available Tools: ${this.mcpStatus.availableTools}`
 		})
+
+		// Cache statistics (Task-500-20-10-3)
+		if (this.mcpStatus.cacheStats) {
+			const cache = this.mcpStatus.cacheStats
+			const totalRequests = cache.hits + cache.misses
+			if (totalRequests > 0 || cache.size > 0) {
+				summary.createEl('p', {
+					text: `📦 Cache: ${cache.size} entries, ${cache.hitRate.toFixed(1)}% hit rate`,
+					cls: 'mcp-cache-stats'
+				})
+			}
+		}
 
 		if (this.mcpStatus.servers.length > 0) {
 			statusContainer.createEl('h3', { text: 'Servers', cls: 'mcp-servers-heading' })

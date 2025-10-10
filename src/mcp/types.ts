@@ -85,6 +85,10 @@ export interface ToolExecutionResult {
 	executionDuration: number
 	tokensUsed?: number
 	displayFormat?: 'inline' | 'block' | 'collapsed'
+	/** Indicates whether this result came from cache (Task-500-20-10-1) */
+	cached?: boolean
+	/** Age in milliseconds when retrieved from cache (Task-500-20-10-1) */
+	cacheAge?: number
 }
 
 export interface ToolServerInfo {
