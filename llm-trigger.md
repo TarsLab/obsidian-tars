@@ -58,6 +58,56 @@ Tasks:
 ✅ Utility section tracking tools → Q13, Q14, Q15 (Feature-900-80, deferred)
 ✅ Commands for each MCP server → Feature-900-90 (deferred)
 
+## Tasks 2025-10-10
+
+- extract MCP servers hosting logic into own monorepo package. It should be library that taking care of running MCP servers, executing specific tools, etc. Think deeper what can we include into this library (refactor existing code).
+
+
+## Commit Message Sample:
+
+```bash
+git commit -m "$(cat <<'EOF'
+docs: add Epic-1000 for LLM provider connection testing
+
+Add new stabilization epic to improve AI provider configuration UX with
+connection testing capabilities.
+
+**Epic-1000: Stabilization & Quality Improvements (8 SP)**
+
+**Feature-1000-10: LLM Provider Connection Testing (5 SP)**
+- Task-1000-10-5-1: Create provider test connection utility with two-tier strategy
+  - Primary: Request available models list (works for most providers)
+  - Fallback: Send minimal ping/echo/hello message with streaming disabled
+  - Returns success/failure with helpful error messages and latency
+  
+- Task-1000-10-5-2: Add test button to provider settings UI
+  - Similar to MCP server test button pattern
+  - Clear visual feedback for success/failure
+  - Loading state during test execution
+  
+- Task-1000-10-5-3: Add provider-specific test implementations
+  - OpenAI/compatible: Use /v1/models endpoint
+  - Claude: Use minimal message with max_tokens: 1
+  - Ollama: Use /api/tags endpoint
+  - Others: Default to echo strategy
+  
+- Task-1000-10-5-4: Add connection test unit tests
+  - Mock HTTP responses and verify fallback behavior
+
+**Rationale:**
+Users requested a way to validate AI provider credentials and connection
+before attempting to use them, similar to the MCP server test functionality.
+This will help diagnose configuration issues early and provide clearer
+feedback about connectivity problems.
+
+**Files Modified:**
+- docs/2025-10-07-075907-tasks-trimmed.md: Add Epic-1000 and tasks
+
+**Total Story Points:** 82 SP (74 SP original + 8 SP new)
+EOF
+)"
+```
+
 ## Tools
 
 1. `{"name": "create_entities", "parameters": {"entities": "[{\"entityType\": \"Tag\", \"name\": \"Machine Learning\", \"observations\": [\"A machine learning algorithm is a mathematical subset of machine learning.\"]}, {\"entityType\": \"Person\", \"name\": \"Alan Turing\", \"observations\": [\"Turing was an English mathematician, computer scientist, logician, and philosopher.\"]}]"}}`
