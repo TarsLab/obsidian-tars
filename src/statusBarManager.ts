@@ -78,7 +78,7 @@ class MCPStatusModal extends Modal {
 		private onClearLogs?: () => void,
 		private onRemoveLog?: (id: string) => void,
 		private currentError?: ErrorInfo,
-		private onRefresh?: () => Promise<void>
+		private onRefresh?: (updateStatus: (message: string) => void) => Promise<void>
 	) {
 		super(app)
 		this.activeTab = currentError ? 'errors' : 'mcp'
@@ -139,7 +139,7 @@ class MCPStatusModal extends Modal {
 	private renderMcpPanel(panel?: HTMLElement) {
 		if (!panel) return
 
-		// Add header with refresh button (Feature-400-30-10)
+		// Add header with refresh button (Feature-400-30-10, Feature-900-50-5-2)
 		const header = panel.createDiv({ cls: 'mcp-panel-header' })
 		header.createEl('h2', { text: 'MCP Server Status' })
 		if (this.onRefresh) {
@@ -147,20 +147,33 @@ class MCPStatusModal extends Modal {
 				text: '🔄 Refresh',
 				cls: 'mcp-refresh-button'
 			})
+
+			// Status indicator for multi-phase restart (Feature-900-50-5-2)
+			const statusIndicator = header.createDiv({ cls: 'mcp-refresh-status' })
+			statusIndicator.style.display = 'none'
+
 			refreshBtn.onclick = async () => {
 				refreshBtn.disabled = true
-				refreshBtn.textContent = '⏳ Refreshing...'
+				statusIndicator.style.display = ''
 				try {
-					await this.onRefresh?.()
+					// Pass status update callback to refresh handler
+					await this.onRefresh?.((message: string) => {
+						statusIndicator.textContent = message
+					})
 					// Re-render the panel with updated data
 					panel.empty()
 					this.renderMcpPanel(panel)
 				} catch (error) {
-					refreshBtn.textContent = '❌ Error'
+					statusIndicator.textContent = `❌ Error: ${error instanceof Error ? error.message : String(error)}`
+					statusIndicator.classList.add('mcp-refresh-error')
+					setTimeout(() => {
+						statusIndicator.style.display = 'none'
+						statusIndicator.classList.remove('mcp-refresh-error')
+					}, 3000)
 				} finally {
-					if (!refreshBtn.disabled) {
-						refreshBtn.disabled = false
-						refreshBtn.textContent = '🔄 Refresh'
+					refreshBtn.disabled = false
+					if (!statusIndicator.classList.contains('mcp-refresh-error')) {
+						statusIndicator.style.display = 'none'
 					}
 				}
 			}
@@ -644,7 +657,7 @@ export class StatusBarManager {
 	private autoHideTimer: NodeJS.Timeout | null = null
 	private errorLog: ErrorLogEntry[] = []
 	private readonly maxErrorLogSize = 50
-	private onRefreshMCPStatus?: () => Promise<void>
+	private onRefreshMCPStatus?: (updateStatus: (message: string) => void) => Promise<void>
 
 	constructor(
 		private app: App,
@@ -664,9 +677,9 @@ export class StatusBarManager {
 	}
 
 	/**
-	 * Set the refresh callback for MCP status (Feature-400-30-10)
+	 * Set the refresh callback for MCP status (Feature-400-30-10, Feature-900-50-5-2)
 	 */
-	setRefreshCallback(callback: () => Promise<void>) {
+	setRefreshCallback(callback: (updateStatus: (message: string) => void) => Promise<void>) {
 		this.onRefreshMCPStatus = callback
 	}
 

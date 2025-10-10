@@ -275,9 +275,9 @@ export default class TarsPlugin extends Plugin {
 
 		// Update MCP status in status bar if MCP manager is initialized
 		if (this.mcpManager) {
-			// Set refresh callback for modal (Feature-400-30-10)
-			this.statusBarManager.setRefreshCallback(async () => {
-				await this.updateMCPStatus()
+			// Set refresh callback for modal (Feature-400-30-10, Feature-900-50-5-2)
+			this.statusBarManager.setRefreshCallback(async (updateStatus) => {
+				await this.restartMCPServersGracefully(updateStatus)
 			})
 			this.updateMCPStatus()
 		}
@@ -549,6 +549,67 @@ export default class TarsPlugin extends Plugin {
 			sessionLimit,
 			servers: serverDetails
 		})
+	}
+
+	/**
+	 * Gracefully restart MCP servers with multi-phase UI feedback (Feature-900-50-5-2)
+	 */
+	async restartMCPServersGracefully(updateStatus: (message: string) => void): Promise<void> {
+		if (!this.mcpManager || !this.mcpExecutor) {
+			throw new Error('MCP not initialized')
+		}
+
+		const currentDocPath = this.app.workspace.getActiveFile()?.path
+
+		try {
+			// Phase 1: Stopping servers gracefully
+			updateStatus('⏸️ Stopping servers...')
+			await this.mcpManager.shutdown()
+
+			// Phase 2: Brief delay to ensure cleanup
+			updateStatus('⏳ Waiting for cleanup...')
+			await new Promise((resolve) => setTimeout(resolve, 500))
+
+			// Phase 3: Starting servers
+			updateStatus('▶️ Starting servers...')
+			await this.mcpManager.initialize(this.settings.mcpServers, {
+				failureThreshold: this.settings.mcpFailureThreshold,
+				retryPolicy: {
+					maxAttempts: this.settings.mcpRetryMaxAttempts,
+					initialDelay: this.settings.mcpRetryInitialDelay,
+					maxDelay: this.settings.mcpRetryMaxDelay,
+					backoffMultiplier: this.settings.mcpRetryBackoffMultiplier,
+					jitter: this.settings.mcpRetryJitter,
+					transientErrorCodes: [
+						'ECONNREFUSED',
+						'ECONNRESET',
+						'ETIMEDOUT',
+						'ENOTFOUND',
+						'ECONNABORTED',
+						'EPIPE',
+						'ENETUNREACH',
+						'EHOSTUNREACH'
+					]
+				},
+				statusBarManager: this.statusBarManager
+			})
+
+			// Phase 4: Reset current document session count only
+			if (currentDocPath) {
+				updateStatus('🔄 Resetting document sessions...')
+				this.mcpExecutor.resetSessionCount(currentDocPath)
+			}
+
+			// Phase 5: Update status display
+			updateStatus('✅ Refresh complete')
+			await this.updateMCPStatus()
+
+			// Brief display of completion message
+			await new Promise((resolve) => setTimeout(resolve, 800))
+		} catch (error) {
+			logger.error('MCP restart failed', error)
+			throw error
+		}
 	}
 
 	/**

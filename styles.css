@@ -613,6 +613,33 @@ summary.tars-setting-h4 {
 	cursor: not-allowed;
 }
 
+/* MCP Refresh Status Indicator (Feature-900-50-5-2) */
+.mcp-refresh-status {
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+	margin-left: var(--size-4-2);
+	padding: var(--size-2-1) var(--size-4-2);
+	background-color: var(--background-secondary);
+	border-radius: var(--radius-s);
+	animation: pulse 1.5s ease-in-out infinite;
+}
+
+.mcp-refresh-status.mcp-refresh-error {
+	color: var(--text-error);
+	background-color: var(--background-modifier-error);
+	animation: none;
+}
+
+@keyframes pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.6;
+	}
+}
+
 /* MCP Status Summary Colors */
 .mcp-active {
 	color: var(--text-accent);
