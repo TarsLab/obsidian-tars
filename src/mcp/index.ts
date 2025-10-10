@@ -65,6 +65,14 @@ export {
 	type ToolResponseParser
 } from './toolResponseParser'
 export { type CachedToolResult, DocumentToolCache } from './toolResultCache'
+// Tool result formatting
+export {
+	type FormatOptions,
+	formatResultContent,
+	formatToolResult,
+	formatToolResultAsMarkdown,
+	renderToolResultToDOM
+} from './toolResultFormatter'
 // Core types
 export * from './types'
 export * from './utils'

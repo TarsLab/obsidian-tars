@@ -240,21 +240,25 @@ export class ToolBrowserModal extends Modal {
 
 		// Generate parameter template
 		const params: string[] = []
+		const required = (tool.inputSchema?.required as string[]) || []
+
 		if (tool.inputSchema?.properties) {
 			const properties = tool.inputSchema.properties as Record<string, any>
 			for (const [paramName, paramSchema] of Object.entries(properties)) {
+				const isRequired = required.includes(paramName)
+
 				// Add example value based on type
 				let exampleValue = ''
 				switch (paramSchema.type) {
 					case 'string':
-						exampleValue = paramSchema.example || ''
+						exampleValue = paramSchema.example ? `"${paramSchema.example}"` : '""'
 						break
 					case 'number':
 					case 'integer':
-						exampleValue = paramSchema.example || '0'
+						exampleValue = paramSchema.example?.toString() || '0'
 						break
 					case 'boolean':
-						exampleValue = 'false'
+						exampleValue = paramSchema.example?.toString() || 'false'
 						break
 					case 'array':
 						exampleValue = '[]'
@@ -263,9 +267,12 @@ export class ToolBrowserModal extends Modal {
 						exampleValue = '{}'
 						break
 					default:
-						exampleValue = ''
+						exampleValue = '""'
 				}
-				params.push(`${paramName}: ${exampleValue}`)
+
+				// Add optional comment for non-required parameters
+				const optionalComment = isRequired ? '' : ' # optional'
+				params.push(`${paramName}: ${exampleValue}${optionalComment}`)
 			}
 		}
 
@@ -275,6 +282,41 @@ export class ToolBrowserModal extends Modal {
 		// Insert at cursor
 		const cursor = this.editor.getCursor()
 		this.editor.replaceRange(`${codeBlock}\n`, cursor)
+
+		// Position cursor at first required parameter value (or first parameter if no required ones)
+		if (params.length > 0) {
+			// Find the first required parameter, or use first parameter if none are required
+			let firstParamIndex = -1
+			const requiredParams = (tool.inputSchema?.required as string[]) || []
+
+			if (requiredParams.length > 0 && tool.inputSchema?.properties) {
+				const properties = tool.inputSchema.properties as Record<string, any>
+				const propertyNames = Object.keys(properties)
+				for (let i = 0; i < propertyNames.length; i++) {
+					if (requiredParams.includes(propertyNames[i])) {
+						firstParamIndex = i
+						break
+					}
+				}
+			}
+
+			// If no required params found, use first parameter
+			if (firstParamIndex === -1) {
+				firstParamIndex = 0
+			}
+
+			// Calculate cursor position
+			// Line offset: 1 (opening fence) + 1 (tool line) + firstParamIndex
+			const targetLine = cursor.line + 2 + firstParamIndex
+			const paramLine = params[firstParamIndex]
+
+			// Find the position after the colon and space (e.g., "paramName: " -> position after ": ")
+			const colonIndex = paramLine.indexOf(': ')
+			if (colonIndex !== -1) {
+				// Position cursor at the start of the value
+				this.editor.setCursor({ line: targetLine, ch: colonIndex + 2 })
+			}
+		}
 	}
 
 	onClose() {

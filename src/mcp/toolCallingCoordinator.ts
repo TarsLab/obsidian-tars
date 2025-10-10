@@ -15,6 +15,7 @@ import type { StatusBarManager } from '../statusBarManager'
 import type { ToolExecutor } from './executor'
 import type { ToolCall, ToolResponseParser } from './toolResponseParser'
 import { type CachedToolResult, DocumentToolCache } from './toolResultCache'
+import { formatToolResultAsMarkdown } from './toolResultFormatter'
 import type { ToolServerInfo } from './types'
 
 const logger = createLogger('mcp:tool-coordinator')
@@ -114,47 +115,16 @@ function insertToolCallMarkdown(
 	editor.setCursor(newCursor)
 }
 
-function formatResultContent(result: ToolExecutionResult): string {
-	const { content, contentType } = result
-	switch (contentType) {
-		case 'json':
-			if (Array.isArray(content) && content.length === 1 && 'type' in content[0] && 'text' === content[0].type) {
-				/**
-				 * We converting this to markdown
-				 * [
-				 *  {
-				 * 	"type": "text",
-				 * 	"text": "## TypeScript vs JavaScript: The ONLY Guide You Need!\n\nhttps://dev.to/codeparrot/typescript-vs-javascript-the-only-guide-you-need-1pi\n\n```\ninterface Product {\n id: number;\n"
-				 * 	}
-				 * ]
-				 */
-				const escapedContent = String(content[0].text)
-				// conver \n to \n
-				const formattedContent = escapedContent.replace(/\\n/g, '\n').trim()
-				return `${formattedContent}\n\n`
-			}
-
-			return `\`\`\`json\n${JSON.stringify(content, null, 2)}\n\`\`\``
-		case 'markdown':
-			return typeof content === 'string' ? content : String(content)
-		case 'image':
-			return typeof content === 'string' ? `![Tool Result](${content})` : String(content)
-		default:
-			return `\`\`\`text\n${String(content)}\n\`\`\``
-	}
-}
-
 function insertToolResultMarkdown(editor: Editor, result: ToolExecutionResult): void {
 	const cursor = editor.getCursor()
-	const formattedContent = formatResultContent(result)
-	const bodyLines = formattedContent.split('\n')
-	const executedAtIso = new Date().toISOString()
-	const calloutLines = [
-		`> [!tool]- Tool Result (${result.executionDuration}ms)`,
-		`> Executed: ${executedAtIso}`,
-		...bodyLines.map((line) => `> ${line}`)
-	]
-	const markdown = `\n${calloutLines.join('\n')}\n`
+
+	// Use shared formatter with collapsible and timestamp options
+	const markdown = formatToolResultAsMarkdown(result, {
+		collapsible: true,
+		showMetadata: false, // Duration already shown in callout header
+		includeTimestamp: true
+	})
+
 	editor.replaceRange(markdown, cursor)
 
 	const lines = markdown.split('\n')

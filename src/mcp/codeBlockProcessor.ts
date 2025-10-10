@@ -7,6 +7,7 @@ import { parse as parseYAML } from 'yaml'
 
 import { createLogger } from '../logger'
 import { YAMLParseError } from './errors'
+import { renderToolResultToDOM } from './toolResultFormatter'
 import type { ErrorInfo, MCPServerConfig, ToolExecutionResult, ToolInvocation } from './types'
 import { logError } from './utils'
 
@@ -77,65 +78,10 @@ export class CodeBlockProcessor {
 			showMetadata?: boolean
 		} = {}
 	): void {
-		// Clear existing content
-		el.empty()
-
-		// Create result container
-		const container = el.createDiv({ cls: 'mcp-tool-result' })
-
-		// Add metadata if requested
-		if (options.showMetadata) {
-			const metadata = container.createDiv({ cls: 'mcp-metadata' })
-			metadata.createSpan({
-				text: `Duration: ${result.executionDuration}ms`,
-				cls: 'mcp-duration'
-			})
-
-			if (result.tokensUsed) {
-				metadata.createSpan({
-					text: `Tokens: ${result.tokensUsed}`,
-					cls: 'mcp-tokens'
-				})
-			}
-
-			metadata.createSpan({
-				text: `Type: ${result.contentType}`,
-				cls: 'mcp-content-type'
-			})
-		}
-
-		// Create content container
-		let contentContainer: HTMLElement
-
-		if (options.collapsible && result.contentType === 'json') {
-			// Collapsible JSON result
-			const details = container.createEl('details', { cls: 'mcp-collapsible' })
-			details.createEl('summary', { text: 'Tool Result (click to expand)' })
-			contentContainer = details.createEl('pre', { cls: 'mcp-content' })
-		} else {
-			// Direct content display
-			contentContainer = container.createEl('pre', { cls: 'mcp-content' })
-		}
-
-		// Render content based on type
-		switch (result.contentType) {
-			case 'json':
-				contentContainer.textContent = JSON.stringify(result.content, null, 2)
-				break
-			case 'markdown':
-				// For markdown, we'd need to render it, but for now just show as text
-				contentContainer.textContent = String(result.content)
-				break
-			default:
-				contentContainer.textContent = String(result.content)
-				break
-		}
-
-		// Add status indicator
-		const statusIndicator = container.createDiv({ cls: 'mcp-status' })
-		statusIndicator.createSpan({
-			text: '✅ Success',
-			cls: 'mcp-status-success'
+		// Use shared formatter for consistent rendering
+		renderToolResultToDOM(el, result, {
+			collapsible: options.collapsible,
+			showMetadata: options.showMetadata
 		})
 	}
 
