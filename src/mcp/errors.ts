@@ -48,11 +48,9 @@ export class ExecutionLimitError extends MCPError {
 		limit: number,
 		context: Record<string, unknown> = {}
 	) {
-		super(
-			`${limitType.charAt(0).toUpperCase() + limitType.slice(1)} limit reached: ${current}/${limit}`,
-			'EXECUTION_LIMIT_ERROR',
-			{ limitType, current, limit, ...context }
-		)
+		const normalizedLimit = limit < 0 ? '∞' : `${limit}`
+		const limitLabel = `${limitType.charAt(0).toUpperCase() + limitType.slice(1)} limit reached: ${current}/${normalizedLimit}`
+		super(limitLabel, 'EXECUTION_LIMIT_ERROR', { limitType, current, limit, ...context })
 	}
 }
 
