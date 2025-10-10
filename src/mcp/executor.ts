@@ -6,6 +6,7 @@
 import type { StatusBarManager } from '../statusBarManager'
 import { ExecutionLimitError } from './errors'
 import type { MCPServerManager } from './managerMCPUse'
+import { ResultCache } from './resultCache'
 import type { ExecutionHistoryEntry, ExecutionTracker, ToolExecutionResult } from './types'
 
 export interface DocumentSessionState {
@@ -43,6 +44,8 @@ function createDefaultSessionNotifications(): SessionNotificationHandlers {
 export interface ToolExecutorOptions {
 	timeout?: number
 	sessionNotifications?: SessionNotificationHandlers
+	enableCache?: boolean
+	cacheTTL?: number
 }
 
 export class ToolExecutor {
@@ -55,6 +58,7 @@ export class ToolExecutor {
 	private currentDocumentPath?: string
 	private readonly sessionNotifications: SessionNotificationHandlers
 	private readonly documentsPendingResetNotice = new Set<string>()
+	private readonly resultCache: ResultCache
 
 	constructor(
 		manager: MCPServerManager,
@@ -64,9 +68,10 @@ export class ToolExecutor {
 	) {
 		this.manager = manager
 		this.tracker = tracker
-		this.options = { timeout: 30000, ...options }
+		this.options = { timeout: 30000, enableCache: true, cacheTTL: 5 * 60 * 1000, ...options }
 		this.statusBarManager = statusBarManager
 		this.sessionNotifications = options.sessionNotifications ?? createDefaultSessionNotifications()
+		this.resultCache = new ResultCache(this.options.cacheTTL)
 	}
 
 	/**
@@ -97,6 +102,14 @@ export class ToolExecutor {
 		const documentPath = this.normalizeDocumentPath(request.documentPath)
 		let documentState = this.setCurrentDocument(documentPath)
 
+		// Check cache before execution (Task-500-20-5-2)
+		// Note: We still increment session count and check limits even for cache hits
+		// to maintain consistency with session tracking
+		let cachedResult: ToolExecutionResult | null = null
+		if (this.options.enableCache) {
+			cachedResult = await this.resultCache.get(request.serverId, request.toolName, request.parameters)
+		}
+
 		// Ensure execution is allowed for this document, prompting user when limit reached
 		if (!this.canExecute(documentPath)) {
 			if (this.isSessionLimitReached(documentPath)) {
@@ -121,6 +134,13 @@ export class ToolExecutor {
 					documentPath
 				})
 			}
+		}
+
+		// If we have a cached result, return it without executing
+		if (cachedResult) {
+			// Still increment session count for cache hits
+			this.incrementSessionCount(documentPath)
+			return cachedResult
 		}
 
 		// Get MCP client
@@ -159,6 +179,11 @@ export class ToolExecutor {
 			// Update record with success
 			executionRecord.duration = Date.now() - executionRecord.timestamp
 			executionRecord.status = 'success'
+
+			// Store result in cache (Task-500-20-5-3)
+			if (this.options.enableCache) {
+				await this.resultCache.set(request.serverId, request.toolName, request.parameters, result)
+			}
 
 			return result
 		} catch (error) {
@@ -452,5 +477,64 @@ export class ToolExecutor {
 	public getTotalSessionCount(documentPath: string): number {
 		const normalized = this.normalizeDocumentPath(documentPath)
 		return this.documentSessions.get(normalized)?.totalSessionCount ?? 0
+	}
+
+	// Public API for cache management (Task-500-20-5-4)
+
+	/**
+	 * Clear all cached results
+	 */
+	public clearCache(): void {
+		this.resultCache.clear()
+	}
+
+	/**
+	 * Clear cached results for a specific server
+	 */
+	public clearServerCache(serverId: string): void {
+		this.resultCache.clearServer(serverId)
+	}
+
+	/**
+	 * Clear cached results for a specific tool
+	 */
+	public clearToolCache(serverId: string, toolName: string): void {
+		this.resultCache.clearTool(serverId, toolName)
+	}
+
+	/**
+	 * Purge expired cache entries
+	 */
+	public purgeExpiredCache(): void {
+		this.resultCache.purgeExpired()
+	}
+
+	/**
+	 * Get cache statistics
+	 */
+	public getCacheStats() {
+		return this.resultCache.getStats()
+	}
+
+	/**
+	 * Get cache hit rate as percentage
+	 */
+	public getCacheHitRate(): number {
+		return this.resultCache.getHitRate()
+	}
+
+	/**
+	 * Enable or disable caching
+	 */
+	public setCacheEnabled(enabled: boolean): void {
+		this.options.enableCache = enabled
+	}
+
+	/**
+	 * Update cache TTL
+	 */
+	public setCacheTTL(ttlMs: number): void {
+		this.options.cacheTTL = ttlMs
+		this.resultCache.setTTL(ttlMs)
 	}
 }

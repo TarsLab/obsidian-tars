@@ -228,7 +228,8 @@ timestamp: true`
 				sessionNotifications: {
 					onLimitReached,
 					onSessionReset
-				}
+				},
+				enableCache: false // Disable caching for this test
 			})
 
 			await executor.executeTool({
