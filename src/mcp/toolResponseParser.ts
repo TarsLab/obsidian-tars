@@ -407,17 +407,10 @@ export class OllamaToolResponseParser implements ToolResponseParser<OllamaChunk>
 	}
 
 	private normalizeValue(value: unknown): unknown {
+		// Keep strings as strings - MCP tools expect exact types from their schemas
+		// Don't auto-convert string numbers, booleans, or null strings
+		// The LLM should provide the correct types based on the tool schema
 		if (typeof value === 'string') {
-			const trimmed = value.trim()
-			if (trimmed === '') {
-				return value
-			}
-			if (trimmed === 'true') return true
-			if (trimmed === 'false') return false
-			if (trimmed === 'null') return null
-			if (/^-?\d+(\.\d+)?$/.test(trimmed)) {
-				return trimmed.includes('.') ? parseFloat(trimmed) : Number(trimmed)
-			}
 			return value
 		}
 

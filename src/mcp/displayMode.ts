@@ -121,7 +121,7 @@ function isMcpRemoteCommand(
 	}
 
 	if (command === 'npx' || command === 'uvx' || command === 'bunx') {
-		return config.args.some((arg) => arg.toLowerCase() === 'mcp-remote')
+		return config.args.some((arg) => typeof arg === 'string' && arg.toLowerCase() === 'mcp-remote')
 	}
 
 	return false
