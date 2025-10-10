@@ -121,7 +121,7 @@ describe('detectConversionCapability', () => {
 	it('allows remote shell commands to surface URL', () => {
 		const capability = detectConversionCapability(buildConfig('npx -y mcp-remote https://demo'))
 		expect(capability).toEqual({
-			canShowAsJson: false,
+			canShowAsJson: true, // Shell commands can be shown as JSON
 			canShowAsUrl: true,
 			canShowAsShell: true,
 			currentFormat: 'shell',
@@ -132,7 +132,7 @@ describe('detectConversionCapability', () => {
 	it('treats non-remote commands as shell-only', () => {
 		const capability = detectConversionCapability(buildConfig('node ./server.js'))
 		expect(capability).toEqual({
-			canShowAsJson: false,
+			canShowAsJson: true, // All valid shell commands can be shown as JSON
 			canShowAsUrl: false,
 			canShowAsShell: true,
 			currentFormat: 'shell',

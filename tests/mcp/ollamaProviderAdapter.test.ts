@@ -332,7 +332,8 @@ describe('OllamaProviderAdapter', () => {
 			expect(toolCalls[0].arguments).toEqual({ location: 'London' })
 		})
 
-		it('should coerce numeric string arguments to numbers', () => {
+		it('should preserve string arguments without coercion', () => {
+			// Given: Parser from adapter
 			const parser = adapter.getParser()
 
 			const chunk = {
@@ -348,11 +349,15 @@ describe('OllamaProviderAdapter', () => {
 				}
 			}
 
+			// When: Parsing chunk with string number
 			parser.parseChunk(chunk)
 
+			// Then: Should preserve string type (no coercion to number)
+			// This ensures MCP tools receive exactly what LLM provides
 			expect(parser.hasCompleteToolCalls()).toBe(true)
 			const [toolCall] = parser.getToolCalls()
-			expect(toolCall.arguments.tokensNum).toBe(1000)
+			expect(toolCall.arguments.tokensNum).toBe('1000')
+			expect(typeof toolCall.arguments.tokensNum).toBe('string')
 		})
 	})
 })

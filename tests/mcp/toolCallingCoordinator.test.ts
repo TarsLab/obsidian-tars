@@ -363,4 +363,377 @@ describe('ToolCallingCoordinator', () => {
 			).rejects.toThrow('Tool execution failed')
 		})
 	})
+
+	describe('Parallel execution', () => {
+		it('should execute multiple tools sequentially by default', async () => {
+			// GIVEN: Three tool calls that need execution
+			const toolCalls: ToolCall[] = [
+				{ id: 'call_1', name: 'tool_a', arguments: {} },
+				{ id: 'call_2', name: 'tool_b', arguments: {} },
+				{ id: 'call_3', name: 'tool_c', arguments: {} }
+			]
+
+			const executionOrder: string[] = []
+			let requestCount = 0
+
+			const mockAdapter: ProviderAdapter = {
+				async *sendRequest(_messages: Message[]) {
+					requestCount++
+					if (requestCount === 1) {
+						// First request - return multiple tool calls
+						yield { tool_calls: toolCalls }
+					} else {
+						// Second request - return final text
+						yield { content: 'All tools executed' }
+					}
+				},
+				getParser: () => ({
+					parseChunk: vi.fn((chunk: unknown) => {
+						// biome-ignore lint/suspicious/noExplicitAny: mock chunk
+						const c = chunk as any
+						if (c?.content) {
+							return { type: 'text', content: c.content }
+						}
+						return null
+					}),
+					hasCompleteToolCalls: vi.fn(() => requestCount === 1),
+					getToolCalls: vi.fn(() => (requestCount === 1 ? toolCalls : [])),
+					reset: vi.fn()
+				}),
+				findServer: (name: string) => ({ id: 'test-server', name: 'Test Server' }),
+				formatToolResult: (toolCallId: string, result: ToolExecutionResult) => ({
+					role: 'tool',
+					tool_call_id: toolCallId,
+					content: JSON.stringify(result.content)
+				})
+			}
+
+			const mockExecutor: ToolExecutor = {
+				executeTool: vi.fn().mockImplementation(async (request: { toolName: string }) => {
+					// Track when execution starts
+					executionOrder.push(`start:${request.toolName}`)
+					// Simulate async work
+					await new Promise((resolve) => setTimeout(resolve, 10))
+					// Track when execution completes
+					executionOrder.push(`end:${request.toolName}`)
+					return {
+						content: { result: 'success' },
+						contentType: 'json',
+						executionDuration: 10
+					}
+				}),
+				canExecute: () => true
+			}
+
+			const coordinator = new ToolCallingCoordinator()
+
+			// WHEN: Generating with default parallelExecution=false (sequential)
+			const results: string[] = []
+			for await (const text of coordinator.generateWithTools(
+				[{ role: 'user', content: 'test' }],
+				mockAdapter,
+				mockExecutor,
+				{ parallelExecution: false, documentPath: 'test.md' }
+			)) {
+				results.push(text)
+			}
+
+			// THEN: Tools should execute sequentially (each completes before next starts)
+			expect(mockExecutor.executeTool).toHaveBeenCalledTimes(3)
+			expect(results).toEqual(['All tools executed'])
+			// Sequential execution means: start A, end A, start B, end B, start C, end C
+			expect(executionOrder).toEqual([
+				'start:tool_a',
+				'end:tool_a',
+				'start:tool_b',
+				'end:tool_b',
+				'start:tool_c',
+				'end:tool_c'
+			])
+		})
+
+		it('should execute tools in parallel when enabled', async () => {
+			// GIVEN: Three tool calls that need execution
+			const toolCalls: ToolCall[] = [
+				{ id: 'call_1', name: 'tool_a', arguments: {} },
+				{ id: 'call_2', name: 'tool_b', arguments: {} },
+				{ id: 'call_3', name: 'tool_c', arguments: {} }
+			]
+
+			const executionOrder: string[] = []
+			let requestCount = 0
+
+			const mockAdapter: ProviderAdapter = {
+				async *sendRequest(_messages: Message[]) {
+					requestCount++
+					if (requestCount === 1) {
+						yield { tool_calls: toolCalls }
+					} else {
+						yield { content: 'All tools executed' }
+					}
+				},
+				getParser: () => ({
+					parseChunk: vi.fn((chunk: unknown) => {
+						// biome-ignore lint/suspicious/noExplicitAny: mock chunk
+						const c = chunk as any
+						if (c?.content) {
+							return { type: 'text', content: c.content }
+						}
+						return null
+					}),
+					hasCompleteToolCalls: vi.fn(() => requestCount === 1),
+					getToolCalls: vi.fn(() => (requestCount === 1 ? toolCalls : [])),
+					reset: vi.fn()
+				}),
+				findServer: (name: string) => ({ id: 'test-server', name: 'Test Server' }),
+				formatToolResult: (toolCallId: string, result: ToolExecutionResult) => ({
+					role: 'tool',
+					tool_call_id: toolCallId,
+					content: JSON.stringify(result.content)
+				})
+			}
+
+			const mockExecutor: ToolExecutor = {
+				executeTool: vi.fn().mockImplementation(async (request: { toolName: string }) => {
+					executionOrder.push(`start:${request.toolName}`)
+					await new Promise((resolve) => setTimeout(resolve, 10))
+					executionOrder.push(`end:${request.toolName}`)
+					return {
+						content: { result: 'success' },
+						contentType: 'json',
+						executionDuration: 10
+					}
+				}),
+				canExecute: () => true
+			}
+
+			const coordinator = new ToolCallingCoordinator()
+
+			// WHEN: Generating with parallelExecution=true
+			const results: string[] = []
+			for await (const text of coordinator.generateWithTools(
+				[{ role: 'user', content: 'test' }],
+				mockAdapter,
+				mockExecutor,
+				{ parallelExecution: true, maxParallelTools: 3, documentPath: 'test.md' }
+			)) {
+				results.push(text)
+			}
+
+			// THEN: All tools should start before any complete (parallel execution)
+			expect(mockExecutor.executeTool).toHaveBeenCalledTimes(3)
+			expect(results).toEqual(['All tools executed'])
+			// Parallel execution means all start before any end
+			expect(executionOrder.slice(0, 3)).toEqual(['start:tool_a', 'start:tool_b', 'start:tool_c'])
+		})
+
+		it('should respect maxParallelTools limit', async () => {
+			// GIVEN: Five tool calls but limit of 2 concurrent executions
+			const toolCalls: ToolCall[] = [
+				{ id: 'call_1', name: 'tool_a', arguments: {} },
+				{ id: 'call_2', name: 'tool_b', arguments: {} },
+				{ id: 'call_3', name: 'tool_c', arguments: {} },
+				{ id: 'call_4', name: 'tool_d', arguments: {} },
+				{ id: 'call_5', name: 'tool_e', arguments: {} }
+			]
+
+			const concurrentExecutions = { count: 0, maxObserved: 0 }
+			let requestCount = 0
+
+			const mockAdapter: ProviderAdapter = {
+				async *sendRequest(_messages: Message[]) {
+					requestCount++
+					if (requestCount === 1) {
+						yield { tool_calls: toolCalls }
+					} else {
+						yield { content: 'Done' }
+					}
+				},
+				getParser: () => ({
+					parseChunk: vi.fn((chunk: unknown) => {
+						// biome-ignore lint/suspicious/noExplicitAny: mock chunk
+						const c = chunk as any
+						if (c?.content) {
+							return { type: 'text', content: c.content }
+						}
+						return null
+					}),
+					hasCompleteToolCalls: vi.fn(() => requestCount === 1),
+					getToolCalls: vi.fn(() => (requestCount === 1 ? toolCalls : [])),
+					reset: vi.fn()
+				}),
+				findServer: () => ({ id: 'test-server', name: 'Test Server' }),
+				formatToolResult: () => ({ role: 'tool', content: '{}' })
+			}
+
+			const mockExecutor: ToolExecutor = {
+				executeTool: vi.fn().mockImplementation(async () => {
+					concurrentExecutions.count++
+					concurrentExecutions.maxObserved = Math.max(concurrentExecutions.maxObserved, concurrentExecutions.count)
+					await new Promise((resolve) => setTimeout(resolve, 20))
+					concurrentExecutions.count--
+					return { content: {}, contentType: 'json', executionDuration: 20 }
+				}),
+				canExecute: () => true
+			}
+
+			const coordinator = new ToolCallingCoordinator()
+
+			// WHEN: Running with maxParallelTools=2
+			for await (const _text of coordinator.generateWithTools(
+				[{ role: 'user', content: 'test' }],
+				mockAdapter,
+				mockExecutor,
+				{ parallelExecution: true, maxParallelTools: 2, documentPath: 'test.md' }
+			)) {
+				// Consume generator
+			}
+
+			// THEN: Should never exceed 2 concurrent executions
+			expect(mockExecutor.executeTool).toHaveBeenCalledTimes(5)
+			expect(concurrentExecutions.maxObserved).toBe(2)
+		})
+
+		it('should handle partial failures in parallel execution', async () => {
+			// GIVEN: Three tools, one will fail
+			const toolCalls: ToolCall[] = [
+				{ id: 'call_1', name: 'tool_success_a', arguments: {} },
+				{ id: 'call_2', name: 'tool_fail', arguments: {} },
+				{ id: 'call_3', name: 'tool_success_b', arguments: {} }
+			]
+
+			let requestCount = 0
+			const formatToolResultSpy = vi.fn((toolCallId: string, result: ToolExecutionResult) => ({
+				role: 'tool' as const,
+				tool_call_id: toolCallId,
+				content: JSON.stringify(result.content)
+			}))
+
+			const mockAdapter: ProviderAdapter = {
+				async *sendRequest(_messages: Message[]) {
+					requestCount++
+					if (requestCount === 1) {
+						yield { tool_calls: toolCalls }
+					} else {
+						yield { content: 'Completed with partial failures' }
+					}
+				},
+				getParser: () => ({
+					parseChunk: vi.fn((chunk: unknown) => {
+						// biome-ignore lint/suspicious/noExplicitAny: mock chunk
+						const c = chunk as any
+						if (c?.content) {
+							return { type: 'text', content: c.content }
+						}
+						return null
+					}),
+					hasCompleteToolCalls: vi.fn(() => requestCount === 1),
+					getToolCalls: vi.fn(() => (requestCount === 1 ? toolCalls : [])),
+					reset: vi.fn()
+				}),
+				findServer: () => ({ id: 'test-server', name: 'Test Server' }),
+				formatToolResult: formatToolResultSpy
+			}
+
+			const mockExecutor: ToolExecutor = {
+				executeTool: vi.fn().mockImplementation(async (request: { toolName: string }) => {
+					if (request.toolName === 'tool_fail') {
+						throw new Error('Tool execution failed')
+					}
+					return {
+						content: { result: 'success' },
+						contentType: 'json',
+						executionDuration: 10
+					}
+				}),
+				canExecute: () => true
+			}
+
+			const coordinator = new ToolCallingCoordinator()
+
+			// WHEN: Executing with one failure
+			const results: string[] = []
+			for await (const text of coordinator.generateWithTools(
+				[{ role: 'user', content: 'test' }],
+				mockAdapter,
+				mockExecutor,
+				{ parallelExecution: true, maxParallelTools: 3, documentPath: 'test.md' }
+			)) {
+				results.push(text)
+			}
+
+			// THEN: Should execute all tools and continue despite failure
+			expect(mockExecutor.executeTool).toHaveBeenCalledTimes(3)
+			expect(results).toEqual(['Completed with partial failures'])
+			// Verify error message was formatted and added to conversation
+			expect(formatToolResultSpy).toHaveBeenCalledWith(
+				'call_2',
+				expect.objectContaining({
+					content: expect.objectContaining({ error: 'Tool execution failed' })
+				})
+			)
+		})
+
+		it('should default to sequential when maxParallelTools=1', async () => {
+			// GIVEN: Two tool calls
+			const toolCalls: ToolCall[] = [
+				{ id: 'call_1', name: 'tool_a', arguments: {} },
+				{ id: 'call_2', name: 'tool_b', arguments: {} }
+			]
+
+			const executionOrder: string[] = []
+			let requestCount = 0
+
+			const mockAdapter: ProviderAdapter = {
+				async *sendRequest(_messages: Message[]) {
+					requestCount++
+					if (requestCount === 1) {
+						yield { tool_calls: toolCalls }
+					} else {
+						yield { content: 'Done' }
+					}
+				},
+				getParser: () => ({
+					parseChunk: vi.fn((chunk: unknown) => {
+						// biome-ignore lint/suspicious/noExplicitAny: mock chunk
+						const c = chunk as any
+						if (c?.content) {
+							return { type: 'text', content: c.content }
+						}
+						return null
+					}),
+					hasCompleteToolCalls: vi.fn(() => requestCount === 1),
+					getToolCalls: vi.fn(() => (requestCount === 1 ? toolCalls : [])),
+					reset: vi.fn()
+				}),
+				findServer: () => ({ id: 'test-server', name: 'Test Server' }),
+				formatToolResult: () => ({ role: 'tool', content: '{}' })
+			}
+
+			const mockExecutor: ToolExecutor = {
+				executeTool: vi.fn().mockImplementation(async (request: { toolName: string }) => {
+					executionOrder.push(`start:${request.toolName}`)
+					await new Promise((resolve) => setTimeout(resolve, 10))
+					executionOrder.push(`end:${request.toolName}`)
+					return { content: {}, contentType: 'json', executionDuration: 10 }
+				}),
+				canExecute: () => true
+			}
+
+			const coordinator = new ToolCallingCoordinator()
+
+			// WHEN: Running with maxParallelTools=1
+			for await (const _text of coordinator.generateWithTools(
+				[{ role: 'user', content: 'test' }],
+				mockAdapter,
+				mockExecutor,
+				{ parallelExecution: true, maxParallelTools: 1, documentPath: 'test.md' }
+			)) {
+				// Consume generator
+			}
+
+			// THEN: Should execute sequentially
+			expect(executionOrder).toEqual(['start:tool_a', 'end:tool_a', 'start:tool_b', 'end:tool_b'])
+		})
+	})
 })
