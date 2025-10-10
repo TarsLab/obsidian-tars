@@ -619,6 +619,20 @@ summary.tars-setting-h4 {
 	font-weight: var(--font-semibold);
 }
 
+.mcp-sessions {
+	color: var(--text-muted);
+}
+
+.mcp-sessions-warning {
+	color: var(--text-warning, #fbbf24);
+	font-weight: var(--font-semibold);
+}
+
+.mcp-sessions-critical {
+	color: var(--text-error);
+	font-weight: var(--font-bold);
+}
+
 .mcp-retrying {
 	color: var(--text-warning, #fbbf24);
 }

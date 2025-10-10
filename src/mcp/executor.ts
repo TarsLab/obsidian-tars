@@ -302,7 +302,10 @@ export class ToolExecutor {
 		return this.getDocumentSessionCount(documentPath) >= this.tracker.sessionLimit
 	}
 
-	private getDocumentSessionCount(documentPath: string): number {
+	/**
+	 * Get the session count for a specific document (Feature-900-50-5-1)
+	 */
+	getDocumentSessionCount(documentPath: string): number {
 		const docState = this.documentSessions.get(documentPath)
 		return docState?.totalSessionCount ?? 0
 	}

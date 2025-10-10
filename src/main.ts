@@ -533,6 +533,11 @@ export default class TarsPlugin extends Plugin {
 		// Get active execution count from executor
 		const activeExecutions = this.mcpExecutor?.getStats().activeExecutions ?? 0
 
+		// Get current document session count (Feature-900-50-5-1)
+		const currentDocPath = this.app.workspace.getActiveFile()?.path
+		const currentDocumentSessions = currentDocPath ? this.mcpExecutor?.getDocumentSessionCount(currentDocPath) : undefined
+		const sessionLimit = this.settings.mcpSessionLimit
+
 		this.statusBarManager.setMCPStatus({
 			runningServers,
 			totalServers,
@@ -540,6 +545,8 @@ export default class TarsPlugin extends Plugin {
 			retryingServers,
 			failedServers,
 			activeExecutions,
+			currentDocumentSessions,
+			sessionLimit,
 			servers: serverDetails
 		})
 	}

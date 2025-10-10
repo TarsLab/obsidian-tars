@@ -52,6 +52,8 @@ export interface MCPStatusInfo {
 	retryingServers: number
 	failedServers?: number
 	activeExecutions?: number
+	currentDocumentSessions?: number
+	sessionLimit?: number
 	servers: Array<{
 		id: string
 		name: string
@@ -175,6 +177,29 @@ class MCPStatusModal extends Modal {
 			summary.createEl('p', {
 				text: `Active Executions: ${this.mcpStatus.activeExecutions}`,
 				cls: 'mcp-active'
+			})
+		}
+		// Document session count display (Feature-900-50-5-1)
+		if (
+			this.mcpStatus.currentDocumentSessions !== undefined &&
+			this.mcpStatus.sessionLimit !== undefined &&
+			this.mcpStatus.sessionLimit > 0
+		) {
+			const sessions = this.mcpStatus.currentDocumentSessions
+			const limit = this.mcpStatus.sessionLimit
+			const percentage = (sessions / limit) * 100
+			let cls = 'mcp-sessions'
+			let icon = '📊'
+			if (percentage >= 100) {
+				cls = 'mcp-sessions-critical'
+				icon = '🔴'
+			} else if (percentage >= 80) {
+				cls = 'mcp-sessions-warning'
+				icon = '⚠️'
+			}
+			summary.createEl('p', {
+				text: `${icon} Document Sessions: ${sessions} / ${limit}`,
+				cls
 			})
 		}
 		if (this.mcpStatus.retryingServers > 0) {
