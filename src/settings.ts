@@ -1,5 +1,6 @@
-import { PromptTemplate } from './prompt'
-import { ProviderSettings, Vendor } from './providers'
+import type { MCPServerConfig } from './mcp/types'
+import type { PromptTemplate } from './prompt'
+import type { ProviderSettings, Vendor } from './providers'
 import { azureVendor } from './providers/azure'
 import { claudeVendor } from './providers/claude'
 import { deepSeekVendor } from './providers/deepSeek'
@@ -46,6 +47,25 @@ export interface PluginSettings {
 	enableDefaultSystemMsg: boolean
 	defaultSystemMsg: string
 	enableStreamLog: boolean
+	enableUtilitySection: boolean
+	// MCP Server Integration
+	mcpServers: MCPServerConfig[]
+	mcpGlobalTimeout: number
+	mcpConcurrentLimit: number
+	mcpSessionLimit: number
+	mcpFailureThreshold: number
+	mcpRetryMaxAttempts: number
+	mcpRetryInitialDelay: number
+	mcpRetryMaxDelay: number
+	mcpRetryBackoffMultiplier: number
+	mcpRetryJitter: boolean
+	mcpParallelExecution: boolean
+	mcpMaxParallelTools: number
+	uiState?: {
+		mcpServersExpanded?: boolean
+		systemMessageExpanded?: boolean
+		advancedExpanded?: boolean
+	}
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -71,7 +91,26 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	enableReplaceTag: false,
 	enableDefaultSystemMsg: false,
 	defaultSystemMsg: '',
-	enableStreamLog: false
+	enableStreamLog: false,
+	enableUtilitySection: true,
+	// MCP Server Integration defaults
+	mcpServers: [],
+	mcpGlobalTimeout: 30000,
+	mcpConcurrentLimit: 3,
+	mcpSessionLimit: 25,
+	mcpFailureThreshold: 3,
+	mcpRetryMaxAttempts: 5,
+	mcpRetryInitialDelay: 1000,
+	mcpRetryMaxDelay: 30000,
+	mcpRetryBackoffMultiplier: 2,
+	mcpRetryJitter: true,
+	mcpParallelExecution: false,
+	mcpMaxParallelTools: 3,
+	uiState: {
+		mcpServersExpanded: false,
+		systemMessageExpanded: false,
+		advancedExpanded: false
+	}
 }
 
 export const availableVendors: Vendor[] = [

@@ -1,30 +1,107 @@
-import { EmbedCache } from 'obsidian'
+import type { EmbedCache } from 'obsidian'
+import OpenAI from 'openai'
 import { t } from 'src/lang/helper'
-import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
+import { createLogger } from '../logger'
+import type { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 import { arrayBufferToBase64, getMimeTypeFromFilename } from './utils'
+
+const logger = createLogger('providers:openrouter')
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, resolveEmbedAsBinary: ResolveEmbedAsBinary) {
-		const { parameters, ...optionsExcludingParams } = settings
+		const {
+			parameters,
+			mcpManager,
+			mcpExecutor,
+			documentPath,
+			pluginSettings,
+			documentWriteLock,
+			beforeToolExecution,
+			...optionsExcludingParams
+		} = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, baseURL, model, ...remains } = options
 		if (!apiKey) throw new Error(t('API key is required'))
 		if (!model) throw new Error(t('Model is required'))
+		logger.info('starting openrouter chat', { baseURL, model, messageCount: messages.length })
+
+		// Tool-aware path: Use coordinator for autonomous tool calling
+		if (mcpManager && mcpExecutor) {
+			try {
+				const { ToolCallingCoordinator, OpenAIProviderAdapter } = await import('../mcp/index.js')
+				// biome-ignore lint/suspicious/noExplicitAny: MCP types are optional dependencies
+				const mcpMgr = mcpManager as any
+				// biome-ignore lint/suspicious/noExplicitAny: MCP types are optional dependencies
+				const mcpExec = mcpExecutor as any
+
+				// OpenRouter is OpenAI-compatible, so use OpenAI SDK
+				const client = new OpenAI({
+					apiKey,
+					baseURL,
+					dangerouslyAllowBrowser: true
+				})
+
+				const adapter = new OpenAIProviderAdapter({
+					mcpManager: mcpMgr,
+					mcpExecutor: mcpExec,
+					openaiClient: client,
+					controller,
+					resolveEmbedAsBinary
+				})
+
+				await adapter.initialize({ preloadTools: false })
+
+				const coordinator = new ToolCallingCoordinator()
+
+				// Convert messages to coordinator format
+				const formattedMessages = messages.map((msg) => ({
+					role: msg.role,
+					content: msg.content,
+					embeds: msg.embeds
+				}))
+
+				// biome-ignore lint/suspicious/noExplicitAny: Plugin settings type is not imported
+				const pluginOpts = pluginSettings as any
+
+				yield* coordinator.generateWithTools(formattedMessages, adapter, mcpExec, {
+					documentPath: documentPath || 'unknown.md',
+					autoUseDocumentCache: true,
+					parallelExecution: pluginOpts?.mcpParallelExecution ?? false,
+					maxParallelTools: pluginOpts?.mcpMaxParallelTools ?? 3,
+					documentWriteLock,
+					onBeforeToolExecution: beforeToolExecution
+				})
+
+				return
+			} catch (error) {
+				logger.warn('tool-aware path unavailable, falling back to streaming pipeline', error)
+				// Fall through to original path
+			}
+		}
+
+		// Original streaming path (backward compatible)
+		// biome-ignore lint/suspicious/noExplicitAny: MCP tools inject runtime
+		let requestBody: any = { model, messages: [], ...remains }
+		if (mcpManager && mcpExecutor) {
+			try {
+				const { injectMCPTools } = await import('../mcp/providerToolIntegration.js')
+				// biome-ignore lint/suspicious/noExplicitAny: MCP types are optional dependencies
+				requestBody = await injectMCPTools(requestBody, 'OpenRouter', mcpManager as any, mcpExecutor as any)
+			} catch (error) {
+				logger.warn('failed to inject MCP tools for openrouter', error)
+			}
+		}
 
 		const formattedMessages = await Promise.all(messages.map((msg) => formatMsg(msg, resolveEmbedAsBinary)))
-		const data = {
-			model,
-			messages: formattedMessages,
-			stream: true,
-			...remains
-		}
+		requestBody.messages = formattedMessages
+
 		const response = await fetch(baseURL, {
 			method: 'POST',
 			headers: {
-				Authorization: `Bearer ${apiKey}`,
-				'Content-Type': 'application/json'
+				'Content-Type': 'application/json',
+				Authorization: `Bearer ${apiKey}`
 			},
-			body: JSON.stringify(data),
+			body: JSON.stringify({ ...requestBody, stream: true }),
 			signal: controller.signal
 		})
 
@@ -131,5 +208,5 @@ export const openRouterVendor: Vendor = {
 	sendRequestFunc,
 	models: [],
 	websiteToObtainKey: 'https://openrouter.ai',
-	capabilities: ['Text Generation', 'Image Vision', 'PDF Vision']
+	capabilities: ['Text Generation', 'Image Vision', 'PDF Vision', 'Tool Calling']
 }

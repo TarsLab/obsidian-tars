@@ -1,7 +1,10 @@
-import { Command, Editor, MarkdownView, Notice, Platform } from 'obsidian'
+import { type Command, type Editor, type MarkdownView, Notice, Platform } from 'obsidian'
 import { t } from 'src/lang/helper'
 import { toNewChatMark } from 'src/suggest'
-import { TagCmdMeta } from './tagCmd'
+import { createLogger } from '../logger'
+import type { TagCmdMeta } from './tagCmd'
+
+const logger = createLogger('commands:new-chat-tag')
 
 export const newChatTagCmd = ({ id, name, tag }: TagCmdMeta): Command => ({
 	id,
@@ -14,9 +17,10 @@ export const newChatTagCmd = ({ id, name, tag }: TagCmdMeta): Command => ({
 			editor.replaceRange(mark, cursor)
 			editor.setCursor(cursor.line, cursor.ch + mark.length)
 		} catch (error) {
-			console.error(error)
+			logger.error('new chat tag command failed', error)
+			const err = error instanceof Error ? error : new Error(String(error))
 			new Notice(
-				`🔴 ${Platform.isDesktopApp ? t('Check the developer console for error details. ') : ''}${error}`,
+				`🔴 ${Platform.isDesktopApp ? t('Check the developer console for error details. ') : ''}${err}`,
 				10 * 1000
 			)
 		}

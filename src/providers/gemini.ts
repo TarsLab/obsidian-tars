@@ -1,10 +1,13 @@
-import { Content, GoogleGenerativeAI } from '@google/generative-ai'
+import { type Content, GoogleGenerativeAI } from '@google/generative-ai'
 import { t } from 'src/lang/helper'
-import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
+import { createLogger } from '../logger'
+import type { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
+
+const logger = createLogger('providers:gemini')
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, _resolveEmbedAsBinary: ResolveEmbedAsBinary) {
-		const { parameters, ...optionsExcludingParams } = settings
+		const { parameters, mcpManager, mcpExecutor, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, baseURL: baseUrl, model } = options
 		if (!apiKey) throw new Error(t('API key is required'))
@@ -18,6 +21,13 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 			role: m.role === 'assistant' ? 'model' : m.role,
 			parts: [{ text: m.content }]
 		}))
+
+		// Get MCP tools for Gemini if available (note: Gemini tool calling requires special format)
+		// For now, we'll skip Gemini tool integration until we implement proper format conversion
+		// TODO: Implement Gemini-specific tool format conversion
+		if (mcpManager && mcpExecutor) {
+			logger.debug('gemini tool integration not yet implemented; skipping MCP tools')
+		}
 
 		const genAI = new GoogleGenerativeAI(apiKey)
 		const genModel = genAI.getGenerativeModel({ model, systemInstruction }, { baseUrl })

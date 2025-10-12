@@ -1,7 +1,10 @@
 import OpenAI from 'openai'
 import { t } from 'src/lang/helper'
-import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
+import { createLogger } from '../logger'
+import type { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 import { CALLOUT_BLOCK_END, CALLOUT_BLOCK_START } from './utils'
+
+const logger = createLogger('providers:deepseek')
 
 type DeepSeekDelta = OpenAI.ChatCompletionChunk.Choice.Delta & {
 	reasoning_content?: string
@@ -9,10 +12,22 @@ type DeepSeekDelta = OpenAI.ChatCompletionChunk.Choice.Delta & {
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, _resolveEmbedAsBinary: ResolveEmbedAsBinary) {
-		const { parameters, ...optionsExcludingParams } = settings
+		const { parameters, mcpManager, mcpExecutor, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, baseURL, model, ...remains } = options
 		if (!apiKey) throw new Error(t('API key is required'))
+
+		// Inject MCP tools if available
+		let requestParams: Record<string, unknown> = { model, ...remains }
+		if (mcpManager && mcpExecutor) {
+			try {
+				const { injectMCPTools } = await import('../mcp/providerToolIntegration.js')
+				// biome-ignore lint/suspicious/noExplicitAny: MCP types are optional dependencies
+				requestParams = await injectMCPTools(requestParams, 'DeepSeek', mcpManager as any, mcpExecutor as any)
+			} catch (error) {
+				logger.warn('failed to inject MCP tools for deepseek', error)
+			}
+		}
 
 		const client = new OpenAI({
 			apiKey,
@@ -22,18 +37,20 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 
 		const stream = await client.chat.completions.create(
 			{
-				model,
+				...(requestParams as object),
 				messages,
-				stream: true,
-				...remains
-			},
+				stream: true
+			} as OpenAI.ChatCompletionCreateParamsStreaming,
 			{ signal: controller.signal }
 		)
 
 		let startReasoning = false
 		for await (const part of stream) {
-			if (part.usage && part.usage.prompt_tokens && part.usage.completion_tokens)
-				console.debug(`Prompt tokens: ${part.usage.prompt_tokens}, completion tokens: ${part.usage.completion_tokens}`)
+			if (part.usage?.prompt_tokens && part.usage.completion_tokens)
+				logger.debug('usage update', {
+					promptTokens: part.usage.prompt_tokens,
+					completionTokens: part.usage.completion_tokens
+				})
 
 			const delta = part.choices[0]?.delta as DeepSeekDelta
 			const reasonContent = delta?.reasoning_content
@@ -61,5 +78,5 @@ export const deepSeekVendor: Vendor = {
 	sendRequestFunc,
 	models,
 	websiteToObtainKey: 'https://platform.deepseek.com',
-	capabilities: ['Text Generation', 'Reasoning']
+	capabilities: ['Text Generation', 'Reasoning', 'Tool Calling']
 }

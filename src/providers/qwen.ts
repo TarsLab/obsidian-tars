@@ -1,14 +1,30 @@
 import OpenAI from 'openai'
 import { t } from 'src/lang/helper'
-import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
+import { createLogger } from '../logger'
+import type { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 import { convertEmbedToImageUrl } from './utils'
+
+const logger = createLogger('providers:qwen')
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, resolveEmbedAsBinary: ResolveEmbedAsBinary) {
-		const { parameters, ...optionsExcludingParams } = settings
+		const { parameters, mcpManager, mcpExecutor, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, baseURL, model, ...remains } = options
 		if (!apiKey) throw new Error(t('API key is required'))
+		logger.info('starting qwen chat', { baseURL, model, messageCount: messages.length })
+
+		// Inject MCP tools if available
+		let requestParams: Record<string, unknown> = { model, ...remains }
+		if (mcpManager && mcpExecutor) {
+			try {
+				const { injectMCPTools } = await import('../mcp/providerToolIntegration.js')
+				// biome-ignore lint/suspicious/noExplicitAny: MCP types are optional dependencies
+				requestParams = await injectMCPTools(requestParams, 'Qwen', mcpManager as any, mcpExecutor as any)
+			} catch (error) {
+				logger.warn('failed to inject MCP tools for qwen', error)
+			}
+		}
 
 		const formattedMessages = await Promise.all(messages.map((msg) => formatMsg(msg, resolveEmbedAsBinary)))
 		const client = new OpenAI({
@@ -19,11 +35,10 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 
 		const stream = await client.chat.completions.create(
 			{
-				model,
+				...(requestParams as object),
 				messages: formattedMessages as OpenAI.ChatCompletionMessageParam[],
-				stream: true,
-				...remains
-			},
+				stream: true
+			} as OpenAI.ChatCompletionCreateParamsStreaming,
 			{
 				signal: controller.signal
 			}
@@ -75,5 +90,5 @@ export const qwenVendor: Vendor = {
 	sendRequestFunc,
 	models,
 	websiteToObtainKey: 'https://dashscope.console.aliyun.com',
-	capabilities: ['Text Generation', 'Image Vision']
+	capabilities: ['Text Generation', 'Image Vision', 'Tool Calling']
 }

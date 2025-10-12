@@ -1,6 +1,7 @@
 import { normalizePath } from 'obsidian'
 import { APP_FOLDER } from 'src/settings'
-import { CreatePlainText, SendRequest } from '.'
+import { createLogger } from '../logger'
+import type { CreatePlainText, SendRequest } from '.'
 
 interface TextWithTime {
 	readonly text: string
@@ -12,6 +13,8 @@ interface ResponseWithTime {
 	readonly createdAt: string
 	readonly texts: TextWithTime[]
 }
+
+const logger = createLogger('providers:decorator')
 
 export const withStreamLogging = (originalFunc: SendRequest, createPlainText: CreatePlainText): SendRequest => {
 	return async function* (messages, controller, resolveEmbedAsBinary, saveAttachment) {
@@ -36,7 +39,7 @@ export const withStreamLogging = (originalFunc: SendRequest, createPlainText: Cr
 				texts
 			}
 			await createPlainText(filePath, JSON.stringify(response, null, 2))
-			console.debug('Response logged to:', filePath)
+			logger.info('stream response logged', { filePath })
 		}
 	}
 }

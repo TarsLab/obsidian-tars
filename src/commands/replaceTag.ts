@@ -1,5 +1,8 @@
-import { App, Command, Modal, Notice, Setting } from 'obsidian'
+import { type App, type Command, Modal, Notice, Setting } from 'obsidian'
 import { t } from 'src/lang/helper'
+import { createLogger } from '../logger'
+
+const logger = createLogger('commands:replace-tag')
 
 export const replaceCmdId = 'replace-tag'
 
@@ -17,7 +20,7 @@ export const replaceCmd = (app: App): Command => ({
 			new Notice(t('No speaker found'))
 			return
 		}
-		console.debug('twoMostFrequentSpeakers', twoMostFrequentSpeakers)
+		logger.debug('most frequent speakers detected', twoMostFrequentSpeakers)
 		const recommendedTags = twoMostFrequentSpeakers.map((speaker) => ({
 			original: speaker.name,
 			count: speaker.count,
@@ -34,7 +37,7 @@ const convertToTag = (speaker: string) => {
 		return speaker
 	}
 	// Tags can't contain blank spaces. To separate two or more words, use a hyphen (-) , #kebab-case
-	return '#' + speaker.trim().replace(/\s(?!:)/g, '-') // Replace spaces in the middle with a hyphen (-)
+	return `#${speaker.trim().replace(/\s(?!:)/g, '-')}` // Replace spaces in the middle with a hyphen (-)
 }
 
 class ReplaceTagModal extends Modal {
@@ -53,7 +56,7 @@ class ReplaceTagModal extends Modal {
 			text: t('Replace the names of the two most frequently occurring speakers with tag format.')
 		})
 		for (const tag of this.recommendTags) {
-			new Setting(contentEl).setName(tag.original + ` (${tag.count})`).addText((text) =>
+			new Setting(contentEl).setName(`${tag.original} (${tag.count})`).addText((text) =>
 				text
 					.setPlaceholder(tag.newTag)
 					.setValue(tag.newTag)
@@ -96,12 +99,12 @@ const findTwoMostFrequentSpeakers = (fileText: string) => {
 	const matchResults = lines
 		.map((line) => line.match(/^([\u4e00-\u9fa5a-zA-Z0-9# ]+)([:|：]) /g))
 		.flatMap((match) => match || [])
-	console.debug('allMatches', matchResults)
+	logger.debug('speaker matches detected', { count: matchResults.length })
 	const matchCounts = countOccurrences(matchResults)
 
 	// sort occurrences
 	const sortedMatchFrequencies = Object.entries(matchCounts).sort((arr1, arr2) => arr2[1] - arr1[1])
-	console.debug('sortedMatchFrequencies', sortedMatchFrequencies)
+	logger.debug('sorted speaker frequencies', sortedMatchFrequencies)
 	// Select the two most frequent speakers
 	const [mostFrequent, secondMostFrequent] = sortedMatchFrequencies.slice(0, 2)
 	if (!mostFrequent || !secondMostFrequent) {

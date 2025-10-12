@@ -1,5 +1,5 @@
-import { PluginSettings } from 'src/settings'
-import { TagRole, toNewChatMark, toSpeakMark } from 'src/suggest'
+import type { PluginSettings } from 'src/settings'
+import { type TagRole, toNewChatMark, toSpeakMark } from 'src/suggest'
 
 export interface TagCmdMeta {
 	id: string

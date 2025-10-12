@@ -1,18 +1,19 @@
 import {
-	App,
-	Editor,
-	EditorPosition,
+	type App,
+	type Editor,
+	type EditorPosition,
 	EditorSuggest,
-	EditorSuggestContext,
-	EditorSuggestTriggerInfo,
+	type EditorSuggestContext,
+	type EditorSuggestTriggerInfo,
 	Notice,
 	Platform,
-	TFile
+	type TFile
 } from 'obsidian'
-import { RequestController, buildRunEnv, generate } from './editor'
+import { buildRunEnv, generate, type RequestController } from './editor'
 import { t } from './lang/helper'
-import { PluginSettings } from './settings'
-import { StatusBarManager } from './statusBarManager'
+import { createLogger } from './logger'
+import type { PluginSettings } from './settings'
+import type { StatusBarManager } from './statusBarManager'
 
 export type TagRole = 'user' | 'assistant' | 'system' | 'newChat'
 
@@ -51,7 +52,7 @@ const extractWords = (input: string): string[] => {
 	// Use regex to match up to two words and return them directly
 	const matches = []
 	const regex = /[^\s#:：]+/g
-	let match
+	let match: RegExpExecArray | null
 
 	// Only search for a maximum of 3 matches
 	for (let i = 0; i < 3; i++) {
@@ -75,13 +76,17 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 	tagLowerCaseMap: Map<string, Omit<TagEntry, 'replacement'>>
 	statusBarManager: StatusBarManager
 	requestController: RequestController
+	mcpManager?: unknown
+	mcpExecutor?: unknown
 
 	constructor(
 		app: App,
 		settings: PluginSettings,
 		tagLowerCaseMap: Map<string, Omit<TagEntry, 'replacement'>>,
 		statusBarManager: StatusBarManager,
-		requestController: RequestController
+		requestController: RequestController,
+		mcpManager?: unknown,
+		mcpExecutor?: unknown
 	) {
 		super(app)
 		this.app = app
@@ -89,7 +94,11 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 		this.tagLowerCaseMap = tagLowerCaseMap
 		this.statusBarManager = statusBarManager
 		this.requestController = requestController
+		this.mcpManager = mcpManager
+		this.mcpExecutor = mcpExecutor
 	}
+
+	private readonly logger = createLogger('suggest:tag-editor')
 
 	/** Based on the editor line and cursor position, determine if this EditorSuggest should be triggered at this moment. Typically, you would run a regular expression on the current line text before the cursor. Return null to indicate that this editor suggest is not supposed to be triggered.
 	Please be mindful of performance when implementing this function, as it will be triggered very often (on each keypress). Keep it simple, and return null as early as possible if you determine that it is not the right time. **/
@@ -107,7 +116,7 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 		const firstTag = this.tagLowerCaseMap.get(words[0].toLowerCase())
 		if (!firstTag) return null
 
-		let secondTag: Omit<TagEntry, 'replacement'> | undefined = undefined
+		let secondTag: Omit<TagEntry, 'replacement'> | undefined
 		if (words.length === 2) {
 			secondTag = this.tagLowerCaseMap.get(words[1].toLowerCase())
 			if (!secondTag) return null
@@ -183,17 +192,20 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 			this.close()
 			return
 		}
-		console.debug('element', element)
+		this.logger.debug('assistant suggestion selected', {
+			tag: element.tag,
+			hasNewline: element.replacement.includes('\n')
+		})
 
 		try {
 			const provider = this.settings.providers.find((p) => p.tag === element.tag)
 			if (!provider) {
-				throw new Error('No provider found ' + element.tag)
+				throw new Error(`No provider found ${element.tag}`)
 			}
 
 			const env = await buildRunEnv(this.app, this.settings)
 			const messagesEndOffset = editor.posToOffset(this.context.start)
-			console.debug('endOffset', messagesEndOffset)
+			this.logger.debug('assistant generation offset resolved', { offset: messagesEndOffset })
 			await generate(
 				env,
 				editor,
@@ -201,18 +213,22 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 				messagesEndOffset,
 				this.statusBarManager,
 				this.settings.editorStatus,
-				this.requestController
+				this.requestController,
+				this.mcpManager,
+				this.mcpExecutor,
+				this.settings
 			)
 		} catch (error) {
-			console.error('error', error)
-			if (error.name === 'AbortError') {
+			this.logger.error('failed to trigger assistant generation', error)
+			const err = error instanceof Error ? error : new Error(String(error))
+			if (err.name === 'AbortError') {
 				this.statusBarManager.setCancelledStatus()
 				new Notice(t('Generation cancelled'))
 				return
 			}
 
-			this.statusBarManager.setErrorStatus(error as Error)
-			new Notice(`🔴 ${Platform.isDesktopApp ? t('Click status bar for error details. ') : ''}${error}`, 10 * 1000)
+			this.statusBarManager.setErrorStatus(err)
+			new Notice(`🔴 ${Platform.isDesktopApp ? t('Click status bar for error details. ') : ''}${err}`, 10 * 1000)
 		}
 		this.close()
 	}

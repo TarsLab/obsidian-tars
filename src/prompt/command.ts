@@ -1,13 +1,25 @@
 import Handlebars from 'handlebars'
-import { App, Command, Editor, EditorSelection, MarkdownView, normalizePath, Notice, Platform } from 'obsidian'
+import {
+	type App,
+	type Command,
+	type Editor,
+	type EditorSelection,
+	type MarkdownView,
+	Notice,
+	normalizePath,
+	Platform
+} from 'obsidian'
 import { refineRange } from 'src/commands/tagUtils'
 import { t } from 'src/lang/helper'
-import { APP_FOLDER, PluginSettings } from 'src/settings'
+import { APP_FOLDER, type PluginSettings } from 'src/settings'
+import { createLogger } from '../logger'
 import { ReporterModal } from './modal'
-import { findChangedTemplates, getPromptTemplatesFromFile, PromptTemplate } from './template'
+import { findChangedTemplates, getPromptTemplatesFromFile, type PromptTemplate } from './template'
 
 export const templateToCmdId = (template: PromptTemplate): string => `Prompt#${template.title}`
 export const getTitleFromCmdId = (id: string): string => id.slice(id.indexOf('#') + 1)
+
+const logger = createLogger('prompt:command')
 
 export const loadTemplateFileCommand = (
 	app: App,
@@ -16,7 +28,7 @@ export const loadTemplateFileCommand = (
 	buildPromptCommands: () => void
 ): Command => ({
 	id: 'LoadTemplateFile',
-	name: t('Load template file: ') + `${APP_FOLDER}/${t('promptFileName')}.md`,
+	name: `${t('Load template file: ')}${APP_FOLDER}/${t('promptFileName')}.md`,
 	callback: async () => {
 		try {
 			const filePath = normalizePath(`${APP_FOLDER}/${t('promptFileName')}.md`)
@@ -32,7 +44,7 @@ export const loadTemplateFileCommand = (
 			// Find elements in these two arrays that have the same title but different content
 			const changed = findChangedTemplates(settings.promptTemplates, promptTemplates)
 			if (changed.length > 0) {
-				console.debug('changed', changed)
+				logger.info('prompt templates updated', { titles: changed.map((t) => t.title) })
 				new Notice(t('Templates have been updated: ') + changed.map((t) => t.title).join(', '))
 			}
 
@@ -45,9 +57,10 @@ export const loadTemplateFileCommand = (
 				new ReporterModal(app, reporter).open()
 			}
 		} catch (error) {
-			console.error(error)
+			logger.error('failed to load prompt templates', error)
+			const err = error instanceof Error ? error : new Error(String(error))
 			new Notice(
-				`🔴 ${Platform.isDesktopApp ? t('Check the developer console for error details. ') : ''}${error}`,
+				`🔴 ${Platform.isDesktopApp ? t('Check the developer console for error details. ') : ''}${err}`,
 				10 * 1000
 			)
 		}
@@ -63,7 +76,7 @@ const createPromptFileIfNotExists = async (app: App) => {
 	const promptFilePath = normalizePath(`${APP_FOLDER}/${t('promptFileName')}.md`)
 	if (!(await app.vault.adapter.exists(promptFilePath))) {
 		await app.vault.create(promptFilePath, t('PRESET_PROMPT_TEMPLATES'))
-		new Notice(t('Create prompt template file') + ' ' + `${APP_FOLDER}/${t('promptFileName')}.md`)
+		new Notice(`${t('Create prompt template file')} ${APP_FOLDER}/${t('promptFileName')}.md`)
 		isCreated = true
 	}
 
@@ -71,7 +84,7 @@ const createPromptFileIfNotExists = async (app: App) => {
 }
 
 const workspaceOpenFile = async (app: App, filePath: string) => {
-	if (app.workspace.getActiveFile()?.path != filePath) {
+	if (app.workspace.getActiveFile()?.path !== filePath) {
 		await app.workspace.openLinkText('', filePath, true)
 	}
 }
@@ -92,9 +105,10 @@ export const promptTemplateCmd = (id: string, name: string, app: App, settings: 
 			await new Promise((resolve) => setTimeout(resolve, 500))
 			applyTemplate(editor, template.template)
 		} catch (error) {
-			console.error(error)
+			logger.error('failed to apply prompt template', error)
+			const err = error instanceof Error ? error : new Error(String(error))
 			new Notice(
-				`🔴 ${Platform.isDesktopApp ? t('Check the developer console for error details. ') : ''}${error}`,
+				`🔴 ${Platform.isDesktopApp ? t('Check the developer console for error details. ') : ''}${err}`,
 				10 * 1000
 			)
 		}

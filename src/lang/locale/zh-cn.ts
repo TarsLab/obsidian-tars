@@ -49,6 +49,7 @@ export default {
 	'Image Editing': '图像编辑',
 	'Web Search': '网络搜索',
 	Reasoning: '推理',
+	'Tool Calling': '工具调用',
 	'Only PNG, JPEG, GIF, and WebP images are supported.': '仅支持 PNG、JPEG、GIF 和 WebP 格式的图片。',
 	'Only PNG, JPEG, GIF, WebP, and PDF files are supported.': '仅支持 PNG、JPEG、GIF、WebP 和 PDF 文件。',
 
@@ -226,6 +227,8 @@ export default {
 	'Start Time': '开始时间',
 	'End Time': '结束时间',
 	'Error Details': '错误详情',
+	'No current error': '当前无错误',
+	'No recent errors': '暂无最近错误',
 	'Error Type': '错误类型',
 	'Error Message': '错误信息',
 	'Occurrence Time': '发生时间',

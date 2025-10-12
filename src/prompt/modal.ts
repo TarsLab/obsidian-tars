@@ -1,4 +1,4 @@
-import { App, Modal } from 'obsidian'
+import { type App, Modal } from 'obsidian'
 import { t } from 'src/lang/helper'
 
 export class ReporterModal extends Modal {

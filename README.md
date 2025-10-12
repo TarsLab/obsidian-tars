@@ -48,6 +48,45 @@ Tars is an Obsidian plugin that supports text generation based on tag suggestion
 
 - Export conversations to JSONL dataset, supports [ms-swift (Scalable lightWeight Infrastructure for Fine-Tuning)](https://github.com/modelscope/swift)
 
+### 🔧 MCP Server Integration
+
+Tars supports **Model Context Protocol (MCP)** servers, allowing AI assistants to execute tools and access external resources.
+
+**Key Features:**
+- Register multiple MCP servers (Docker-hosted or remote)
+- Execute tools via markdown code blocks or AI autonomous requests
+- Support for both stdio and SSE transport protocols
+- Automatic health monitoring with exponential backoff retry
+- Configurable execution limits (concurrent and session)
+
+**Quick Start:**
+
+1. Add an MCP server in settings (MCP Servers section)
+2. Execute tools in your notes using code blocks:
+
+````markdown
+```Memory Server
+tool: create_entities
+entities:
+  - name: "my-project"
+    entityType: "project"
+    observations: ["Building Obsidian plugin"]
+```
+````
+
+3. AI assistants can autonomously execute tools during conversations
+
+**Documentation:**
+- 🚀 [Quick Start Guide](docs/MCP_QUICK_START.md) - Get started in 5 minutes
+- 📖 [Complete User Guide](docs/MCP_USER_GUIDE.md) - Detailed usage examples
+- 🏗️ [Architecture Guide](docs/MCP_ARCHITECTURE.md) - Technical details
+
+**Supported Transports:**
+- **stdio**: Docker containers via stdin/stdout (primary use case)
+- **SSE**: Remote servers via Server-Sent Events
+
+**Example Server:** `docker pull mcp/memory:latest` - Knowledge graph for AI memory
+
 ## AI providers
 
 - [Azure OpenAI](https://azure.microsoft.com)

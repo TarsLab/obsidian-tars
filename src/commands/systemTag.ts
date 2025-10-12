@@ -1,9 +1,12 @@
-import { App, Command, Editor, MarkdownView, Notice, Platform } from 'obsidian'
+import { type App, type Command, type Editor, type MarkdownView, Notice, Platform } from 'obsidian'
 import { t } from 'src/lang/helper'
-import { PluginSettings } from 'src/settings'
+import type { PluginSettings } from 'src/settings'
 import { toSpeakMark } from 'src/suggest'
-import { TagCmdMeta } from './tagCmd'
+import { createLogger } from '../logger'
+import type { TagCmdMeta } from './tagCmd'
 import { fetchTagMeta, insertMarkToBegin, insertMarkToEmptyLines, isEmptyLines, replaceTag } from './tagUtils'
+
+const logger = createLogger('commands:system-tag')
 
 export const systemTagCmd = ({ id, name, tag }: TagCmdMeta, app: App, settings: PluginSettings): Command => ({
 	id,
@@ -12,7 +15,12 @@ export const systemTagCmd = ({ id, name, tag }: TagCmdMeta, app: App, settings: 
 		try {
 			const mark = toSpeakMark(tag)
 			const { range, role, tagContent, tagRange } = fetchTagMeta(app, editor, settings)
-			console.debug('systemTagCmd', { range, role, tagContent, tagRange })
+			logger.debug('system tag command context', {
+				range,
+				role,
+				tagContentLength: tagContent?.length ?? 0,
+				tagRange
+			})
 
 			// If it's an empty line, directly insert the tag
 			if (isEmptyLines(editor, range)) {
@@ -35,9 +43,10 @@ export const systemTagCmd = ({ id, name, tag }: TagCmdMeta, app: App, settings: 
 				new Notice(`${t('Conversion failed. Selected sections is a')} ${t(role)} ${t('message')}`)
 			}
 		} catch (error) {
-			console.error(error)
+			logger.error('system tag command failed', error)
+			const err = error instanceof Error ? error : new Error(String(error))
 			new Notice(
-				`🔴 ${Platform.isDesktopApp ? t('Check the developer console for error details. ') : ''}${error}`,
+				`🔴 ${Platform.isDesktopApp ? t('Check the developer console for error details. ') : ''}${err}`,
 				10 * 1000
 			)
 		}

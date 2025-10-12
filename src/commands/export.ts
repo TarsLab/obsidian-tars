@@ -1,10 +1,13 @@
-import { App, Notice, normalizePath } from 'obsidian'
+import { type App, Notice, normalizePath } from 'obsidian'
 import { buildRunEnv, extractConversationsTextOnly } from 'src/editor'
 import { t } from 'src/lang/helper'
-import { Message } from 'src/providers'
-import { PluginSettings } from 'src/settings'
+import type { Message } from 'src/providers'
+import type { PluginSettings } from 'src/settings'
+import { createLogger } from '../logger'
 
 export const exportCmdId = 'export-to-jsonl'
+
+const logger = createLogger('commands:export')
 
 export const exportCmd = (app: App, settings: PluginSettings) => ({
 	id: exportCmdId,
@@ -17,17 +20,17 @@ export const exportCmd = (app: App, settings: PluginSettings) => ({
 const exportConversation = async (app: App, settings: PluginSettings) => {
 	const env = await buildRunEnv(app, settings)
 	const conversations = await extractConversationsTextOnly(env)
-	console.debug('conversations', conversations)
+	logger.debug('conversation snapshot', { count: conversations.length })
 
 	let query_responses = []
 	try {
 		query_responses = conversations.map(to_query_response_history)
 	} catch (error) {
-		console.error('error', error)
-		new Notice(`🔴${t('Error')}: ${error}`, 10 * 1000)
+		logger.error('failed to export conversations to jsonl', error)
+		const err = error instanceof Error ? error : new Error(String(error))
+		new Notice(`🔴${t('Error')}: ${err}`, 10 * 1000)
 		return
 	}
-	// console.debug('query_responses', query_responses)
 	if (query_responses.length === 0) {
 		new Notice(t('No conversation found'))
 		return

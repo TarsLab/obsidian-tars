@@ -1,7 +1,10 @@
 import axios from 'axios'
 import { Notice, Platform, requestUrl } from 'obsidian'
 import { t } from 'src/lang/helper'
-import { BaseOptions, Message, Optional, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
+import { createLogger } from '../logger'
+import type { BaseOptions, Message, Optional, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
+
+const logger = createLogger('providers:qianfan')
 
 interface TokenResponse {
 	access_token: string
@@ -51,7 +54,7 @@ const validOrCreate = async (currentToken: Token | undefined, apiKey: string, ap
 		}
 	}
 	const newToken = await createToken(apiKey, apiSecret)
-	console.debug('create new token', newToken)
+	logger.debug('issued new qianfan token', { expiresAt: newToken.exp })
 	return {
 		isValid: false,
 		token: newToken
@@ -94,7 +97,7 @@ const sendRequestFunc = (settings: QianFanOptions): SendRequest =>
 				stream: true,
 				...remains
 			}
-			const response = await axios.post(baseURL + `/${model}?access_token=${token.accessToken}`, data, {
+			const response = await axios.post(`${baseURL}/${model}?access_token=${token.accessToken}`, data, {
 				headers: {
 					'Content-Type': 'application/json'
 				},
@@ -130,7 +133,7 @@ const sendRequestFunc = (settings: QianFanOptions): SendRequest =>
 			new Notice(t('This is a non-streaming request, please wait...'), 5 * 1000)
 
 			const response = await requestUrl({
-				url: baseURL + `/${model}?access_token=${token.accessToken}`,
+				url: `${baseURL}/${model}?access_token=${token.accessToken}`,
 				method: 'POST',
 				body: JSON.stringify(data),
 				headers: {
@@ -138,7 +141,10 @@ const sendRequestFunc = (settings: QianFanOptions): SendRequest =>
 				}
 			})
 
-			console.debug('response', response.json)
+			logger.debug('qianfan response received', {
+				statusCode: response.status,
+				keys: Object.keys(response.json ?? {})
+			})
 			yield response.json.result
 		}
 	}

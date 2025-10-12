@@ -1,19 +1,20 @@
-import { App, Notice, PluginSettingTab, requestUrl, Setting } from 'obsidian'
+import { type App, Notice, PluginSettingTab, requestUrl, Setting } from 'obsidian'
 import { exportCmd, replaceCmd, replaceCmdId } from './commands'
 import { exportCmdId } from './commands/export'
 import { t } from './lang/helper'
-import TarsPlugin from './main'
+import type TarsPlugin from './main'
 import { SelectModelModal, SelectVendorModal } from './modal'
-import { BaseOptions, Optional, ProviderSettings, Vendor } from './providers'
-import { ClaudeOptions, claudeVendor } from './providers/claude'
-import { GptImageOptions, gptImageVendor } from './providers/gptImage'
+import type { BaseOptions, Optional, ProviderSettings, Vendor } from './providers'
+import { type ClaudeOptions, claudeVendor } from './providers/claude'
+import { type GptImageOptions, gptImageVendor } from './providers/gptImage'
 import { grokVendor } from './providers/grok'
 import { kimiVendor } from './providers/kimi'
 import { ollamaVendor } from './providers/ollama'
 import { openRouterVendor } from './providers/openRouter'
 import { siliconFlowVendor } from './providers/siliconflow'
-import { getCapabilityEmoji } from './providers/utils'
+import { getCapabilityEmoji, testProviderConnection } from './providers/utils'
 import { availableVendors, DEFAULT_SETTINGS } from './settings'
+import { MCPServerSettings } from './settings/MCPServerSettings'
 
 export class TarsSettingTab extends PluginSettingTab {
 	plugin: TarsPlugin
@@ -74,7 +75,7 @@ export class TarsSettingTab extends PluginSettingTab {
 
 		let newChatTagsInput: HTMLInputElement | null = null
 		new Setting(containerEl)
-			.setName(this.plugin.settings.roleEmojis.newChat + ' ' + t('New chat tags'))
+			.setName(`${this.plugin.settings.roleEmojis.newChat} ${t('New chat tags')}`)
 			.addExtraButton((btn) => {
 				btn
 					.setIcon('reset')
@@ -102,7 +103,7 @@ export class TarsSettingTab extends PluginSettingTab {
 
 		let userTagsInput: HTMLInputElement | null = null
 		new Setting(containerEl)
-			.setName(this.plugin.settings.roleEmojis.user + ' ' + t('User message tags'))
+			.setName(`${this.plugin.settings.roleEmojis.user} ${t('User message tags')}`)
 			.addExtraButton((btn) => {
 				btn
 					.setIcon('reset')
@@ -130,7 +131,7 @@ export class TarsSettingTab extends PluginSettingTab {
 
 		let systemTagsInput: HTMLInputElement | null = null
 		new Setting(containerEl)
-			.setName(this.plugin.settings.roleEmojis.system + ' ' + t('System message tags'))
+			.setName(`${this.plugin.settings.roleEmojis.system} ${t('System message tags')}`)
 			.addExtraButton((btn) => {
 				btn
 					.setIcon('reset')
@@ -158,9 +159,21 @@ export class TarsSettingTab extends PluginSettingTab {
 
 		containerEl.createEl('br')
 
-		new Setting(containerEl).setName(t('System message')).setHeading()
+		const systemSectionContent = this.createCollapsibleSection(
+			containerEl,
+			t('System message'),
+			this.plugin.settings.uiState?.systemMessageExpanded ?? false,
+			async (open) => {
+				this.plugin.settings.uiState = {
+					...this.plugin.settings.uiState,
+					systemMessageExpanded: open
+				}
+				await this.plugin.saveSettings()
+			}
+		)
+
 		let defaultSystemMsgInput: HTMLTextAreaElement | null = null
-		new Setting(containerEl)
+		new Setting(systemSectionContent)
 			.setName(t('Enable default system message'))
 			.setDesc(t('Automatically add a system message when none exists in the conversation'))
 			.addToggle((toggle) =>
@@ -173,7 +186,7 @@ export class TarsSettingTab extends PluginSettingTab {
 				})
 			)
 
-		new Setting(containerEl).setName(t('Default system message')).addTextArea((textArea) => {
+		new Setting(systemSectionContent).setName(t('Default system message')).addTextArea((textArea) => {
 			defaultSystemMsgInput = textArea.inputEl
 			textArea
 				.setDisabled(!this.plugin.settings.enableDefaultSystemMsg)
@@ -212,10 +225,20 @@ export class TarsSettingTab extends PluginSettingTab {
 
 		containerEl.createEl('br')
 
-		const advancedSection = containerEl.createEl('details')
-		advancedSection.createEl('summary', { text: t('Advanced'), cls: 'tars-setting-h4' })
+		const advancedSectionContent = this.createCollapsibleSection(
+			containerEl,
+			t('Advanced'),
+			this.plugin.settings.uiState?.advancedExpanded ?? false,
+			async (open) => {
+				this.plugin.settings.uiState = {
+					...this.plugin.settings.uiState,
+					advancedExpanded: open
+				}
+				await this.plugin.saveSettings()
+			}
+		)
 
-		new Setting(advancedSection)
+		new Setting(advancedSectionContent)
 			.setName(t('Internal links for assistant messages'))
 			.setDesc(
 				t(
@@ -230,7 +253,7 @@ export class TarsSettingTab extends PluginSettingTab {
 			)
 
 		let answerDelayInput: HTMLInputElement | null = null
-		new Setting(advancedSection)
+		new Setting(advancedSectionContent)
 			.setName(t('Delay before answer (Seconds)'))
 			.setDesc(
 				t(
@@ -261,7 +284,7 @@ export class TarsSettingTab extends PluginSettingTab {
 					})
 			})
 
-		new Setting(advancedSection)
+		new Setting(advancedSectionContent)
 			.setName(t('Replace tag Command'))
 			.setDesc(t('Replace the names of the two most frequently occurring speakers with tag format.'))
 			.addToggle((toggle) =>
@@ -276,7 +299,7 @@ export class TarsSettingTab extends PluginSettingTab {
 				})
 			)
 
-		new Setting(advancedSection)
+		new Setting(advancedSectionContent)
 			.setName(t('Export to JSONL Command'))
 			.setDesc(t('Export conversations to JSONL'))
 			.addToggle((toggle) =>
@@ -291,7 +314,7 @@ export class TarsSettingTab extends PluginSettingTab {
 				})
 			)
 
-		new Setting(advancedSection)
+		new Setting(advancedSectionContent)
 			.setName(t('Tag suggest'))
 			.setDesc(
 				t(
@@ -304,11 +327,30 @@ export class TarsSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings()
 				})
 			)
+
+		// MCP Server Integration Settings
+		containerEl.createEl('br')
+		const mcpSectionContent = this.createCollapsibleSection(
+			containerEl,
+			'MCP Servers',
+			this.plugin.settings.uiState?.mcpServersExpanded ?? false,
+			async (open) => {
+				this.plugin.settings.uiState = {
+					...this.plugin.settings.uiState,
+					mcpServersExpanded: open
+				}
+				await this.plugin.saveSettings()
+			}
+		)
+
+		// Use the new MCPServerSettings component
+		const mcpSettings = new MCPServerSettings(this.app, this.plugin, () => this.display())
+		mcpSettings.render(mcpSectionContent)
 	}
 
 	createProviderSetting = (index: number, settings: ProviderSettings, isOpen: boolean = false) => {
 		const vendor = availableVendors.find((v) => v.name === settings.vendor)
-		if (!vendor) throw new Error('No vendor found ' + settings.vendor)
+		if (!vendor) throw new Error(`No vendor found ${settings.vendor}`)
 		const { containerEl } = this
 		const details = containerEl.createEl('details')
 		details.createEl('summary', { text: getSummary(settings.tag, vendor.name), cls: 'tars-setting-h4' })
@@ -351,14 +393,14 @@ export class TarsSettingTab extends PluginSettingTab {
 								if (error instanceof Error) {
 									const errorMessage = error.message.toLowerCase()
 									if (errorMessage.includes('401') || errorMessage.includes('unauthorized')) {
-										new Notice('🔑 ' + t('API key may be incorrect. Please check your API key.'))
+										new Notice(`🔑 ${t('API key may be incorrect. Please check your API key.')}`)
 									} else if (errorMessage.includes('403') || errorMessage.includes('forbidden')) {
-										new Notice('🚫 ' + t('Access denied. Please check your API permissions.'))
+										new Notice(`🚫 ${t('Access denied. Please check your API permissions.')}`)
 									} else {
-										new Notice('🔴 ' + error.message)
+										new Notice(`🔴 ${error.message}`)
 									}
 								} else {
-									new Notice('🔴 ' + String(error))
+									new Notice(`🔴 ${String(error)}`)
 								}
 							}
 						})
@@ -368,6 +410,9 @@ export class TarsSettingTab extends PluginSettingTab {
 		} else {
 			this.addModelTextSection(details, settings.options, capabilities)
 		}
+
+		// Test connection button
+		this.addTestConnectionSection(details, vendor, settings.options)
 
 		if (vendor.name !== ollamaVendor.name) {
 			this.addAPIkeySection(
@@ -410,7 +455,7 @@ export class TarsSettingTab extends PluginSettingTab {
 
 		this.addParametersSection(details, settings.options)
 
-		new Setting(details).setName(t('Remove') + ' ' + vendor.name).addButton((btn) => {
+		new Setting(details).setName(`${t('Remove')} ${vendor.name}`).addButton((btn) => {
 			btn
 				.setWarning()
 				.setButtonText(t('Remove'))
@@ -424,7 +469,7 @@ export class TarsSettingTab extends PluginSettingTab {
 
 	addTagSection = (details: HTMLDetailsElement, settings: ProviderSettings, index: number, defaultTag: string) =>
 		new Setting(details)
-			.setName('✨ ' + t('Assistant message tag'))
+			.setName(`✨ ${t('Assistant message tag')}`)
 			.setDesc(t('Tag used to trigger AI text generation'))
 			.addText((text) =>
 				text
@@ -436,7 +481,7 @@ export class TarsSettingTab extends PluginSettingTab {
 						if (trimmed.length === 0) return
 						if (!validateTag(trimmed)) return
 						const otherTags = this.plugin.settings.providers
-							.filter((e, i) => i !== index)
+							.filter((_e, i) => i !== index)
 							.map((e) => e.tag.toLowerCase())
 						if (otherTags.includes(trimmed.toLowerCase())) {
 							new Notice(t('Keyword for tag must be unique'))
@@ -454,7 +499,7 @@ export class TarsSettingTab extends PluginSettingTab {
 		let textInput: HTMLInputElement | null = null
 		new Setting(details)
 			.setName('baseURL')
-			.setDesc(t('Default:') + ' ' + defaultValue)
+			.setDesc(`${t('Default:')} ${defaultValue}`)
 			.addExtraButton((btn) => {
 				btn
 					.setIcon('reset')
@@ -560,8 +605,8 @@ export class TarsSettingTab extends PluginSettingTab {
 					.setPlaceholder('')
 					.setValue(options.budget_tokens ? options.budget_tokens.toString() : '1600')
 					.onChange(async (value) => {
-						const number = parseInt(value)
-						if (isNaN(number)) {
+						const number = parseInt(value, 10)
+						if (Number.isNaN(number)) {
 							new Notice(t('Please enter a number'))
 							return
 						}
@@ -582,8 +627,8 @@ export class TarsSettingTab extends PluginSettingTab {
 					.setPlaceholder('')
 					.setValue(options.max_tokens.toString())
 					.onChange(async (value) => {
-						const number = parseInt(value)
-						if (isNaN(number)) {
+						const number = parseInt(value, 10)
+						if (Number.isNaN(number)) {
 							new Notice(t('Please enter a number'))
 							return
 						}
@@ -665,6 +710,53 @@ export class TarsSettingTab extends PluginSettingTab {
 					})
 			)
 
+	addTestConnectionSection = (details: HTMLDetailsElement, vendor: Vendor, options: BaseOptions) => {
+		new Setting(details)
+			.setName('Test connection')
+			.setDesc('Verify API key and network connectivity')
+			.addButton((btn) => {
+				btn
+					.setButtonText('Test')
+					.setClass('mod-cta')
+					.onClick(async () => {
+						// Save button reference for updates
+						const originalText = btn.buttonEl.textContent || 'Test'
+						btn.setDisabled(true).setButtonText('Testing...')
+
+						try {
+							const result = await testProviderConnection(vendor, options)
+
+							if (result.success) {
+								// Show success message with details
+								let message = `✅ ${result.message}`
+								if (result.models && result.models.length > 0) {
+									message += ` (${result.models.length} models available)`
+								}
+								if (result.latency !== undefined) {
+									message += ` - ${result.latency}ms`
+								}
+								new Notice(message, 5000)
+								btn.setButtonText('✅ Connected')
+								setTimeout(() => btn.setButtonText(originalText), 3000)
+							} else {
+								// Show error message
+								new Notice(`❌ ${result.message}`, 8000)
+								btn.setButtonText('❌ Failed')
+								setTimeout(() => btn.setButtonText(originalText), 3000)
+							}
+						} catch (error) {
+							// Handle unexpected errors
+							const errorMsg = error instanceof Error ? error.message : String(error)
+							new Notice(`❌ Test failed: ${errorMsg}`, 8000)
+							btn.setButtonText('❌ Error')
+							setTimeout(() => btn.setButtonText(originalText), 3000)
+						} finally {
+							btn.setDisabled(false)
+						}
+					})
+			})
+	}
+
 	addGptImageSections = (details: HTMLDetailsElement, options: GptImageOptions) => {
 		new Setting(details)
 			.setName(t('Image Display Width'))
@@ -697,8 +789,8 @@ export class TarsSettingTab extends PluginSettingTab {
 				.addOptions({
 					auto: 'Auto',
 					'1024x1024': '1024x1024',
-					'1536x1024': '1536x1024 ' + t('landscape'),
-					'1024x1536': '1024x1536 ' + t('portrait')
+					'1536x1024': `1536x1024 ${t('landscape')}`,
+					'1024x1536': `1024x1536 ${t('portrait')}`
 				})
 				.setValue(options.size)
 				.onChange(async (value) => {
@@ -766,10 +858,27 @@ export class TarsSettingTab extends PluginSettingTab {
 					})
 			)
 	}
+
+	private createCollapsibleSection(
+		parent: HTMLElement,
+		title: string,
+		open: boolean,
+		onToggle: (open: boolean) => Promise<void> | void
+	): HTMLElement {
+		const details = parent.createEl('details', { cls: 'tars-collapsible' })
+		details.open = open
+		details.addEventListener('toggle', () => {
+			void onToggle(details.open)
+		})
+
+		const summary = details.createEl('summary', { cls: 'tars-collapsible__summary' })
+		summary.createSpan({ text: title })
+
+		return details.createDiv({ cls: 'tars-collapsible__content' })
+	}
 }
 
-const getSummary = (tag: string, defaultTag: string) =>
-	tag === defaultTag ? defaultTag : tag + ' (' + defaultTag + ')'
+const getSummary = (tag: string, defaultTag: string) => (tag === defaultTag ? defaultTag : `${tag} (${defaultTag})`)
 
 const validateTag = (tag: string) => {
 	if (tag.includes('#')) {

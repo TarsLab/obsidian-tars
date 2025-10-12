@@ -1,22 +1,38 @@
 import axios from 'axios'
 import { t } from 'src/lang/helper'
-import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
+import { createLogger } from '../logger'
+import type { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 import { CALLOUT_BLOCK_END, CALLOUT_BLOCK_START, convertEmbedToImageUrl } from './utils'
+
+const logger = createLogger('providers:grok')
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, resolveEmbedAsBinary: ResolveEmbedAsBinary) {
-		const { parameters, ...optionsExcludingParams } = settings
+		const { parameters, mcpManager, mcpExecutor, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, baseURL, model, ...remains } = options
 		if (!apiKey) throw new Error(t('API key is required'))
 		if (!model) throw new Error(t('Model is required'))
+		logger.info('starting grok chat', { baseURL, model, messageCount: messages.length })
+
+		// Inject MCP tools if available
+		// biome-ignore lint/suspicious/noExplicitAny: MCP tools inject runtime
+		let requestBody: any = { model, ...remains }
+		if (mcpManager && mcpExecutor) {
+			try {
+				const { injectMCPTools } = await import('../mcp/providerToolIntegration.js')
+				// biome-ignore lint/suspicious/noExplicitAny: MCP types are optional dependencies
+				requestBody = await injectMCPTools(requestBody, 'Grok', mcpManager as any, mcpExecutor as any)
+			} catch (error) {
+				logger.warn('failed to inject MCP tools for grok', error)
+			}
+		}
 
 		const formattedMessages = await Promise.all(messages.map((msg) => formatMsg(msg, resolveEmbedAsBinary)))
 		const data = {
-			model,
+			...requestBody,
 			messages: formattedMessages,
-			stream: true,
-			...remains
+			stream: true
 		}
 		const response = await axios.post(baseURL, data, {
 			headers: {
@@ -51,7 +67,7 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 				const trimmedPart = part.replace(/^data: /, '').trim()
 				if (trimmedPart) {
 					const data = JSON.parse(trimmedPart)
-					if (data.choices && data.choices[0].delta) {
+					if (data.choices?.[0].delta) {
 						const delta = data.choices[0].delta
 						const reasonContent = delta.reasoning_content
 
@@ -114,5 +130,5 @@ export const grokVendor: Vendor = {
 	sendRequestFunc,
 	models: [],
 	websiteToObtainKey: 'https://x.ai',
-	capabilities: ['Text Generation', 'Reasoning', 'Image Vision']
+	capabilities: ['Text Generation', 'Reasoning', 'Image Vision', 'Tool Calling']
 }

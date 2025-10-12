@@ -1,11 +1,22 @@
-import { App, Command, Editor, EditorRange, MarkdownView, Modal, Notice, Platform, Setting } from 'obsidian'
-import { buildRunEnv, generate, RequestController } from 'src/editor'
+import {
+	type App,
+	type Command,
+	type Editor,
+	type EditorRange,
+	type MarkdownView,
+	Modal,
+	Notice,
+	Platform,
+	Setting
+} from 'obsidian'
+import { buildRunEnv, generate, type RequestController } from 'src/editor'
 import { t } from 'src/lang/helper'
-import { ProviderSettings } from 'src/providers'
-import { PluginSettings } from 'src/settings'
-import { StatusBarManager } from 'src/statusBarManager'
+import type { ProviderSettings } from 'src/providers'
+import type { PluginSettings } from 'src/settings'
+import type { StatusBarManager } from 'src/statusBarManager'
 import { toSpeakMark } from 'src/suggest'
-import { TagCmdMeta } from './tagCmd'
+import { createLogger } from '../logger'
+import type { TagCmdMeta } from './tagCmd'
 import {
 	fetchTagMeta,
 	HARD_LINE_BREAK,
@@ -15,12 +26,16 @@ import {
 	isEmptyLines
 } from './tagUtils'
 
+const logger = createLogger('commands:assistant-tag')
+
 export const asstTagCmd = (
 	{ id, name, tag }: TagCmdMeta,
 	app: App,
 	settings: PluginSettings,
 	statusBarManager: StatusBarManager,
-	requestController: RequestController
+	requestController: RequestController,
+	mcpManager?: unknown,
+	mcpExecutor?: unknown
 ): Command => ({
 	id,
 	name,
@@ -34,7 +49,12 @@ export const asstTagCmd = (
 			const defaultUserMark = toSpeakMark(settings.userTags[0])
 			const mark = toSpeakMark(tag)
 			const { range, role, tagContent, tagRange } = fetchTagMeta(app, editor, settings)
-			console.debug('asstTagCmd', { range, role, tagContent, tagRange })
+			logger.debug('assistant tag command context', {
+				range,
+				role,
+				tagContentLength: tagContent?.length ?? 0,
+				tagRange
+			})
 
 			// If it's an empty line, directly insert the tag
 			if (isEmptyLines(editor, range)) {
@@ -51,7 +71,10 @@ export const asstTagCmd = (
 					messagesEndOffset,
 					statusBarManager,
 					settings.editorStatus,
-					requestController
+					requestController,
+					mcpManager,
+					mcpExecutor,
+					settings
 				)
 				return
 			}
@@ -61,7 +84,7 @@ export const asstTagCmd = (
 				insertMarkToBegin(editor, range, defaultUserMark)
 
 				editor.setCursor({ line: range.to.line, ch: editor.getLine(range.to.line).length })
-				insertText(editor, HARD_LINE_BREAK + '\n')
+				insertText(editor, `${HARD_LINE_BREAK}\n`)
 				const lnToWrite = await insertMarkSlowMo(editor, mark, settings.answerDelayInMilliseconds)
 
 				const messagesEndOffset = editor.posToOffset({
@@ -76,22 +99,47 @@ export const asstTagCmd = (
 					messagesEndOffset,
 					statusBarManager,
 					settings.editorStatus,
-					requestController
+					requestController,
+					mcpManager,
+					mcpExecutor,
+					settings
 				)
 			} else if (role === 'assistant') {
 				// If it's an asstTag, prompt the user whether to regenerate
 				if (settings.confirmRegenerate) {
 					const onConfirm = async () => {
-						await regenerate(app, settings, statusBarManager, requestController, editor, provider, range, mark)
+						await regenerate(
+							app,
+							settings,
+							statusBarManager,
+							requestController,
+							editor,
+							provider,
+							range,
+							mark,
+							mcpManager,
+							mcpExecutor
+						)
 					}
 					new ConfirmModal(app, onConfirm).open()
 				} else {
-					await regenerate(app, settings, statusBarManager, requestController, editor, provider, range, mark)
+					await regenerate(
+						app,
+						settings,
+						statusBarManager,
+						requestController,
+						editor,
+						provider,
+						range,
+						mark,
+						mcpManager,
+						mcpExecutor
+					)
 				}
 			} else {
 				// If it's a userTag, systemTag (warn later), newChat mixed, etc., add a new line, insert assistant tag. Let subsequent code handle the judgment
 				editor.setCursor({ line: range.to.line, ch: editor.getLine(range.to.line).length })
-				const lnToWrite = insertText(editor, HARD_LINE_BREAK + '\n' + mark)
+				const lnToWrite = insertText(editor, `${HARD_LINE_BREAK}\n${mark}`)
 
 				const messagesEndOffset = editor.posToOffset({
 					line: lnToWrite,
@@ -105,19 +153,23 @@ export const asstTagCmd = (
 					messagesEndOffset,
 					statusBarManager,
 					settings.editorStatus,
-					requestController
+					requestController,
+					mcpManager,
+					mcpExecutor,
+					settings
 				)
 			}
 		} catch (error) {
-			console.error(error)
-			if (error.name === 'AbortError') {
+			logger.error('assistant tag command failed', error)
+			const err = error instanceof Error ? error : new Error(String(error))
+			if (err.name === 'AbortError') {
 				statusBarManager.setCancelledStatus()
 				new Notice(t('Generation cancelled'))
 				return
 			}
 
-			statusBarManager.setErrorStatus(error as Error)
-			new Notice(`🔴 ${Platform.isDesktopApp ? t('Click status bar for error details. ') : ''}${error}`, 10 * 1000)
+			statusBarManager.setErrorStatus(err)
+			new Notice(`🔴 ${Platform.isDesktopApp ? t('Click status bar for error details. ') : ''}${err}`, 10 * 1000)
 		}
 	}
 })
@@ -130,7 +182,9 @@ const regenerate = async (
 	editor: Editor,
 	provider: ProviderSettings,
 	range: EditorRange,
-	mark: string
+	mark: string,
+	mcpManager?: unknown,
+	mcpExecutor?: unknown
 ) => {
 	editor.replaceRange(mark, range.from, range.to)
 	editor.setCursor({
@@ -143,7 +197,18 @@ const regenerate = async (
 		ch: 0
 	})
 	const env = await buildRunEnv(app, settings)
-	await generate(env, editor, provider, messagesEndOffset, statusBarManager, settings.editorStatus, requestController)
+	await generate(
+		env,
+		editor,
+		provider,
+		messagesEndOffset,
+		statusBarManager,
+		settings.editorStatus,
+		requestController,
+		mcpManager,
+		mcpExecutor,
+		settings
+	)
 }
 
 class ConfirmModal extends Modal {

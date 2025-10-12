@@ -1,7 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { EmbedCache, Notice } from 'obsidian'
+import { type EmbedCache, Notice } from 'obsidian'
 import { t } from 'src/lang/helper'
-import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
+import { createLogger } from '../logger'
+import type { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 import {
 	arrayBufferToBase64,
 	CALLOUT_BLOCK_END,
@@ -9,6 +10,8 @@ import {
 	getCapabilityEmoji,
 	getMimeTypeFromFilename
 } from './utils'
+
+const logger = createLogger('providers:claude')
 
 export interface ClaudeOptions extends BaseOptions {
 	max_tokens: number
@@ -66,7 +69,17 @@ const formatEmbed = async (embed: EmbedCache, resolveEmbedAsBinary: ResolveEmbed
 
 const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, resolveEmbedAsBinary: ResolveEmbedAsBinary) {
-		const { parameters, ...optionsExcludingParams } = settings
+		const {
+			parameters,
+			mcpManager,
+			mcpExecutor,
+			documentPath,
+			statusBarManager,
+			pluginSettings,
+			documentWriteLock,
+			beforeToolExecution,
+			...optionsExcludingParams
+		} = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const {
 			apiKey,
@@ -77,6 +90,7 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 			enableThinking = false,
 			budget_tokens = 1600
 		} = options
+
 		let baseURL = originalBaseURL
 		if (!apiKey) throw new Error(t('API key is required'))
 
@@ -85,6 +99,64 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 			baseURL = baseURL.slice(0, -'/v1/messages/'.length)
 		} else if (baseURL.endsWith('/v1/messages')) {
 			baseURL = baseURL.slice(0, -'/v1/messages'.length)
+		}
+
+		// Tool-aware path: Use coordinator for autonomous tool calling
+		if (mcpManager && mcpExecutor) {
+			try {
+				const { ToolCallingCoordinator, ClaudeProviderAdapter } = await import('../mcp/index.js')
+				// biome-ignore lint/suspicious/noExplicitAny: MCP types are optional dependencies
+				const mcpMgr = mcpManager as any
+				// biome-ignore lint/suspicious/noExplicitAny: MCP types are optional dependencies
+				const mcpExec = mcpExecutor as any
+
+				const client = new Anthropic({
+					apiKey,
+					baseURL,
+					fetch: globalThis.fetch,
+					dangerouslyAllowBrowser: true
+				})
+
+				const adapter = new ClaudeProviderAdapter({
+					mcpManager: mcpMgr,
+					anthropicClient: client,
+					controller,
+					model,
+					maxTokens: max_tokens,
+					system: undefined // Could be extracted from messages if needed
+				})
+
+				await adapter.initialize({ preloadTools: false })
+
+				const coordinator = new ToolCallingCoordinator()
+
+				// Convert messages to coordinator format
+				const formattedMessages = messages.map((msg) => ({
+					role: msg.role,
+					content: msg.content,
+					embeds: msg.embeds
+				}))
+
+				const editor = (settings as any).editor
+				// biome-ignore lint/suspicious/noExplicitAny: Plugin settings type is not imported
+				const pluginOpts = pluginSettings as any
+
+				yield* coordinator.generateWithTools(formattedMessages, adapter, mcpExec, {
+					documentPath: documentPath || 'unknown.md',
+					editor,
+					statusBarManager: statusBarManager as any,
+					autoUseDocumentCache: true,
+					parallelExecution: pluginOpts?.mcpParallelExecution ?? false,
+					maxParallelTools: pluginOpts?.mcpMaxParallelTools ?? 3,
+					documentWriteLock,
+					onBeforeToolExecution: beforeToolExecution
+				})
+
+				return
+			} catch (error) {
+				logger.warn('tool-aware path unavailable for claude; falling back to standard workflow', error)
+				// Fall through to original path
+			}
 		}
 
 		const [system_msg, messagesWithoutSys] =
@@ -159,7 +231,7 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 					messageStreamEvent.content_block.type === 'server_tool_use' &&
 					messageStreamEvent.content_block.name === 'web_search'
 				) {
-					new Notice(getCapabilityEmoji('Web Search') + 'Web Search')
+					new Notice(`${getCapabilityEmoji('Web Search')}Web Search`)
 				}
 			} else if (messageStreamEvent.type === 'message_delta') {
 				// Handle message-level incremental updates
@@ -199,5 +271,5 @@ export const claudeVendor: Vendor = {
 	sendRequestFunc,
 	models,
 	websiteToObtainKey: 'https://console.anthropic.com',
-	capabilities: ['Text Generation', 'Web Search', 'Reasoning', 'Image Vision', 'PDF Vision']
+	capabilities: ['Text Generation', 'Web Search', 'Reasoning', 'Image Vision', 'PDF Vision', 'Tool Calling']
 }

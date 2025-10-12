@@ -1,18 +1,13 @@
-import { EmbedCache } from 'obsidian'
+import type { EmbedCache } from 'obsidian'
+import type { DocumentWriteLock } from '../utils/documentWriteLock'
 
 export type MsgRole = 'user' | 'assistant' | 'system'
 
-export interface SaveAttachment {
-	(fileName: string, data: ArrayBuffer): Promise<void>
-}
+export type SaveAttachment = (fileName: string, data: ArrayBuffer) => Promise<void>
 
-export interface ResolveEmbedAsBinary {
-	(embed: EmbedCache): Promise<ArrayBuffer>
-}
+export type ResolveEmbedAsBinary = (embed: EmbedCache) => Promise<ArrayBuffer>
 
-export interface CreatePlainText {
-	(filePath: string, text: string): Promise<void>
-}
+export type CreatePlainText = (filePath: string, text: string) => Promise<void>
 
 export interface Message {
 	readonly role: MsgRole
@@ -35,6 +30,7 @@ export type Capability =
 	| 'Image Editing'
 	| 'Web Search'
 	| 'Reasoning'
+	| 'Tool Calling'
 
 export interface Vendor {
 	readonly name: string
@@ -51,6 +47,15 @@ export interface BaseOptions {
 	model: string
 	parameters: Record<string, unknown>
 	enableWebSearch?: boolean
+	// MCP tool integration - injected by the system when available
+	mcpManager?: unknown // MCPServerManager from mcp module
+	mcpExecutor?: unknown // ToolExecutor from mcp module
+	documentPath?: string // Current document path for tool execution context
+	statusBarManager?: unknown // StatusBarManager for error logging
+	editor?: unknown // Active Obsidian editor for markdown persistence
+	pluginSettings?: unknown // Plugin settings for parallel execution configuration
+	documentWriteLock?: DocumentWriteLock
+	beforeToolExecution?: () => Promise<void>
 }
 
 export interface ProviderSettings {
