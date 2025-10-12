@@ -33,7 +33,7 @@ describe('Ollama Provider Integration - Tool Calling', () => {
 
 	it('should have ollamaVendor with Tool Calling capability', async () => {
 		// WHEN: Importing Ollama vendor
-		const { ollamaVendor } = await import('../../src/providers/ollama')
+	const { ollamaVendor } = await import('../../src/providers/ollama.js')
 
 		// THEN: Should have Tool Calling capability
 		expect(ollamaVendor.capabilities).toContain('Tool Calling')
@@ -42,7 +42,7 @@ describe('Ollama Provider Integration - Tool Calling', () => {
 
 	it('should have default model and local baseURL', async () => {
 		// WHEN: Importing Ollama vendor
-		const { ollamaVendor } = await import('../../src/providers/ollama')
+	const { ollamaVendor } = await import('../../src/providers/ollama.js')
 
 		// THEN: Should have sensible defaults
 		expect(ollamaVendor.defaultOptions.model).toBe('llama3.1')
@@ -124,7 +124,7 @@ describe('Ollama Provider Integration - Tool Calling', () => {
 describe('Ollama Tool Format Compatibility', () => {
 	it('should parse Ollama tool call format correctly', async () => {
 		// GIVEN: Ollama tool response parser
-		const { OllamaToolResponseParser } = await import('../../src/mcp/toolResponseParser')
+		const { OllamaToolResponseParser } = await import('../../src/mcp/toolResponseParser.js')
 		const parser = new OllamaToolResponseParser()
 
 		// Ollama format: arguments are already parsed objects
@@ -155,7 +155,7 @@ describe('Ollama Tool Format Compatibility', () => {
 
 	it('should handle text content in Ollama format', async () => {
 		// GIVEN: Parser
-		const { OllamaToolResponseParser } = await import('../../src/mcp/toolResponseParser')
+		const { OllamaToolResponseParser } = await import('../../src/mcp/toolResponseParser.js')
 		const parser = new OllamaToolResponseParser()
 
 		const chunk = {
@@ -176,7 +176,7 @@ describe('Ollama Tool Format Compatibility', () => {
 
 	it('should handle multiple tool calls in one chunk', async () => {
 		// GIVEN: Parser
-		const { OllamaToolResponseParser } = await import('../../src/mcp/toolResponseParser')
+		const { OllamaToolResponseParser } = await import('../../src/mcp/toolResponseParser.js')
 		const parser = new OllamaToolResponseParser()
 
 		// Ollama can send multiple tool calls at once

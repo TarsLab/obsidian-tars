@@ -3,10 +3,12 @@ import { describe, expect, it, vi } from 'vitest'
 import {
 	type Message,
 	type ProviderAdapter,
-	ToolCallingCoordinator,
-	type ToolExecutionResult
-} from '../../src/mcp/toolCallingCoordinator'
+	ToolCallingCoordinator
+} from '../../src/mcp/toolCallingCoordinator.js'
+import type { ToolExecutionResult } from '../../src/mcp/types.js'
+import type { CachedToolResult } from '../../src/mcp/toolResultCache.js'
 import type { ToolCall, ToolResponseParser } from '../../src/mcp/toolResponseParser'
+import { DocumentWriteLock } from '../../src/utils/documentWriteLock'
 
 interface StubToolExecutor {
 	executeTool(request: {
@@ -67,6 +69,23 @@ class MockEditor {
 	}
 }
 
+class RecordingLock extends DocumentWriteLock {
+	public calls: Array<'start' | 'fn' | 'end'> = []
+
+	async runExclusive<T>(fn: () => T | Promise<T>): Promise<T> {
+		this.calls.push('start')
+		try {
+			return await super.runExclusive(async () => {
+				const result = await fn()
+				this.calls.push('fn')
+				return result
+			})
+		} finally {
+			this.calls.push('end')
+		}
+	}
+}
+
 describe('ToolCallingCoordinator integration: markdown persistence', () => {
 	it('should persist tool call markdown into editor', async () => {
 		const toolCall: ToolCall = {
@@ -110,6 +129,7 @@ describe('ToolCallingCoordinator integration: markdown persistence', () => {
 		const editor = new MockEditor()
 
 		const coordinator = new ToolCallingCoordinator()
+		const lock = new RecordingLock()
 
 		for await (const _chunk of coordinator.generateWithTools(
 			[{ role: 'user', content: 'What is the weather?' }],
@@ -119,7 +139,8 @@ describe('ToolCallingCoordinator integration: markdown persistence', () => {
 				documentPath: 'Weather.md',
 				onToolCall: vi.fn(),
 				onToolResult: vi.fn(),
-				editor
+				editor,
+				documentWriteLock: lock
 			} as never
 		)) {
 			// consume generator
@@ -136,6 +157,7 @@ describe('ToolCallingCoordinator integration: markdown persistence', () => {
 		expect(editor.content).toContain('>   "forecast": "Sunny"')
 		expect(editor.content).toMatch(/> Executed: .+Z/)
 		expect(editor.content).toContain('>   "forecast": "Sunny"')
+		expect(lock.calls.filter((entry) => entry === 'fn').length).toBeGreaterThanOrEqual(2)
 	})
 
 	it('should reuse cached tool result when user chooses cached option', async () => {
@@ -191,7 +213,11 @@ describe('ToolCallingCoordinator integration: markdown persistence', () => {
 > \`\`\`
 `
 
-		const prompt = vi.fn().mockResolvedValue<'use-cached'>('use-cached')
+			const prompt = vi
+				.fn<
+					(toolName: string, cached: CachedToolResult) => Promise<'re-execute' | 'use-cached' | 'cancel'>
+				>()
+				.mockResolvedValue('use-cached')
 
 		for await (const _chunk of coordinator.generateWithTools(
 			[{ role: 'user', content: 'Weather?' }],

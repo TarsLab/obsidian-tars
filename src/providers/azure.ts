@@ -13,7 +13,16 @@ const logger = createLogger('providers:azure')
 
 const sendRequestFunc = (settings: AzureOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, resolveEmbedAsBinary: ResolveEmbedAsBinary) {
-		const { parameters, mcpManager, mcpExecutor, documentPath, pluginSettings, ...optionsExcludingParams } = settings
+		const {
+			parameters,
+			mcpManager,
+			mcpExecutor,
+			documentPath,
+			pluginSettings,
+			documentWriteLock,
+			beforeToolExecution,
+			...optionsExcludingParams
+		} = settings
 		const options = { ...optionsExcludingParams, ...parameters } // 这样的设计，让parameters 可以覆盖掉前面的设置 optionsExcludingParams
 		const { apiKey, model, endpoint, apiVersion, ...remains } = options
 		if (!apiKey) throw new Error(t('API key is required'))
@@ -62,7 +71,9 @@ const sendRequestFunc = (settings: AzureOptions): SendRequest =>
 					documentPath: documentPath || 'unknown.md',
 					autoUseDocumentCache: true,
 					parallelExecution: pluginOpts?.mcpParallelExecution ?? false,
-					maxParallelTools: pluginOpts?.mcpMaxParallelTools ?? 3
+					maxParallelTools: pluginOpts?.mcpMaxParallelTools ?? 3,
+					documentWriteLock,
+					onBeforeToolExecution: beforeToolExecution
 				})
 
 				return

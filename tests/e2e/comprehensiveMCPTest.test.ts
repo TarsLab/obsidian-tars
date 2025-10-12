@@ -184,10 +184,12 @@ message: Hello from Obsidian!`
 
 			// WHEN: Parse and execute
 			const invocation = processor.parseToolInvocation(codeBlock, 'Everything Server')
+			expect(invocation).toBeDefined()
+			const { serverId, toolName, parameters } = invocation!
 			const result = await executor.executeTool({
-				serverId: invocation?.serverId,
-				toolName: invocation?.toolName,
-				parameters: invocation?.parameters,
+				serverId,
+				toolName,
+				parameters,
 				source: 'user-codeblock',
 				documentPath: 'test.md'
 			})
@@ -207,10 +209,12 @@ b: 18`
 
 			// WHEN: Execute
 			const invocation = processor.parseToolInvocation(codeBlock, 'Everything Server')
+			expect(invocation).toBeDefined()
+			const { serverId, toolName, parameters } = invocation!
 			const result = await executor.executeTool({
-				serverId: invocation?.serverId,
-				toolName: invocation?.toolName,
-				parameters: invocation?.parameters,
+				serverId,
+				toolName,
+				parameters,
 				source: 'user-codeblock',
 				documentPath: 'calculations.md'
 			})
@@ -229,10 +233,12 @@ steps: 10`
 
 			// WHEN: Execute
 			const invocation = processor.parseToolInvocation(codeBlock, 'Everything Server')
+			expect(invocation).toBeDefined()
+			const { serverId, toolName, parameters } = invocation!
 			const result = await executor.executeTool({
-				serverId: invocation?.serverId,
-				toolName: invocation?.toolName,
-				parameters: invocation?.parameters,
+				serverId,
+				toolName,
+				parameters,
 				source: 'user-codeblock',
 				documentPath: 'async-tasks.md'
 			})
@@ -253,10 +259,12 @@ maxTokens: 100`
 
 			// WHEN: Execute
 			const invocation = processor.parseToolInvocation(codeBlock, 'Everything Server')
+			expect(invocation).toBeDefined()
+			const { serverId, toolName, parameters } = invocation!
 			const result = await executor.executeTool({
-				serverId: invocation?.serverId,
-				toolName: invocation?.toolName,
-				parameters: invocation?.parameters,
+				serverId,
+				toolName,
+				parameters,
 				source: 'user-codeblock',
 				documentPath: 'ai-queries.md'
 			})

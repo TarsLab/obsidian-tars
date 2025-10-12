@@ -36,7 +36,7 @@ describe('Azure Provider Integration - Tool Calling', () => {
 
 	it('should have azureVendor with Tool Calling capability', async () => {
 		// WHEN: Importing Azure vendor
-		const { azureVendor } = await import('../../src/providers/azure')
+		const { azureVendor } = await import('../../src/providers/azure.js')
 
 		// THEN: Should have Tool Calling capability
 		expect(azureVendor.capabilities).toContain('Tool Calling')
@@ -45,7 +45,7 @@ describe('Azure Provider Integration - Tool Calling', () => {
 
 	it('should have Reasoning capability for DeepSeek-R1', async () => {
 		// WHEN: Importing Azure vendor
-		const { azureVendor } = await import('../../src/providers/azure')
+		const { azureVendor } = await import('../../src/providers/azure.js')
 
 		// THEN: Should have Reasoning capability
 		expect(azureVendor.capabilities).toContain('Reasoning')
@@ -75,7 +75,7 @@ describe('OpenRouter Provider Integration - Tool Calling', () => {
 
 	it('should have openRouterVendor with Tool Calling capability', async () => {
 		// WHEN: Importing OpenRouter vendor
-		const { openRouterVendor } = await import('../../src/providers/openRouter')
+		const { openRouterVendor } = await import('../../src/providers/openRouter.js')
 
 		// THEN: Should have Tool Calling capability
 		expect(openRouterVendor.capabilities).toContain('Tool Calling')
@@ -84,7 +84,7 @@ describe('OpenRouter Provider Integration - Tool Calling', () => {
 
 	it('should support Image Vision and PDF Vision', async () => {
 		// WHEN: Importing OpenRouter vendor
-		const { openRouterVendor } = await import('../../src/providers/openRouter')
+		const { openRouterVendor } = await import('../../src/providers/openRouter.js')
 
 		// THEN: Should have vision capabilities
 		expect(openRouterVendor.capabilities).toContain('Image Vision')

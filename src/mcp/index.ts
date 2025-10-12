@@ -10,8 +10,6 @@ export * from './errors'
 export type { SessionNotificationHandlers } from './executor'
 export { ToolExecutor } from './executor'
 export { MCPServerManager } from './managerMCPUse' // Using mcp-use library
-// Migration
-export { migrateServerConfig, migrateServerConfigs, needsMigration } from './migration'
 export {
 	buildToolServerMapping,
 	type ClaudeAdapterConfig,

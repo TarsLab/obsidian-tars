@@ -22,7 +22,6 @@ import {
 	createToolExecutor,
 	HEALTH_CHECK_INTERVAL,
 	MCPServerManager,
-	migrateServerConfigs,
 	type SessionNotificationHandlers,
 	type ToolExecutor
 } from './mcp'
@@ -506,17 +505,6 @@ export default class TarsPlugin extends Plugin {
 			...this.settings.uiState
 		}
 
-		// Migrate legacy MCP server configs (dockerConfig/deploymentType → executionCommand)
-		if (this.settings.mcpServers && this.settings.mcpServers.length > 0) {
-			const migratedServers = migrateServerConfigs(this.settings.mcpServers)
-			const needsSave = JSON.stringify(migratedServers) !== JSON.stringify(this.settings.mcpServers)
-
-			if (needsSave) {
-				this.settings.mcpServers = migratedServers
-				await this.saveSettings()
-				logger.info('migrated mcp server configs to executionCommand format')
-			}
-		}
 	}
 
 	async saveSettings() {

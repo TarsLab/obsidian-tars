@@ -14,12 +14,14 @@ describe('parseConfigInput', () => {
 		})
 
 		const result = parseConfigInput(input)
+		expect(result).not.toBeNull()
+		const parsed = result!
 
-		expect(result.type).toBe('json')
-		expect(result.mcpUseConfig).toBeDefined()
-		expect(result.mcpUseConfig?.command).toBe('docker')
-		expect(result.mcpUseConfig?.args).toContain('run')
-		expect(result.mcpUseConfig?.args).toContain('mcp/memory:latest')
+		expect(parsed.type).toBe('json')
+		expect(parsed.mcpUseConfig).toBeDefined()
+		expect(parsed.mcpUseConfig?.command).toBe('docker')
+		expect(parsed.mcpUseConfig?.args).toContain('run')
+		expect(parsed.mcpUseConfig?.args).toContain('mcp/memory:latest')
 	})
 
 	it('should parse Claude Desktop JSON format', () => {
@@ -34,69 +36,81 @@ describe('parseConfigInput', () => {
 		})
 
 		const result = parseConfigInput(input)
+		expect(result).not.toBeNull()
+		const parsed = result!
 
-		expect(result.type).toBe('json')
-		expect(result.serverName).toBe('memory')
-		expect(result.mcpUseConfig).toBeDefined()
-		expect(result.mcpUseConfig?.command).toBe('npx')
-		expect(result.mcpUseConfig?.args).toContain('-y')
+		expect(parsed.type).toBe('json')
+		expect(parsed.serverName).toBe('memory')
+		expect(parsed.mcpUseConfig).toBeDefined()
+		expect(parsed.mcpUseConfig?.command).toBe('npx')
+		expect(parsed.mcpUseConfig?.args).toContain('-y')
 	})
 
 	it('should parse plain docker run command', () => {
 		const input = 'docker run -i --rm mcp/memory:latest'
 
 		const result = parseConfigInput(input)
+		expect(result).not.toBeNull()
+		const parsed = result!
 
-		expect(result.type).toBe('command')
-		expect(result.mcpUseConfig).toBeDefined()
-		expect(result.mcpUseConfig?.command).toBe('docker')
-		expect(result.mcpUseConfig?.args).toContain('run')
-		expect(result.mcpUseConfig?.args).toContain('mcp/memory:latest')
+		expect(parsed.type).toBe('command')
+		expect(parsed.mcpUseConfig).toBeDefined()
+		expect(parsed.mcpUseConfig?.command).toBe('docker')
+		expect(parsed.mcpUseConfig?.args).toContain('run')
+		expect(parsed.mcpUseConfig?.args).toContain('mcp/memory:latest')
 	})
 
 	it('should parse URL for SSE transport', () => {
 		const input = 'http://localhost:3000/sse'
 
 		const result = parseConfigInput(input)
+		expect(result).not.toBeNull()
+		const parsed = result!
 
-		expect(result.type).toBe('url')
-		expect(result.url).toBe('http://localhost:3000/sse')
-		expect(result.error).toBeUndefined()
-		expect(result.mcpUseConfig).toBeDefined()
+		expect(parsed.type).toBe('url')
+		expect(parsed.url).toBe('http://localhost:3000/sse')
+		expect(parsed.error).toBeUndefined()
+		expect(parsed.mcpUseConfig).toBeDefined()
 	})
 
 	it('should parse npx command', () => {
 		const input = 'npx @modelcontextprotocol/server-memory'
 
 		const result = parseConfigInput(input)
+		expect(result).not.toBeNull()
+		const parsed = result!
 
-		expect(result.type).toBe('command')
-		expect(result.mcpUseConfig).toBeDefined()
-		expect(result.mcpUseConfig?.command).toBe('npx')
-		expect(result.mcpUseConfig?.args).toContain('@modelcontextprotocol/server-memory')
-		expect(result.serverName).toBe('server-memory')
+		expect(parsed.type).toBe('command')
+		expect(parsed.mcpUseConfig).toBeDefined()
+		expect(parsed.mcpUseConfig?.command).toBe('npx')
+		expect(parsed.mcpUseConfig?.args).toContain('@modelcontextprotocol/server-memory')
+		expect(parsed.serverName).toBe('server-memory')
 	})
 
 	it('should parse uvx command', () => {
 		const input = 'uvx mcp-server-git'
 
 		const result = parseConfigInput(input)
+		expect(result).not.toBeNull()
+		const parsed = result!
 
-		expect(result.type).toBe('command')
-		expect(result.mcpUseConfig).toBeDefined()
-		expect(result.mcpUseConfig?.command).toBe('uvx')
-		expect(result.mcpUseConfig?.args).toContain('mcp-server-git')
-		expect(result.serverName).toBe('mcp-server-git')
+		expect(parsed.type).toBe('command')
+		expect(parsed.mcpUseConfig).toBeDefined()
+		expect(parsed.mcpUseConfig?.command).toBe('uvx')
+		expect(parsed.mcpUseConfig?.args).toContain('mcp-server-git')
+		expect(parsed.serverName).toBe('mcp-server-git')
 	})
 
 	it('should handle invalid JSON gracefully', () => {
 		const input = '{ invalid json'
 
 		const result = parseConfigInput(input)
+		expect(result).not.toBeNull()
+		const parsed = result!
 
-		expect(result.type).toBe('json')
-		expect(result.error).toBeDefined()
-		expect(result.mcpUseConfig).toBeNull()
+		expect(parsed.type).toBe('json')
+		expect(parsed.error).toBeDefined()
+		expect(parsed.mcpUseConfig).toBeNull()
 	})
 
 	it('should handle empty input', () => {

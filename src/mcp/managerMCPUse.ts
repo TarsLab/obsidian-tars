@@ -13,7 +13,6 @@ import { createLogger } from '../logger'
 import type { StatusBarManager } from '../statusBarManager'
 import { ServerNotAvailableError } from './errors'
 import { partitionConfigs, toMCPUseConfig } from './mcpUseAdapter'
-import { migrateServerConfigs } from './migration'
 import { DEFAULT_RETRY_POLICY, withRetry } from './retryUtils'
 import { ToolDiscoveryCache, type ToolDiscoveryMetrics, type ToolServerAccessor } from './toolDiscoveryCache'
 import type { MCPServerConfig, RetryPolicy, ServerHealthStatus, ToolDefinition } from './types'
@@ -78,18 +77,16 @@ export class MCPServerManager extends EventEmitter<MCPServerManagerEvents> imple
 			this.statusBarManager = options.statusBarManager
 		}
 
-		const normalizedConfigs = migrateServerConfigs(configs as unknown as Parameters<typeof migrateServerConfigs>[0])
-
 		// Store server configurations
 		this.servers.clear()
-		for (const config of normalizedConfigs) {
+		for (const config of configs) {
 			this.servers.set(config.id, config)
 		}
 		this.sessions.clear()
 		this.toolDiscoveryCache.invalidate('manager.initialize')
 
 		// Partition configs: mcp-use supported vs custom handling needed
-		const { mcpUseConfigs, customConfigs } = partitionConfigs(normalizedConfigs)
+		const { mcpUseConfigs, customConfigs } = partitionConfigs(configs)
 
 		// Warn about unsupported configs (skip in test environment)
 		if (process.env.NODE_ENV !== 'test' && process.env.VITEST !== 'true') {

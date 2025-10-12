@@ -69,7 +69,17 @@ const formatEmbed = async (embed: EmbedCache, resolveEmbedAsBinary: ResolveEmbed
 
 const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, resolveEmbedAsBinary: ResolveEmbedAsBinary) {
-		const { parameters, mcpManager, mcpExecutor, documentPath, statusBarManager, pluginSettings, ...optionsExcludingParams } = settings
+		const {
+			parameters,
+			mcpManager,
+			mcpExecutor,
+			documentPath,
+			statusBarManager,
+			pluginSettings,
+			documentWriteLock,
+			beforeToolExecution,
+			...optionsExcludingParams
+		} = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const {
 			apiKey,
@@ -137,7 +147,9 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 					statusBarManager: statusBarManager as any,
 					autoUseDocumentCache: true,
 					parallelExecution: pluginOpts?.mcpParallelExecution ?? false,
-					maxParallelTools: pluginOpts?.mcpMaxParallelTools ?? 3
+					maxParallelTools: pluginOpts?.mcpMaxParallelTools ?? 3,
+					documentWriteLock,
+					onBeforeToolExecution: beforeToolExecution
 				})
 
 				return

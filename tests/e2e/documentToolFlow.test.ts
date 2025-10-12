@@ -165,10 +165,12 @@ units: celsius`
 			})
 
 			// WHEN: Execute the tool
+			expect(invocation).toBeDefined()
+			const { serverId, toolName, parameters } = invocation!
 			const result = await executor.executeTool({
-				serverId: invocation?.serverId,
-				toolName: invocation?.toolName,
-				parameters: invocation?.parameters,
+				serverId,
+				toolName,
+				parameters,
 				source: 'user-codeblock',
 				documentPath: 'daily-notes/2025-10-01.md'
 			})
@@ -192,10 +194,12 @@ num_results: 5`
 
 			// WHEN: Parse and execute
 			const invocation = processor.parseToolInvocation(codeBlock, 'Search Service')
+			expect(invocation).toBeDefined()
+			const { serverId: searchServerId, toolName: searchToolName, parameters: searchParameters } = invocation!
 			const result = await executor.executeTool({
-				serverId: invocation?.serverId,
-				toolName: invocation?.toolName,
-				parameters: invocation?.parameters,
+				serverId: searchServerId,
+				toolName: searchToolName,
+				parameters: searchParameters,
 				source: 'user-codeblock',
 				documentPath: 'research/tokyo-travel.md'
 			})
@@ -213,11 +217,13 @@ num_results: 5`
 
 			// WHEN: Execute a tool for the target document
 			const invocation = processor.parseToolInvocation('tool: get_weather\nlocation: Paris', 'Weather Service')
+			expect(invocation).toBeDefined()
+			const { serverId: weatherServerId, toolName: weatherToolName, parameters: weatherParameters } = invocation!
 
 			await executor.executeTool({
-				serverId: invocation?.serverId,
-				toolName: invocation?.toolName,
-				parameters: invocation?.parameters,
+				serverId: weatherServerId,
+				toolName: weatherToolName,
+				parameters: weatherParameters,
 				source: 'user-codeblock',
 				documentPath: 'test.md'
 			})

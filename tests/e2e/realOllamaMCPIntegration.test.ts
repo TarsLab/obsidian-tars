@@ -203,11 +203,19 @@ const PREFERRED_MODELS = [
 	'llama3:latest'
 ]
 
-// Detect Ollama URL and select available model
-const OLLAMA_URL = await detectOllamaUrl()
-const selectedModel = await selectAvailableModel(OLLAMA_URL, PREFERRED_MODELS)
-const MODEL = process.env.OLLAMA_MODEL || selectedModel || 'llama3.2:3b'
-const MODEL_AVAILABLE = !!selectedModel || !!process.env.OLLAMA_MODEL
+type OllamaEnvironment = {
+	url: string
+	model: string
+	modelAvailable: boolean
+}
+
+const ollamaEnvironmentPromise = (async (): Promise<OllamaEnvironment> => {
+	const url = await detectOllamaUrl()
+	const selectedModel = await selectAvailableModel(url, PREFERRED_MODELS)
+	const model = process.env.OLLAMA_MODEL || selectedModel || 'llama3.2:3b'
+	const modelAvailable = Boolean(selectedModel || process.env.OLLAMA_MODEL)
+	return { url, model, modelAvailable }
+})()
 
 describe.skipIf(SKIP_REAL_E2E)('Real E2E: Ollama + MCP Memory Server', async () => {
 	let manager: MCPServerManager
@@ -215,22 +223,22 @@ describe.skipIf(SKIP_REAL_E2E)('Real E2E: Ollama + MCP Memory Server', async () 
 	let ollama: Ollama
 	let originalStderrWrite: typeof process.stderr.write
 	let originalStdoutWrite: typeof process.stdout.write
+	let environment: OllamaEnvironment
+	let ollamaAvailable = false
 
-	// Check Ollama availability
-	const ollamaAvailable = await isOllamaAvailable(OLLAMA_URL)
-
-	beforeAll(async () => {
-		if (!ollamaAvailable) {
-			console.warn(`⚠️  Ollama not available at ${OLLAMA_URL} - skipping E2E tests`)
+	beforeAll(async function (this: { skip?: (reason?: string) => void }) {
+		environment = await ollamaEnvironmentPromise
+		ollamaAvailable = await isOllamaAvailable(environment.url)
+		if (!ollamaAvailable || !environment.modelAvailable) {
+			const reason = !ollamaAvailable
+				? `Ollama not available at ${environment.url}`
+				: `No suitable Ollama model detected from ${PREFERRED_MODELS.join(', ')}`
+			console.warn(`⚠️  ${reason} - skipping E2E tests`)
+			this.skip?.(reason)
 			return
 		}
 
-		if (MODEL_AVAILABLE) {
-			console.log(`✅ Using Ollama model: ${MODEL}`)
-		} else {
-			console.warn(`⚠️  No suitable model found from: ${PREFERRED_MODELS.join(', ')}`)
-			console.warn(`⚠️  Using fallback model: ${MODEL}. Tests may fail if model not available.`)
-		}
+		console.log(`✅ Using Ollama model: ${environment.model}`)
 
 		// Suppress MCP server messages for cleaner test output
 		originalStderrWrite = process.stderr.write
@@ -255,7 +263,7 @@ describe.skipIf(SKIP_REAL_E2E)('Real E2E: Ollama + MCP Memory Server', async () 
 		}
 
 		// Initialize Ollama client
-		ollama = new Ollama({ host: OLLAMA_URL })
+		ollama = new Ollama({ host: environment.url })
 
 		// Initialize MCP manager with memory server
 		manager = createMCPManager()
@@ -287,7 +295,7 @@ describe.skipIf(SKIP_REAL_E2E)('Real E2E: Ollama + MCP Memory Server', async () 
 		}
 	})
 
-	describe.skipIf(!ollamaAvailable || !MODEL_AVAILABLE)('Ollama + MCP Integration Tests', () => {
+	describe('Ollama + MCP Integration Tests', () => {
 		it('should connect to Ollama and list models', async () => {
 			const response = await ollama.list()
 			expect(response.models).toBeDefined()
@@ -350,7 +358,7 @@ describe.skipIf(SKIP_REAL_E2E)('Real E2E: Ollama + MCP Memory Server', async () 
 
 			// Ask Ollama to read the knowledge graph
 			const response = await ollama.chat({
-				model: MODEL,
+				model: environment.model,
 				messages: [
 					{
 						role: 'user',
@@ -413,7 +421,7 @@ describe.skipIf(SKIP_REAL_E2E)('Real E2E: Ollama + MCP Memory Server', async () 
 			})
 
 			const storeResponse = await ollama.chat({
-				model: MODEL,
+				model: environment.model,
 				messages: conversation,
 				tools: ollamaTools,
 				stream: false
@@ -501,7 +509,7 @@ describe.skipIf(SKIP_REAL_E2E)('Real E2E: Ollama + MCP Memory Server', async () 
 
 				// Step 2: Get final response from LLM
 				const finalResponse = await ollama.chat({
-					model: MODEL,
+					model: environment.model,
 					messages: conversation,
 					tools: ollamaTools,
 					stream: false

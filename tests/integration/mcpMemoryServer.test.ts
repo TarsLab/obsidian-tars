@@ -113,15 +113,17 @@ describe('Integration: MCP Components', () => {
 
 		// AND: Should be able to list tools (mocked MCP SDK response)
 		const tools = await client?.listTools()
-		expect(tools.length).toBeGreaterThan(0)
+		expect(tools).toBeDefined()
+		const availableTools = tools!
+		expect(availableTools.length).toBeGreaterThan(0)
 
 		// Validate mocked tool response
-		const toolNames = tools.map((t) => t.name)
+		const toolNames = availableTools.map((t) => t.name)
 		expect(toolNames).toContain('store_memory')
 		expect(toolNames).toContain('retrieve_memory')
 
 		// Validate tool schema structure
-		const storeTool = tools.find((t) => t.name === 'store_memory')
+		const storeTool = availableTools.find((t) => t.name === 'store_memory')
 		expect(storeTool).toBeDefined()
 		expect(storeTool?.description).toBeDefined()
 		expect(storeTool?.inputSchema).toBeDefined()
@@ -133,12 +135,14 @@ describe('Integration: MCP Components', () => {
 
 		// WHEN: List tools
 		const tools = await client?.listTools()
+		expect(tools).toBeDefined()
+		const availableTools = tools!
 
 		// THEN: Tools are discovered with proper structure
-		expect(tools.length).toBeGreaterThan(0)
+		expect(availableTools.length).toBeGreaterThan(0)
 
 		// Validate each tool has required fields
-		tools.forEach((tool) => {
+		availableTools.forEach((tool) => {
 			expect(tool.name).toBeDefined()
 			expect(typeof tool.name).toBe('string')
 			expect(tool.description).toBeDefined()
@@ -167,10 +171,14 @@ value: Hello from integration test`
 		expect(invocation?.parameters.value).toBe('Hello from integration test')
 
 		// WHEN: Execute tool via executor
+		if (!invocation) {
+			throw new Error('Expected tool invocation to be parsed before execution')
+		}
+		const { serverId, toolName, parameters } = invocation
 		const result = await toolExecutor.executeTool({
-			serverId: invocation?.serverId,
-			toolName: invocation?.toolName,
-			parameters: invocation?.parameters,
+			serverId,
+			toolName,
+			parameters,
 			source: 'user-codeblock',
 			documentPath: 'test.md'
 		})

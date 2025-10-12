@@ -4,7 +4,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createCodeBlockProcessor, createMCPManager, createToolExecutor } from '../../src/mcp'
+import { createCodeBlockProcessor, createMCPManager, createToolExecutor } from '../../src/mcp/index.js'
 
 // Mock external dependencies
 vi.mock('../../src/mcp/docker.ts')
@@ -37,12 +37,10 @@ timestamp: true`
 				{
 					id: 'test-server',
 					name: 'test-server',
-					transport: 'stdio' as const,
-					deploymentType: 'managed' as const,
+					configInput: 'npx @modelcontextprotocol/server-memory',
 					enabled: true,
 					failureCount: 0,
-					autoDisabled: false,
-					sectionBindings: []
+					autoDisabled: false
 				}
 			]
 
@@ -140,7 +138,7 @@ timestamp: true`
 
 		it('should enforce session limits', async () => {
 			// GIVEN: Executor with session limit of 1 per document
-			const { ToolExecutor } = await import('../../src/mcp')
+			const { ToolExecutor } = await import('../../src/mcp/index.js')
 			const tracker = {
 				concurrentLimit: 5,
 				sessionLimit: 1,
@@ -178,7 +176,7 @@ timestamp: true`
 
 		it('should reset execution tracking', async () => {
 			// GIVEN: Executor with some history
-			const { ToolExecutor } = await import('../../src/mcp')
+			const { ToolExecutor } = await import('../../src/mcp/index.js')
 			const tracker = {
 				concurrentLimit: 25,
 				sessionLimit: 25,
@@ -202,7 +200,7 @@ timestamp: true`
 
 	describe('Session limit notifications', () => {
 		it('allows user to continue after limit confirmation', async () => {
-			const { ToolExecutor } = await import('../../src/mcp')
+			const { ToolExecutor } = await import('../../src/mcp/index.js')
 			const mockClient = {
 				callTool: vi.fn().mockResolvedValue({
 					content: 'ok',
@@ -222,7 +220,7 @@ timestamp: true`
 				stopped: false,
 				executionHistory: []
 			}
-			const onLimitReached = vi.fn().mockResolvedValue<'continue'>('continue')
+			const onLimitReached = vi.fn().mockResolvedValue('continue')
 			const onSessionReset = vi.fn()
 			const executor = new ToolExecutor(mockManager, tracker, {
 				sessionNotifications: {
@@ -254,7 +252,7 @@ timestamp: true`
 		})
 
 		it('aborts execution when user cancels at session limit', async () => {
-			const { ToolExecutor } = await import('../../src/mcp')
+			const { ToolExecutor } = await import('../../src/mcp/index.js')
 			const mockClient = {
 				callTool: vi.fn().mockResolvedValue({
 					content: 'ok',
@@ -274,7 +272,7 @@ timestamp: true`
 				stopped: false,
 				executionHistory: []
 			}
-			const onLimitReached = vi.fn().mockResolvedValue<'cancel'>('cancel')
+			const onLimitReached = vi.fn().mockResolvedValue('cancel')
 			const onSessionReset = vi.fn()
 			const executor = new ToolExecutor(mockManager, tracker, {
 				sessionNotifications: {
@@ -307,7 +305,7 @@ timestamp: true`
 		})
 
 		it('notifies when document sessions reset after clearing state', async () => {
-			const { ToolExecutor } = await import('../../src/mcp')
+			const { ToolExecutor } = await import('../../src/mcp/index.js')
 			const mockManager = {
 				getClient: vi.fn(),
 				listServers: vi.fn().mockReturnValue([{ id: 'test-server', name: 'Test Server' }])
@@ -323,7 +321,7 @@ timestamp: true`
 			const onSessionReset = vi.fn()
 			const executor = new ToolExecutor(mockManager, tracker, {
 				sessionNotifications: {
-					onLimitReached: vi.fn().mockResolvedValue<'cancel'>('cancel'),
+					onLimitReached: vi.fn().mockResolvedValue('cancel'),
 					onSessionReset
 				}
 			})

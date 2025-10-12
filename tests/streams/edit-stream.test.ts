@@ -3,7 +3,7 @@ import { LockMap, SimpleAsyncLock } from 'src/streams/async-lock'
 import { TextEditStream } from 'src/streams/edit-stream'
 import { SimplePieceTable } from 'src/streams/piece-table'
 import { Range } from 'src/streams/types'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 const delay = (ms = 0) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -220,6 +220,52 @@ describe('Anchors', () => {
 		// THEN: downstream anchors shift by the inserted length
 		expect(stream.findAnchor('B').position).toBe(15)
 		expect(stream.findAnchor('C').position).toBe(25)
+	})
+})
+
+describe('Concurrency gaps', () => {
+	it('fails to keep anchor-aligned inserts ordered when writers interleave (Case 4.1)', async () => {
+		// GIVEN: two anchors pointing at different offsets in the same buffer
+		const stream = new TextEditStream('0123456789')
+		stream.addAnchor('anchorA', 0)
+		stream.addAnchor('anchorB', 5)
+
+		// AND: a spy that defers the buffer write for anchorB to simulate yielding mid-change
+		const originalInsert = SimplePieceTable.prototype.insert
+		let deferredInsert: (() => void) | undefined
+		const insertSpy = vi.spyOn(SimplePieceTable.prototype, 'insert').mockImplementation(function (
+			this: SimplePieceTable,
+			offset,
+			text
+		) {
+			if (text === 'bbb') {
+				deferredInsert = () => originalInsert.call(this, offset, text)
+				return
+			}
+			return originalInsert.call(this, offset, text)
+		})
+
+		try {
+			// WHEN: anchorB schedules an insert but pauses before mutating the buffer
+			await stream.applyChange('actor-b', 'anchorB', 'bbb')
+			expect(deferredInsert).toBeTruthy()
+
+			// AND: another writer inserts at anchorA while anchorB is paused
+			await stream.applyChange('actor-a', 'anchorA', 'aaa')
+
+			// AND: the deferred insert resumes using its stale offset
+				if (!deferredInsert) {
+					throw new Error('Deferred insert callback should have been captured')
+				}
+				deferredInsert()
+
+			// THEN: the final text reflects the stale offset instead of the anchor-aware position
+			const actual = stream.getText()
+			const interleavedExpectation = 'aaa01bbb23456789'
+			expect(actual).toBe(interleavedExpectation)
+		} finally {
+			insertSpy.mockRestore()
+		}
 	})
 })
 

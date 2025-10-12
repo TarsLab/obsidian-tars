@@ -8,7 +8,16 @@ const logger = createLogger('providers:openai')
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, resolveEmbedAsBinary: ResolveEmbedAsBinary) {
-		const { parameters, mcpManager, mcpExecutor, documentPath, pluginSettings, ...optionsExcludingParams } = settings
+		const {
+			parameters,
+			mcpManager,
+			mcpExecutor,
+			documentPath,
+			pluginSettings,
+			documentWriteLock,
+			beforeToolExecution,
+			...optionsExcludingParams
+		} = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, baseURL, model, ...remains } = options
 		if (!apiKey) throw new Error(t('API key is required'))
@@ -52,7 +61,9 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 					documentPath: documentPath || 'unknown.md',
 					autoUseDocumentCache: true,
 					parallelExecution: pluginOpts?.mcpParallelExecution ?? false,
-					maxParallelTools: pluginOpts?.mcpMaxParallelTools ?? 3
+					maxParallelTools: pluginOpts?.mcpMaxParallelTools ?? 3,
+					documentWriteLock,
+					onBeforeToolExecution: beforeToolExecution
 				})
 
 				return

@@ -7,6 +7,7 @@ import {
 	normalizeDisplayMode,
 	remoteUrlToCommand
 } from '../../src/mcp/displayMode'
+import type { CommandDisplayModeValue } from '../../src/mcp/displayMode'
 import type { MCPServerConfig } from '../../src/mcp/types'
 
 describe('remoteUrlToCommand', () => {
@@ -64,7 +65,7 @@ describe('normalizeDisplayMode', () => {
 	})
 
 	it('falls back to command for unknown value', () => {
-		expect(normalizeDisplayMode('other' as unknown as CommandDisplayMode)).toBe(CommandDisplayMode.Command)
+		expect(normalizeDisplayMode('other' as unknown as CommandDisplayModeValue)).toBe(CommandDisplayMode.Command)
 	})
 })
 

@@ -5,6 +5,30 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { OpenAIToolResponseParser } from '../../src/mcp/toolResponseParser'
+import type { ChatCompletionChunk } from 'openai/resources/chat/completions'
+
+function createChunk(
+	choicePartials: Array<Partial<ChatCompletionChunk['choices'][number]>>,
+	overrides: Partial<Omit<ChatCompletionChunk, 'choices'>> = {}
+): ChatCompletionChunk {
+	return {
+		id: overrides.id ?? 'chunk-id',
+		object: overrides.object ?? 'chat.completion.chunk',
+		created: overrides.created ?? 0,
+		model: overrides.model ?? 'gpt-mock-model',
+		choices: choicePartials.map((partial, index) => {
+			const { index: partialIndex, finish_reason, logprobs, delta, ...rest } = partial
+			return {
+				index: partialIndex ?? index,
+				finish_reason: finish_reason ?? null,
+				logprobs: logprobs ?? null,
+				delta: delta ?? {},
+				...rest
+			}
+		}),
+		...overrides,
+	}
+}
 
 describe('OpenAIToolResponseParser - Detailed Implementation Tests', () => {
 	let parser: OpenAIToolResponseParser
@@ -18,9 +42,9 @@ describe('OpenAIToolResponseParser - Detailed Implementation Tests', () => {
 		it('should parse simple text chunks', () => {
 			// GIVEN: Streaming text response
 			const chunks = [
-				{ choices: [{ delta: { content: 'Hello' } }] },
-				{ choices: [{ delta: { content: ' world' } }] },
-				{ choices: [{ delta: { content: '!' } }] }
+				createChunk([{ delta: { content: 'Hello' } }]),
+				createChunk([{ delta: { content: ' world' } }]),
+				createChunk([{ delta: { content: '!' } }])
 			]
 
 			// WHEN: Parsing chunks
@@ -36,7 +60,7 @@ describe('OpenAIToolResponseParser - Detailed Implementation Tests', () => {
 
 		it('should handle empty delta', () => {
 			// GIVEN: Empty delta chunk
-			const chunk = { choices: [{ delta: {} }] }
+			const chunk = createChunk([{ delta: {} }])
 
 			// WHEN: Parsing
 			const result = parser.parseChunk(chunk)
@@ -51,114 +75,107 @@ describe('OpenAIToolResponseParser - Detailed Implementation Tests', () => {
 			// GIVEN: Realistic OpenAI tool call streaming sequence
 			const chunks = [
 				// Initial chunk with tool call start
-				{
-					choices: [
-						{
-							delta: {
-								tool_calls: [
-									{
-										index: 0,
-										id: 'call_abc123',
-										type: 'function' as const,
-										function: {
-											name: 'get_current_weather'
-										}
+				createChunk([
+					{
+						index: 0,
+						delta: {
+							tool_calls: [
+								{
+									index: 0,
+									id: 'call_abc123',
+									type: 'function' as const,
+									function: {
+										name: 'get_current_weather'
 									}
-								]
-							}
+								}
+							]
 						}
-					]
-				},
+					}
+				]),
 				// Arguments streaming in parts
-				{
-					choices: [
-						{
-							delta: {
-								tool_calls: [
-									{
-										index: 0,
-										function: {
-											arguments: '{"loc'
-										}
+				createChunk([
+					{
+						index: 0,
+						delta: {
+							tool_calls: [
+								{
+									index: 0,
+									function: {
+										arguments: '{"loc'
 									}
-								]
-							}
+								}
+							]
 						}
-					]
-				},
-				{
-					choices: [
-						{
-							delta: {
-								tool_calls: [
-									{
-										index: 0,
-										function: {
-											arguments: 'ation": "'
-										}
+					}
+				]),
+				createChunk([
+					{
+						index: 0,
+						delta: {
+							tool_calls: [
+								{
+									index: 0,
+									function: {
+										arguments: 'ation": "'
 									}
-								]
-							}
+								}
+							]
 						}
-					]
-				},
-				{
-					choices: [
-						{
-							delta: {
-								tool_calls: [
-									{
-										index: 0,
-										function: {
-											arguments: 'San Francisco'
-										}
+					}
+				]),
+				createChunk([
+					{
+						index: 0,
+						delta: {
+							tool_calls: [
+								{
+									index: 0,
+									function: {
+										arguments: 'San Francisco'
 									}
-								]
-							}
+								}
+							]
 						}
-					]
-				},
-				{
-					choices: [
-						{
-							delta: {
-								tool_calls: [
-									{
-										index: 0,
-										function: {
-											arguments: ', CA", "unit'
-										}
+					}
+				]),
+				createChunk([
+					{
+						index: 0,
+						delta: {
+							tool_calls: [
+								{
+									index: 0,
+									function: {
+										arguments: ', CA", "unit'
 									}
-								]
-							}
+								}
+							]
 						}
-					]
-				},
-				{
-					choices: [
-						{
-							delta: {
-								tool_calls: [
-									{
-										index: 0,
-										function: {
-											arguments: '": "fahrenheit"}'
-										}
+					}
+				]),
+				createChunk([
+					{
+						index: 0,
+						delta: {
+							tool_calls: [
+								{
+									index: 0,
+									function: {
+										arguments: '": "fahrenheit"}'
 									}
-								]
-							}
+								}
+							]
 						}
-					]
-				},
+					}
+				]),
 				// Final chunk with finish_reason
-				{
-					choices: [
-						{
-							delta: {},
-							finish_reason: 'tool_calls'
-						}
-					]
-				}
+				createChunk([
+					{
+						index: 0,
+						delta: {},
+						finish_reason: 'tool_calls'
+					}
+				])
 			]
 
 			// WHEN: Parsing all chunks
@@ -185,69 +202,63 @@ describe('OpenAIToolResponseParser - Detailed Implementation Tests', () => {
 		it('should handle two parallel tool calls', () => {
 			// GIVEN: OpenAI response with 2 tool calls
 			const chunks = [
-				{
-					choices: [
-						{
-							delta: {
-								tool_calls: [
-									{
-										index: 0,
-										id: 'call_1',
-										type: 'function' as const,
-										function: { name: 'get_weather' }
-									}
-								]
-							}
+				createChunk([
+					{
+						index: 0,
+						delta: {
+							tool_calls: [
+								{
+									index: 0,
+									id: 'call_1',
+									type: 'function' as const,
+									function: { name: 'get_weather' }
+								}
+							]
 						}
-					]
-				},
-				{
-					choices: [
-						{
-							delta: {
-								tool_calls: [
-									{
-										index: 1,
-										id: 'call_2',
-										type: 'function' as const,
-										function: { name: 'get_time' }
-									}
-								]
-							}
+					}
+				]),
+				createChunk([
+					{
+						index: 1,
+						delta: {
+							tool_calls: [
+								{
+									index: 1,
+									id: 'call_2',
+									type: 'function' as const,
+									function: { name: 'get_time' }
+								}
+							]
 						}
-					]
-				},
-				{
-					choices: [
-						{
-							delta: {
-								tool_calls: [
-									{
-										index: 0,
-										function: { arguments: '{"location": "NYC"}' }
-									}
-								]
-							}
+					}
+				]),
+				createChunk([
+					{
+						index: 0,
+						delta: {
+							tool_calls: [
+								{
+									index: 0,
+									function: { arguments: '{"location": "NYC"}' }
+								}
+							]
 						}
-					]
-				},
-				{
-					choices: [
-						{
-							delta: {
-								tool_calls: [
-									{
-										index: 1,
-										function: { arguments: '{"timezone": "EST"}' }
-									}
-								]
-							}
+					}
+				]),
+				createChunk([
+					{
+						index: 1,
+						delta: {
+							tool_calls: [
+								{
+									index: 1,
+									function: { arguments: '{"timezone": "EST"}' }
+								}
+							]
 						}
-					]
-				},
-				{
-					choices: [{ delta: {}, finish_reason: 'tool_calls' }]
-				}
+					}
+				]),
+				createChunk([{ index: 0, delta: {}, finish_reason: 'tool_calls' }])
 			]
 
 			// WHEN: Parsing all chunks
@@ -278,39 +289,35 @@ describe('OpenAIToolResponseParser - Detailed Implementation Tests', () => {
 		it('should handle malformed JSON in arguments', () => {
 			// GIVEN: Tool call with invalid JSON
 			const chunks = [
-				{
-					choices: [
-						{
-							delta: {
-								tool_calls: [
-									{
-										index: 0,
-										id: 'call_bad',
-										type: 'function' as const,
-										function: { name: 'bad_tool' }
-									}
-								]
-							}
+				createChunk([
+					{
+						index: 0,
+						delta: {
+							tool_calls: [
+								{
+									index: 0,
+									id: 'call_bad',
+									type: 'function' as const,
+									function: { name: 'bad_tool' }
+								}
+							]
 						}
-					]
-				},
-				{
-					choices: [
-						{
-							delta: {
-								tool_calls: [
-									{
-										index: 0,
-										function: { arguments: '{invalid json' }
-									}
-								]
-							}
+					}
+				]),
+				createChunk([
+					{
+						index: 0,
+						delta: {
+							tool_calls: [
+								{
+									index: 0,
+									function: { arguments: '{invalid json' }
+								}
+							]
 						}
-					]
-				},
-				{
-					choices: [{ delta: {}, finish_reason: 'tool_calls' }]
-				}
+					}
+				]),
+				createChunk([{ index: 0, delta: {}, finish_reason: 'tool_calls' }])
 			]
 
 			// WHEN: Parsing chunks
@@ -332,25 +339,22 @@ describe('OpenAIToolResponseParser - Detailed Implementation Tests', () => {
 		it('should reset state correctly', () => {
 			// GIVEN: Parser with accumulated data
 			const chunks = [
-				{
-					choices: [
-						{
-							delta: {
-								tool_calls: [
-									{
-										index: 0,
-										id: 'call_1',
-										type: 'function' as const,
-										function: { name: 'test', arguments: '{}' }
-									}
-								]
-							}
+				createChunk([
+					{
+						index: 0,
+						delta: {
+							tool_calls: [
+								{
+									index: 0,
+									id: 'call_1',
+									type: 'function' as const,
+									function: { name: 'test', arguments: '{}' }
+								}
+							]
 						}
-					]
-				},
-				{
-					choices: [{ delta: {}, finish_reason: 'tool_calls' }]
-				}
+					}
+				]),
+				createChunk([{ index: 0, delta: {}, finish_reason: 'tool_calls' }])
 			]
 
 			for (const chunk of chunks) {
@@ -371,24 +375,23 @@ describe('OpenAIToolResponseParser - Detailed Implementation Tests', () => {
 		it('should handle text before tool call', () => {
 			// GIVEN: LLM outputs text, then calls tool
 			const chunks = [
-				{ choices: [{ delta: { content: 'Let me check the weather.' } }] },
-				{
-					choices: [
-						{
-							delta: {
-								tool_calls: [
-									{
-										index: 0,
-										id: 'call_1',
-										type: 'function' as const,
-										function: { name: 'get_weather', arguments: '{"city":"NYC"}' }
-									}
-								]
-							}
+				createChunk([{ delta: { content: 'Let me check the weather.' } }]),
+				createChunk([
+					{
+						index: 0,
+						delta: {
+							tool_calls: [
+								{
+									index: 0,
+									id: 'call_1',
+									type: 'function' as const,
+									function: { name: 'get_weather', arguments: '{"city":"NYC"}' }
+								}
+							]
 						}
-					]
-				},
-				{ choices: [{ delta: {}, finish_reason: 'tool_calls' }] }
+					}
+				]),
+				createChunk([{ index: 0, delta: {}, finish_reason: 'tool_calls' }])
 			]
 
 			// WHEN: Parsing
@@ -405,42 +408,38 @@ describe('OpenAIToolResponseParser - Detailed Implementation Tests', () => {
 		it('should handle nested objects and arrays', () => {
 			// GIVEN: Tool call with complex nested structure
 			const chunks = [
-				{
-					choices: [
-						{
-							delta: {
-								tool_calls: [
-									{
-										index: 0,
-										id: 'call_complex',
-										type: 'function' as const,
-										function: { name: 'create_entities' }
-									}
-								]
-							}
+				createChunk([
+					{
+						index: 0,
+						delta: {
+							tool_calls: [
+								{
+									index: 0,
+									id: 'call_complex',
+									type: 'function' as const,
+									function: { name: 'create_entities' }
+								}
+							]
 						}
-					]
-				},
-				{
-					choices: [
-						{
-							delta: {
-								tool_calls: [
-									{
-										index: 0,
-										function: {
-											arguments:
-												'{"entities":[{"name":"project","type":"project","observations":["In progress","High priority"]}]}'
-										}
+					}
+				]),
+				createChunk([
+					{
+						index: 0,
+						delta: {
+							tool_calls: [
+								{
+									index: 0,
+									function: {
+										arguments:
+											'{"entities":[{"name":"project","type":"project","observations":["In progress","High priority"]}]}'
 									}
-								]
-							}
+								}
+							]
 						}
-					]
-				},
-				{
-					choices: [{ delta: {}, finish_reason: 'tool_calls' }]
-				}
+					}
+				]),
+				createChunk([{ index: 0, delta: {}, finish_reason: 'tool_calls' }])
 			]
 
 			// WHEN: Parsing

@@ -6,7 +6,18 @@ const logger = createLogger('providers:ollama')
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, _resolveEmbedAsBinary: ResolveEmbedAsBinary) {
-		const { parameters, mcpManager, mcpExecutor, documentPath, statusBarManager, editor, pluginSettings, ...optionsExcludingParams } =
+		const {
+			parameters,
+			mcpManager,
+			mcpExecutor,
+			documentPath,
+			statusBarManager,
+			editor,
+			pluginSettings,
+			documentWriteLock,
+			beforeToolExecution,
+			...optionsExcludingParams
+		} =
 			settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { baseURL, model, ...remains } = options
@@ -50,7 +61,9 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 					editor: editor as any,
 					autoUseDocumentCache: true,
 					parallelExecution: pluginOpts?.mcpParallelExecution ?? false,
-					maxParallelTools: pluginOpts?.mcpMaxParallelTools ?? 3
+					maxParallelTools: pluginOpts?.mcpMaxParallelTools ?? 3,
+					documentWriteLock,
+					onBeforeToolExecution: beforeToolExecution
 				})
 
 				return

@@ -487,7 +487,7 @@ describe('Claude Tool Response Parser', () => {
 			// expect(parser.hasCompleteToolCalls()).toBe(true)
 			// const toolCalls = parser.getToolCalls()
 			// expect(toolCalls[0].arguments).toEqual({ location: 'London' })
-			expect(events[0].content_block.type).toBe('tool_use')
+				expect(events[0]?.content_block?.type).toBe('tool_use')
 		})
 
 		it('should handle text_delta alongside tool_use', () => {
@@ -505,8 +505,8 @@ describe('Claude Tool Response Parser', () => {
 
 			// WHEN: Parsing
 			// THEN: Should handle both text and tool call
-			expect(events[0].delta.type).toBe('text_delta')
-			expect(events[1].content_block.type).toBe('tool_use')
+				expect(events[0]?.delta?.type).toBe('text_delta')
+				expect(events[1]?.content_block?.type).toBe('tool_use')
 		})
 	})
 })

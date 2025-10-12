@@ -1,39 +1,19 @@
 // ──────────────────────────────────────────────
 // Lock Implementations
 
+import { Mutex } from 'async-mutex'
 import type { AsyncLock } from './types'
 
 // ──────────────────────────────────────────────
 export class SimpleAsyncLock implements AsyncLock {
-	private _pending: (() => void)[] = []
-	private _locked = false
+	private mutex = new Mutex()
 
 	async acquire(): Promise<() => void> {
-		if (!this._locked) {
-			this._locked = true
-			return () => this._release()
-		}
-		return new Promise((resolve) => {
-			this._pending.push(() => {
-				this._locked = true
-				resolve(() => this._release())
-			})
-		})
-	}
-
-	private _release() {
-		const next = this._pending.shift()
-		if (next) next()
-		else this._locked = false
+		return await this.mutex.acquire()
 	}
 
 	async runExclusive<T>(fn: () => Promise<T> | T): Promise<T> {
-		const release = await this.acquire()
-		try {
-			return await fn()
-		} finally {
-			release()
-		}
+		return this.mutex.runExclusive(fn)
 	}
 }
 

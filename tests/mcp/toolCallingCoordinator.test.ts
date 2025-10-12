@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 /**
  * Tests for Tool Calling Coordinator
  *

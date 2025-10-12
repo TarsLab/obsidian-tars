@@ -15,6 +15,8 @@ import { stringify as stringifyYAML } from 'yaml'
 
 import { createLogger } from '../logger'
 import type { StatusBarManager } from '../statusBarManager'
+import type { DocumentWriteLock } from '../utils/documentWriteLock'
+import { runWithLock } from '../utils/documentWriteLock'
 import type { ToolExecutor } from './executor'
 import type { ToolCall, ToolResponseParser } from './toolResponseParser'
 import { type CachedToolResult, DocumentToolCache } from './toolResultCache'
@@ -83,6 +85,8 @@ export interface GenerateOptions {
 	autoUseDocumentCache?: boolean
 	parallelExecution?: boolean
 	maxParallelTools?: number
+	documentWriteLock?: DocumentWriteLock
+	onBeforeToolExecution?: () => Promise<void>
 }
 
 interface ToolCallBlockInsertion {
@@ -113,38 +117,41 @@ const computeEndPosition = (editor: Editor, start: EditorPosition, text: string)
 	return editor.offsetToPos(endOffset)
 }
 
-function insertToolCallMarkdown(
+async function insertToolCallMarkdown(
 	editor: Editor,
 	toolName: string,
 	server: ToolServerInfo,
-	parameters: Record<string, unknown>
-): ToolCallBlockInsertion {
-	const cursor = editor.getCursor()
-	const start: EditorPosition = { line: cursor.line, ch: cursor.ch }
+	parameters: Record<string, unknown>,
+	lock?: DocumentWriteLock
+): Promise<ToolCallBlockInsertion> {
+	return await runWithLock(lock, () => {
+		const cursor = editor.getCursor()
+		const start: EditorPosition = { line: cursor.line, ch: cursor.ch }
 
-	const yamlParameterLines = formatParametersAsYAML(parameters)
-	const calloutLines: string[] = []
-	calloutLines.push(`> [!tool] Tool Call (${server.name}: ${toolName})`)
-	calloutLines.push(`> Server ID: ${server.id}`)
-	calloutLines.push(`> \`\`\`${server.name}`)
-	calloutLines.push(`> tool: ${toolName}`)
-	for (const line of yamlParameterLines) {
-		calloutLines.push(`> ${line}`)
-	}
-	calloutLines.push('> ```')
+		const yamlParameterLines = formatParametersAsYAML(parameters)
+		const calloutLines: string[] = []
+		calloutLines.push(`> [!tool] Tool Call (${server.name}: ${toolName})`)
+		calloutLines.push(`> Server ID: ${server.id}`)
+		calloutLines.push(`> \`\`\`${server.name}`)
+		calloutLines.push(`> tool: ${toolName}`)
+		for (const line of yamlParameterLines) {
+			calloutLines.push(`> ${line}`)
+		}
+		calloutLines.push('> ```')
 
-	const markdown = `\n${calloutLines.join('\n')}\n`
-	editor.replaceRange(markdown, cursor)
+		const markdown = `\n${calloutLines.join('\n')}\n`
+		editor.replaceRange(markdown, cursor)
 
-	const end = computeEndPosition(editor, start, markdown)
-	editor.setCursor(end)
+		const end = computeEndPosition(editor, start, markdown)
+		editor.setCursor(end)
 
-	return {
-		start,
-		end,
-		text: markdown,
-		header: calloutLines[0]
-	}
+		return {
+			start,
+			end,
+			text: markdown,
+			header: calloutLines[0]
+		}
+	})
 }
 
 const formatResultContent = (result: ToolExecutionResult): string => {
@@ -177,11 +184,12 @@ const buildMetadataLines = (result: ToolExecutionResult): string[] => {
 	return lines
 }
 
-function insertToolResultMarkdown(
+async function insertToolResultMarkdown(
 	editor: Editor,
 	block: ToolCallBlockInsertion,
-	result: ToolExecutionResult
-): ToolCallBlockInsertion {
+	result: ToolExecutionResult,
+	lock?: DocumentWriteLock
+): Promise<ToolCallBlockInsertion> {
 	const metadataLines = buildMetadataLines(result)
 	const formattedResult = formatResultContent(result)
 	const resultLines = formattedResult.split('\n')
@@ -197,16 +205,18 @@ function insertToolResultMarkdown(
 	const baseText = block.text.endsWith('\n') ? block.text : `${block.text}\n`
 	const combinedText = `${baseText}${calloutResultLines.join('\n')}\n`
 
-	editor.replaceRange(combinedText, block.start, block.end)
-	const newEnd = computeEndPosition(editor, block.start, combinedText)
-	editor.setCursor(newEnd)
+	return await runWithLock(lock, () => {
+		editor.replaceRange(combinedText, block.start, block.end)
+		const newEnd = computeEndPosition(editor, block.start, combinedText)
+		editor.setCursor(newEnd)
 
-	return {
-		start: block.start,
-		end: newEnd,
-		text: combinedText,
-		header: block.header
-	}
+		return {
+			start: block.start,
+			end: newEnd,
+			text: combinedText,
+			header: block.header
+		}
+	})
 }
 
 // ============================================================================
@@ -235,6 +245,8 @@ export class ToolCallingCoordinator {
 				cached: CachedToolResult
 			) => Promise<'re-execute' | 'use-cached' | 'cancel'>
 			autoUseDocumentCache: boolean
+			documentWriteLock?: DocumentWriteLock
+			onBeforeToolExecution?: () => Promise<void>
 		}
 	): Promise<{ toolCall: ToolCall; result?: ToolExecutionResult; error?: Error; cancelled?: boolean }> {
 		const {
@@ -246,7 +258,9 @@ export class ToolCallingCoordinator {
 			onToolResult,
 			statusBarManager,
 			onPromptCachedResult,
-			autoUseDocumentCache
+			autoUseDocumentCache,
+			documentWriteLock,
+			onBeforeToolExecution
 		} = context
 
 		logger.debug('preparing tool execution', {
@@ -318,7 +332,14 @@ export class ToolCallingCoordinator {
 		onToolCall?.(toolCall.name)
 		let calloutBlock: ToolCallBlockInsertion | null = null
 		if (editor) {
-			calloutBlock = insertToolCallMarkdown(editor, toolCall.name, serverInfo, toolCall.arguments || {})
+			await onBeforeToolExecution?.()
+			calloutBlock = await insertToolCallMarkdown(
+				editor,
+				toolCall.name,
+				serverInfo,
+				toolCall.arguments || {},
+				documentWriteLock
+			)
 		}
 
 		try {
@@ -342,7 +363,7 @@ export class ToolCallingCoordinator {
 			// Notify about tool result
 			onToolResult?.(toolCall.name, result.executionDuration)
 			if (editor && calloutBlock) {
-				insertToolResultMarkdown(editor, calloutBlock, result)
+				await insertToolResultMarkdown(editor, calloutBlock, result, documentWriteLock)
 			}
 
 			return { toolCall, result }
@@ -358,7 +379,10 @@ export class ToolCallingCoordinator {
 			})
 
 			if (editor && calloutBlock) {
-				editor.replaceRange('', calloutBlock.start, calloutBlock.end)
+				const blockToRemove = calloutBlock
+				await runWithLock(documentWriteLock, () => {
+					editor.replaceRange('', blockToRemove.start, blockToRemove.end)
+				})
 			}
 
 			return { toolCall, error: error as Error }
@@ -387,7 +411,8 @@ export class ToolCallingCoordinator {
 			onPromptCachedResult,
 			autoUseDocumentCache = false,
 			parallelExecution = false,
-			maxParallelTools = parallelExecution ? 3 : 1
+			maxParallelTools = parallelExecution ? 3 : 1,
+			documentWriteLock
 		} = options
 
 		logger.debug('starting generation loop', {
@@ -475,7 +500,9 @@ export class ToolCallingCoordinator {
 					onToolResult,
 					statusBarManager,
 					onPromptCachedResult,
-					autoUseDocumentCache
+					autoUseDocumentCache,
+					documentWriteLock,
+					onBeforeToolExecution: options.onBeforeToolExecution
 				}
 
 				// Execute tools with controlled concurrency (1 = sequential, >1 = parallel)

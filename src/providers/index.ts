@@ -1,4 +1,5 @@
 import type { EmbedCache } from 'obsidian'
+import type { DocumentWriteLock } from '../utils/documentWriteLock'
 
 export type MsgRole = 'user' | 'assistant' | 'system'
 
@@ -53,6 +54,8 @@ export interface BaseOptions {
 	statusBarManager?: unknown // StatusBarManager for error logging
 	editor?: unknown // Active Obsidian editor for markdown persistence
 	pluginSettings?: unknown // Plugin settings for parallel execution configuration
+	documentWriteLock?: DocumentWriteLock
+	beforeToolExecution?: () => Promise<void>
 }
 
 export interface ProviderSettings {

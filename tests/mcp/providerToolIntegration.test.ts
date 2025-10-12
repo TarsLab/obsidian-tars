@@ -10,12 +10,12 @@ import {
 	buildOllamaTools,
 	buildOpenAITools,
 	buildToolsForProvider,
+	createMCPManager,
+	createToolExecutor,
 	getToolCallingModels,
 	injectMCPTools,
 	providerSupportsTools
 } from '../../src/mcp'
-import { ToolExecutor } from '../../src/mcp/executor'
-import { MCPServerManager } from '../../src/mcp/managerMCPUse'
 
 // Mock mcp-use
 vi.mock('mcp-use', () => {
@@ -57,12 +57,12 @@ vi.mock('mcp-use', () => {
 })
 
 describe('Provider Tool Integration', () => {
-	let manager: MCPServerManager
-	let executor: ToolExecutor
+	let manager: ReturnType<typeof createMCPManager>
+	let executor: ReturnType<typeof createToolExecutor>
 
 	beforeEach(async () => {
-		manager = new MCPServerManager()
-		executor = new ToolExecutor(manager)
+		manager = createMCPManager()
+		executor = createToolExecutor(manager)
 
 		await manager.initialize([
 			{

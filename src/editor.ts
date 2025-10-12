@@ -16,7 +16,10 @@ import {
 	type Vault
 } from 'obsidian'
 import { t } from 'src/lang/helper'
+import { TextEditStream } from 'src/streams/edit-stream'
 import { createLogger } from './logger'
+import type { MCPServerManager } from './mcp/managerMCPUse'
+import { formatUtilitySectionCallout, type UtilitySectionServer } from './mcp/utilitySectionFormatter'
 import type {
 	CreatePlainText,
 	Message,
@@ -27,10 +30,9 @@ import type {
 } from './providers'
 import { withStreamLogging } from './providers/decorator'
 import { APP_FOLDER, availableVendors, type EditorStatus, type PluginSettings } from './settings'
-import type { MCPServerManager } from './mcp/managerMCPUse'
-import { formatUtilitySectionCallout, type UtilitySectionServer } from './mcp/utilitySectionFormatter'
 import type { GenerationStats, StatusBarManager } from './statusBarManager'
 import type { TagRole } from './suggest'
+import { DocumentWriteLock, runWithLock } from './utils/documentWriteLock'
 
 const logger = createLogger('editor')
 const streamLogger = createLogger('editor:stream')
@@ -348,30 +350,41 @@ const debouncedResetInsertState = debounce(
 	true
 )
 
-const insertText = (editor: Editor, text: string, editorStatus: EditorStatus, lastEditPos: EditorPosition | null) => {
+const insertText = async (
+	editor: Editor,
+	stream: TextEditStream,
+	anchorId: string,
+	text: string,
+	editorStatus: EditorStatus,
+	lastEditPos: EditorPosition | null
+) => {
 	editorStatus.isTextInserting = true
-	let cursor = editor.getCursor('to')
 
-	if (lastEditPos !== null && (lastEditPos.line !== cursor.line || lastEditPos.ch !== cursor.ch)) {
-		// If there is a previous edit position, and it is different from the current cursor position, update the cursor to the last edit position
-		cursor = lastEditPos
+	const anchor = stream.findAnchor(anchorId)
+	if (lastEditPos !== null) {
+		// update anchor to lastEditPos
+		anchor.position = editor.posToOffset(lastEditPos)
 	}
 
+	// adjust for end of line
+	const cursor = editor.offsetToPos(anchor.position)
 	const lineAtCursor = editor.getLine(cursor.line)
 	if (lineAtCursor.length > cursor.ch) {
-		cursor = { line: cursor.line, ch: lineAtCursor.length }
+		anchor.position = editor.posToOffset({ line: cursor.line, ch: lineAtCursor.length })
 	}
 
-	const lines = text.split('\n')
-	const newEditPos = {
-		line: cursor.line + lines.length - 1,
-		ch: lines.length === 1 ? cursor.ch + text.length : lines[lines.length - 1].length
-	}
+	const insertPos = editor.offsetToPos(anchor.position)
+	await stream.applyChange('llm', anchorId, text)
 
-	editor.replaceRange(text, cursor)
-	editor.setCursor(newEditPos)
+	// sync to editor
+	editor.replaceRange(text, insertPos, insertPos)
+
+	// new position
+	const position = anchor.position
+	const newCursor = editor.offsetToPos(position)
+	editor.setCursor(newCursor)
 	debouncedResetInsertState(editorStatus)
-	return newEditPos
+	return newCursor
 }
 
 export const extractConversationsTextOnly = async (env: RunEnv) => {
@@ -480,6 +493,26 @@ export const generate = async (
 			throw new Error(`No vendor found ${provider.vendor}`)
 		}
 
+		const documentWriteLock = new DocumentWriteLock()
+
+		const stream = new TextEditStream(editor.getValue())
+		const cursorPos = editor.posToOffset(editor.getCursor('to'))
+		stream.addAnchor('cursor', cursorPos)
+
+		const clearStreamingOutput = async () => {
+			if (!startPos) return
+			const startPosition = startPos
+			await documentWriteLock.runExclusive(() => {
+				const currentCursor = editor.getCursor('to')
+				editor.replaceRange('', startPosition, currentCursor)
+				editor.setCursor(startPosition)
+			})
+			lastEditPos = startPosition
+			startPos = null
+			llmResponse = ''
+			statusBarManager.updateGeneratingProgress(0)
+		}
+
 		// Inject MCP manager, executor, statusBarManager, and document path into provider options if available
 		if (mcpManager && mcpExecutor) {
 			provider.options.mcpManager = mcpManager
@@ -490,6 +523,8 @@ export const generate = async (
 		}
 
 		provider.options.editor = editor
+		provider.options.documentWriteLock = documentWriteLock
+		provider.options.beforeToolExecution = clearStreamingOutput
 
 		const conversation = await extractConversation(env, 0, endOffset)
 		const messages = conversation.map((c) =>
@@ -511,7 +546,7 @@ export const generate = async (
 			logger.debug('default system message injected')
 		}
 
-		await insertUtilitySectionIfEnabled(editor, provider, pluginSettings, mcpManager)
+		await insertUtilitySectionIfEnabled(editor, provider, pluginSettings, mcpManager, documentWriteLock)
 
 		const round = messages.filter((m) => m.role === 'assistant').length + 1
 
@@ -546,10 +581,12 @@ export const generate = async (
 					totalResponseLength: totalTextLength
 				})
 
-				if (startPos == null) startPos = editor.getCursor('to')
-				lastEditPos = insertText(editor, text, editorStatus, lastEditPos)
-				llmResponse += text
-				statusBarManager.updateGeneratingProgress(llmResponse.length)
+				await documentWriteLock.runExclusive(async () => {
+					if (startPos == null) startPos = editor.getCursor('to')
+					lastEditPos = await insertText(editor, stream, 'cursor', text, editorStatus, lastEditPos)
+					llmResponse += text
+					statusBarManager.updateGeneratingProgress(llmResponse.length)
+				})
 			}
 		} catch (error) {
 			streamLogger.error('streaming error', error)
@@ -581,7 +618,10 @@ export const generate = async (
 
 		// Check if anything was generated (text or tool calls via cursor movement)
 		const endPos = editor.getCursor('to')
-		const cursorMoved = startPos && (startPos.line !== endPos.line || startPos.ch !== endPos.ch)
+		const startPositionForCheck = startPos as EditorPosition | null
+		const cursorMoved =
+			startPositionForCheck != null &&
+			(startPositionForCheck.line !== endPos.line || startPositionForCheck.ch !== endPos.ch)
 
 		// Only throw error if no LLM text AND no content inserted (no tool calls)
 		if (llmResponse.length === 0 && !cursorMoved) {
@@ -590,13 +630,16 @@ export const generate = async (
 
 		logger.info('assistant response generated', { characters: llmResponse.length })
 		if (startPos) {
-			const endPos = editor.getCursor('to')
-			const insertedText = editor.getRange(startPos, endPos)
-			const formattedText = formatTextWithLeadingBreaks(llmResponse)
-			if (insertedText !== formattedText) {
-				logger.debug('normalizing leading breaks in response')
-				editor.replaceRange(formattedText, startPos, endPos)
-			}
+			const startPosition = startPos
+			await documentWriteLock.runExclusive(() => {
+				const endCursorPos = editor.getCursor('to')
+				const insertedText = editor.getRange(startPosition, endCursorPos)
+				const formattedText = formatTextWithLeadingBreaks(llmResponse)
+				if (insertedText !== formattedText) {
+					logger.debug('normalizing leading breaks in response')
+					editor.replaceRange(formattedText, startPosition, endCursorPos)
+				}
+			})
 		}
 
 		if (controller.signal.aborted) {
@@ -633,7 +676,8 @@ async function insertUtilitySectionIfEnabled(
 	editor: Editor,
 	provider: ProviderSettings,
 	pluginSettings?: unknown,
-	mcpManager?: unknown
+	mcpManager?: unknown,
+	documentWriteLock?: DocumentWriteLock
 ): Promise<void> {
 	const typedSettings = pluginSettings as PluginSettings | undefined
 	const isEnabled = typedSettings?.enableUtilitySection ?? true
@@ -645,17 +689,16 @@ async function insertUtilitySectionIfEnabled(
 		return
 	}
 
-	const cursor = editor.getCursor('to')
-	const startOffset = editor.posToOffset(cursor)
-	editor.replaceRange(callout, cursor)
-	const newCursor = editor.offsetToPos(startOffset + callout.length)
-	editor.setCursor(newCursor)
+	await runWithLock(documentWriteLock, () => {
+		const cursor = editor.getCursor('to')
+		const startOffset = editor.posToOffset(cursor)
+		editor.replaceRange(callout, cursor)
+		const newCursor = editor.offsetToPos(startOffset + callout.length)
+		editor.setCursor(newCursor)
+	})
 }
 
-async function buildUtilitySectionCallout(
-	provider: ProviderSettings,
-	mcpManager?: MCPServerManager
-): Promise<string> {
+async function buildUtilitySectionCallout(provider: ProviderSettings, mcpManager?: MCPServerManager): Promise<string> {
 	const providerName = provider.vendor ?? 'Unknown'
 	const modelOption =
 		typeof provider.options === 'object' && provider.options !== null && 'model' in provider.options

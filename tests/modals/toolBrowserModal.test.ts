@@ -10,7 +10,7 @@ describe('Tool Browser Modal - Template Generation', () => {
 	describe('Parameter placeholder generation', () => {
 		it('should generate correct placeholder for string type', () => {
 			// Given: String parameter schema
-			const paramSchema = { type: 'string' }
+			const paramSchema: { type: 'string'; example?: string } = { type: 'string' }
 
 			// When: Generating placeholder
 			let exampleValue = ''
@@ -26,7 +26,7 @@ describe('Tool Browser Modal - Template Generation', () => {
 
 		it('should generate correct placeholder for number type', () => {
 			// Given: Number parameter schema
-			const paramSchema = { type: 'number' }
+			const paramSchema: { type: 'number' | 'integer'; example?: number } = { type: 'number' }
 
 			// When: Generating placeholder
 			let exampleValue = ''
@@ -43,7 +43,7 @@ describe('Tool Browser Modal - Template Generation', () => {
 
 		it('should generate correct placeholder for integer type', () => {
 			// Given: Integer parameter schema
-			const paramSchema = { type: 'integer' }
+			const paramSchema: { type: 'number' | 'integer'; example?: number } = { type: 'integer' }
 
 			// When: Generating placeholder
 			let exampleValue = ''
@@ -60,7 +60,7 @@ describe('Tool Browser Modal - Template Generation', () => {
 
 		it('should generate correct placeholder for boolean type', () => {
 			// Given: Boolean parameter schema
-			const paramSchema = { type: 'boolean' }
+			const paramSchema: { type: 'boolean'; example?: boolean } = { type: 'boolean' }
 
 			// When: Generating placeholder
 			let exampleValue = ''
@@ -76,7 +76,7 @@ describe('Tool Browser Modal - Template Generation', () => {
 
 		it('should generate correct placeholder for array type', () => {
 			// Given: Array parameter schema
-			const paramSchema = { type: 'array' }
+			const paramSchema: { type: 'array' } = { type: 'array' }
 
 			// When: Generating placeholder
 			let exampleValue = ''
@@ -92,7 +92,7 @@ describe('Tool Browser Modal - Template Generation', () => {
 
 		it('should generate correct placeholder for object type', () => {
 			// Given: Object parameter schema
-			const paramSchema = { type: 'object' }
+			const paramSchema: { type: 'object' } = { type: 'object' }
 
 			// When: Generating placeholder
 			let exampleValue = ''
@@ -108,7 +108,7 @@ describe('Tool Browser Modal - Template Generation', () => {
 
 		it('should use example value when provided for string', () => {
 			// Given: String parameter with example
-			const paramSchema = { type: 'string', example: 'test-value' }
+			const paramSchema: { type: 'string'; example?: string } = { type: 'string', example: 'test-value' }
 
 			// When: Generating placeholder
 			let exampleValue = ''
@@ -124,7 +124,7 @@ describe('Tool Browser Modal - Template Generation', () => {
 
 		it('should use example value when provided for number', () => {
 			// Given: Number parameter with example
-			const paramSchema = { type: 'number', example: 42 }
+			const paramSchema: { type: 'number' | 'integer'; example?: number } = { type: 'number', example: 42 }
 
 			// When: Generating placeholder
 			let exampleValue = ''

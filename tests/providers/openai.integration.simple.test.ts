@@ -32,7 +32,7 @@ describe('OpenAI Provider Integration - Path Selection', () => {
 
 	it('should have openAIVendor with Tool Calling capability', async () => {
 		// WHEN: Importing vendor
-		const { openAIVendor } = await import('../../src/providers/openAI')
+		const { openAIVendor } = await import('../../src/providers/openAI.js')
 
 		// THEN: Should have Tool Calling capability
 		expect(openAIVendor.capabilities).toContain('Tool Calling')

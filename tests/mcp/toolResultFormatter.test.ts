@@ -9,7 +9,7 @@ import {
 	formatToolResultAsMarkdown,
 	type FormatOptions
 } from '../../src/mcp/toolResultFormatter'
-import type { ToolExecutionResult } from '../../src/mcp/toolCallingCoordinator'
+import type { ToolExecutionResult } from '../../src/mcp/types.js'
 
 describe('Tool Result Formatter', () => {
 	describe('formatResultContent', () => {

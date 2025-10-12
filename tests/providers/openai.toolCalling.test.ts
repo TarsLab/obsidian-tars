@@ -127,7 +127,12 @@ describe('OpenAI Provider - Tool Calling Integration', () => {
 			]
 
 			// THEN: Should track both tool calls
-			expect(mockStream[0].choices[0].delta.tool_calls).toHaveLength(2)
+			const firstDelta = mockStream[0].choices[0].delta
+			if (!('tool_calls' in firstDelta) || !firstDelta.tool_calls) {
+				throw new Error('Expected tool_calls in streaming delta payload')
+			}
+
+			expect(firstDelta.tool_calls).toHaveLength(2)
 		})
 	})
 
