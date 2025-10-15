@@ -231,6 +231,9 @@ Translate the following content into English：{{s}}
 	'Retention period (days)': 'Retention period (days)',
 	'How long to keep tool result files before automatic cleanup':
 		'How long to keep tool result files before automatic cleanup',
+	'Text Editor default view lines': 'Text Editor default view lines',
+	'Maximum number of lines to display when viewing a file without specifying a range':
+		'Maximum number of lines to display when viewing a file without specifying a range',
 
 	// statusBarManager.ts
 	'AI Generation Details': 'AI Generation Details',
@@ -255,5 +258,14 @@ Translate the following content into English：{{s}}
 	Characters: 'Characters',
 
 	// tool
-	tool: 'tool'
+	tool: 'tool',
+
+	// textEditor
+	Read: 'Read',
+	lines: 'lines',
+	to: 'to',
+	Edited: 'Edited',
+	Created: 'Created',
+	'Inserted text at line': 'Inserted text at line',
+	in: 'in'
 }

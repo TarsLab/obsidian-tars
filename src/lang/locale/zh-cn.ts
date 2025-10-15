@@ -226,6 +226,9 @@ export default {
 	'Tool Result Storage': '工具结果存储',
 	'Retention period (days)': '保留期限（天）',
 	'How long to keep tool result files before automatic cleanup': '自动清理前保留工具结果文件的时间',
+	'Text Editor default view lines': '文本编辑器默认查看行数',
+	'Maximum number of lines to display when viewing a file without specifying a range':
+		'查看文件时未指定范围的最大显示行数',
 
 	// statusBarManager.ts
 	'AI Generation Details': 'AI 生成详情',
@@ -250,5 +253,14 @@ export default {
 	Characters: '字符数',
 
 	// tool
-	tool: '工具'
+	tool: '工具',
+
+	// textEditor
+	Read: '查看',
+	lines: '行',
+	to: '到',
+	Edited: '编辑',
+	Created: '创建',
+	'Inserted text at line': '插入行',
+	in: '在'
 }

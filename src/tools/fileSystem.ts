@@ -1,19 +1,27 @@
-import { TFile, TFolder } from 'obsidian'
+import { TFolder } from 'obsidian'
 import { RunEnv } from 'src/environment'
 import { Tool, ToolFunction, ToolRegistry, ToolResponse } from './index'
+import { findFileOrFolder, resolveAbstractPath, resolveFilePath } from './utils'
 
 // 文件系统相关工具
 
 // 读取文件工具
 const readFileTool: Tool = {
 	name: 'read_file',
-	description: 'Read the contents of a file in the vault',
+	description: 'Read the contents of a file in the vault with smart path resolution and optional line range',
 	input_schema: {
 		type: 'object',
 		properties: {
 			path: {
 				type: 'string',
-				description: 'The path to the file to read'
+				description: 'The path to the file to read.'
+			},
+			view_range: {
+				type: 'array',
+				items: { type: 'number' },
+				minItems: 2,
+				maxItems: 2,
+				description: 'Optional line range to read [startLine, endLine]. Use -1 for endLine to read to end of file.'
 			}
 		},
 		required: ['path']
@@ -25,8 +33,14 @@ const readFileFunction: ToolFunction = async (
 	parameters: Record<string, unknown>
 ): Promise<ToolResponse> => {
 	const { app } = env
-	const { path } = parameters
-	const desc = `Reading file: ${path}`
+	const { path, view_range } = parameters
+
+	const desc =
+		`Reading file: ${path}` +
+		(view_range && Array.isArray(view_range) && view_range.length === 2
+			? ` (lines ${view_range[0]} to ${view_range[1]})`
+			: '')
+
 	if (typeof path !== 'string') {
 		return {
 			desc,
@@ -35,20 +49,86 @@ const readFileFunction: ToolFunction = async (
 		}
 	}
 
-	try {
-		const file = app.vault.getAbstractFileByPath(path)
-		if (!file || !(file instanceof TFile)) {
-			return {
-				desc,
-				content: [{ type: 'text', text: `File not found: ${path}` }],
-				isError: true
-			}
-		}
+	// 使用智能路径解析
+	const { file, folder, error } = findFileOrFolder(app, path as string)
 
-		const content = await app.vault.read(file)
+	if (error) {
 		return {
 			desc,
-			content: [{ type: 'text', text: `File contents of ${path}:\n\n${content}` }]
+			content: [{ type: 'text', text: error }],
+			isError: true
+		}
+	}
+
+	// 如果是文件夹，报错
+	if (folder) {
+		return {
+			desc,
+			content: [{ type: 'text', text: `Error: ${path} is a directory, not a file` }],
+			isError: true
+		}
+	}
+
+	// 如果没有找到文件
+	if (!file) {
+		return {
+			desc,
+			content: [{ type: 'text', text: `File not found: ${path}` }],
+			isError: true
+		}
+	}
+
+	try {
+		const content = await app.vault.cachedRead(file)
+		const lines = content.split('\n')
+
+		if (view_range && Array.isArray(view_range) && view_range.length === 2) {
+			// 范围读取
+			const [startLine, endLine] = view_range as [number, number]
+			const start = Math.max(1, startLine) - 1 // Convert to 0-based index
+			const end = endLine === -1 ? lines.length : Math.min(lines.length, endLine)
+
+			if (start >= lines.length) {
+				return {
+					desc,
+					content: [{ type: 'text', text: `Start line ${startLine} exceeds file length (${lines.length} lines)` }],
+					isError: true
+				}
+			}
+
+			const selectedLines = lines.slice(start, end)
+			const numberedLines = selectedLines.map((line, index) => `${start + index + 1}: ${line}`)
+
+			return {
+				desc,
+				content: [
+					{
+						type: 'text',
+						text: `File: ${file.path} (lines ${start + 1}-${end} of ${lines.length} total)\n\n${numberedLines.join('\n')}`
+					}
+				]
+			}
+		} else {
+			// 默认行数限制
+			const defaultLines = env.options.textEditorDefaultViewLines
+			const shouldTruncate = lines.length > defaultLines
+			const displayLines = shouldTruncate ? lines.slice(0, defaultLines) : lines
+
+			// 显示带行号的文件内容
+			const numberedLines = displayLines.map((line, index) => `${index + 1}: ${line}`)
+			const truncateMessage = shouldTruncate
+				? `\n\n[... ${lines.length - defaultLines} more lines. Use view_range parameter to see specific sections.]`
+				: ''
+
+			return {
+				desc,
+				content: [
+					{
+						type: 'text',
+						text: `File: ${file.path} (${lines.length} lines total${shouldTruncate ? `, showing first ${defaultLines}` : ''})\n\n${numberedLines.join('\n')}${truncateMessage}`
+					}
+				]
+			}
 		}
 	} catch (error) {
 		return {
@@ -59,75 +139,81 @@ const readFileFunction: ToolFunction = async (
 	}
 }
 
-// 写入文件工具
-const writeFileTool: Tool = {
-	name: 'write_file',
-	description: 'Write content to a file in the vault',
+// 创建文件工具
+const createFileTool: Tool = {
+	name: 'create_file',
+	description: 'Create a new file in the vault',
 	input_schema: {
 		type: 'object',
 		properties: {
 			path: {
 				type: 'string',
-				description: 'The path to the file to write'
+				description: 'The path to the file to create'
 			},
 			content: {
 				type: 'string',
-				description: 'The content to write to the file'
-			},
-			createIfNotExists: {
-				type: 'boolean',
-				description: 'Whether to create the file if it does not exist',
-				default: true
+				description: 'The content to write to the new file'
 			}
 		},
 		required: ['path', 'content']
 	}
 }
 
-const writeFileFunction: ToolFunction = async (
+const createFileFunction: ToolFunction = async (
 	env: RunEnv,
 	parameters: Record<string, unknown>
 ): Promise<ToolResponse> => {
 	const { app } = env
-	const { path, content, createIfNotExists = true } = parameters
-	const desc = `Writing to file: ${path}`
+	const { path, content } = parameters
 
-	if (typeof path !== 'string' || typeof content !== 'string') {
+	// 使用智能路径解析
+	const basePath = resolveAbstractPath(app, path as string)
+	const finalPath = resolveFilePath(basePath)
+
+	// 检查文件扩展名
+	const lastSlashIndex = finalPath.lastIndexOf('/')
+	const filename = lastSlashIndex === -1 ? finalPath : finalPath.substring(lastSlashIndex + 1)
+
+	const desc = `Creating file: ${finalPath}`
+
+	if (!filename.includes('.')) {
 		return {
 			desc,
-			content: [{ type: 'text', text: 'Invalid path or content parameter' }],
+			content: [{ type: 'text', text: `Invalid file path: ${finalPath} has no file extension` }],
+			isError: true
+		}
+	}
+
+	if (typeof content !== 'string') {
+		return {
+			desc,
+			content: [{ type: 'text', text: 'content must be a string' }],
 			isError: true
 		}
 	}
 
 	try {
-		const file = app.vault.getAbstractFileByPath(path)
-
-		if (!file && createIfNotExists) {
-			// Create new file
-			await app.vault.create(path, content)
+		// 检查文件是否已存在
+		const existingFile = app.vault.getAbstractFileByPath(finalPath)
+		if (existingFile) {
 			return {
 				desc,
-				content: [{ type: 'text', text: `File created successfully: ${path}` }]
-			}
-		} else if (file instanceof TFile) {
-			// Update existing file
-			await app.vault.modify(file, content)
-			return {
-				desc,
-				content: [{ type: 'text', text: `File updated successfully: ${path}` }]
-			}
-		} else {
-			return {
-				desc,
-				content: [{ type: 'text', text: `File not found and createIfNotExists is false: ${path}` }],
+				content: [{ type: 'text', text: `File already exists: ${finalPath}` }],
 				isError: true
 			}
+		}
+
+		// 创建新文件
+		await app.vault.create(finalPath, content)
+
+		return {
+			desc,
+			content: [{ type: 'text', text: `Successfully created file: ${finalPath}` }]
 		}
 	} catch (error) {
 		return {
 			desc,
-			content: [{ type: 'text', text: `Failed to write file: ${error.message}` }],
+			content: [{ type: 'text', text: `Failed to create file: ${error.message}` }],
 			isError: true
 		}
 	}
@@ -141,8 +227,9 @@ const listDirectoryTool: Tool = {
 		properties: {
 			path: {
 				type: 'string',
-				description: 'The path to the directory to list (empty string for root)',
-				default: ''
+				description:
+					'The path to the directory to list (supports relative paths, use "." for current directory based on active file)',
+				default: '.'
 			}
 		}
 	}
@@ -153,8 +240,9 @@ const listDirectoryFunction: ToolFunction = async (
 	parameters: Record<string, unknown>
 ): Promise<ToolResponse> => {
 	const { app } = env
-	const { path = '' } = parameters
-	const desc = `Listing directory: ${path || 'root'}`
+	const { path = '.' } = parameters // 默认使用当前目录
+
+	const desc = `Listing directory: ${path}`
 
 	if (typeof path !== 'string') {
 		return {
@@ -164,50 +252,48 @@ const listDirectoryFunction: ToolFunction = async (
 		}
 	}
 
+	// 使用智能路径解析
+	const { file, folder, error } = findFileOrFolder(app, path)
+
+	if (error) {
+		return {
+			desc,
+			content: [{ type: 'text', text: error }],
+			isError: true
+		}
+	}
+
+	// 如果是文件，报错
+	if (file) {
+		return {
+			desc,
+			content: [{ type: 'text', text: `Error: ${path} is a file, not a directory` }],
+			isError: true
+		}
+	}
+
+	// 如果没有找到文件夹
+	if (!folder) {
+		return {
+			desc,
+			content: [{ type: 'text', text: `Directory not found: ${path}` }],
+			isError: true
+		}
+	}
+
 	try {
-		const activeFile = app.workspace.getActiveFile()
-		if (!activeFile)
-			return {
-				desc,
-				content: [{ type: 'text', text: 'No active file' }],
-				isError: true
-			}
-
-		const rootPath = app.vault.getRoot().path
-		const parentPath = activeFile.parent?.path || rootPath
-
-		let folderPath = null
-		if (path === '') {
-			folderPath = rootPath
-		} else if (path === '.') {
-			folderPath = parentPath
-		} else {
-			folderPath = path
-		}
-
-		const folder = app.vault.getFolderByPath(folderPath)
-		if (!folder || !(folder instanceof TFolder)) {
-			console.error(`Directory not found: ${path || 'root'}`)
-			return {
-				desc,
-				content: [{ type: 'text', text: `Directory not found: ${path || 'root'}` }],
-				isError: true
-			}
-		}
-
-		const items = folder.children.map((child) => child.path)
+		const items = folder.children.map((child) => (child instanceof TFolder ? `${child.path}/` : child.path))
 
 		return {
 			desc,
 			content: [
 				{
 					type: 'text',
-					text: `Directory: ${folderPath}\n\n${items.join('\n')}`
+					text: `Directory: ${folder.path}\n\n${items.join('\n')}`
 				}
 			]
 		}
 	} catch (error) {
-		console.error(error)
 		return {
 			desc,
 			content: [{ type: 'text', text: `Failed to list directory: ${error.message}` }],
@@ -258,7 +344,7 @@ const deleteFileFunction: ToolFunction = async (
 			}
 		}
 
-		await app.vault.delete(file)
+		await app.vault.trash(file, false)
 		return {
 			desc,
 			content: [{ type: 'text', text: `File deleted successfully: ${path}` }]
@@ -275,7 +361,7 @@ const deleteFileFunction: ToolFunction = async (
 // 注册文件系统工具
 export function registerFileSystemTools(toolRegistry: ToolRegistry) {
 	toolRegistry.register(readFileTool, readFileFunction)
-	toolRegistry.register(writeFileTool, writeFileFunction)
+	toolRegistry.register(createFileTool, createFileFunction)
 	toolRegistry.register(listDirectoryTool, listDirectoryFunction)
 	toolRegistry.register(deleteFileTool, deleteFileFunction)
 }

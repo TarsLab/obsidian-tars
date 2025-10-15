@@ -12,7 +12,6 @@ import {
 import { t } from './lang/helper'
 import { PluginSettings } from './settings'
 import { ToolRegistry } from './tools'
-import { registerTextEditorTool } from './tools/textEditor'
 
 export interface RunEnv {
 	readonly app: App
@@ -111,7 +110,11 @@ export const buildRunEnv = async (app: App, settings: PluginSettings): Promise<R
 	}
 }
 
-export const buildCapabilities = (runEnv: RunEnv, enableTarsTools: boolean = false): Capabilities => {
+export const buildCapabilities = (
+	runEnv: RunEnv,
+	vendorName: string,
+	enableTarsTools: boolean = false
+): Capabilities => {
 	const { app, vault, filePath, appMeta } = runEnv
 	const saveAttachment = async (filename: string, data: ArrayBuffer) => {
 		const attachmentPath = await app.fileManager.getAvailablePathForAttachment(filename)
@@ -133,7 +136,9 @@ export const buildCapabilities = (runEnv: RunEnv, enableTarsTools: boolean = fal
 	const toolRegistry = new ToolRegistry()
 	if (enableTarsTools) {
 		// registerFileSystemTools(toolRegistry)
-		registerTextEditorTool(toolRegistry)
+		// if (vendorName !== claudeVendor.name) {
+		// 	registerTextEditorTools(toolRegistry)
+		// }
 	}
 
 	return {

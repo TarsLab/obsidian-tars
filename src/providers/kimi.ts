@@ -115,6 +115,7 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 				})
 			}
 		}
+		console.debug('Using tools:', tools)
 
 		const data = {
 			model,

@@ -479,6 +479,7 @@ export const generate = async (
 			if (insertedText !== formattedText) {
 				console.debug('format text with leading breaks')
 				editor.replaceRange(formattedText, textStartPos, textEndPos)
+				lastEditPos = null // reset lastEditPos since we replaced the text
 			}
 		}
 
