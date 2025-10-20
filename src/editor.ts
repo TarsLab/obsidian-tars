@@ -164,7 +164,7 @@ const extractTaggedBlocks = (env: RunEnv, startOffset: number, endOffset: number
 	const roleMappedTags: Tag[] = tags
 		.filter((t) => startOffset <= t.position.start.offset && t.position.end.offset <= endOffset)
 		.map((t) => {
-			const lowerCaseTag = t.tag.slice(1).split('/')[0].toLowerCase()
+			const lowerCaseTag = t.tag.slice(1).toLowerCase()
 			const role = userTags.some((ut) => ut.toLowerCase() === lowerCaseTag)
 				? 'user'
 				: assistantTags.some((at) => at.toLowerCase() === lowerCaseTag)
@@ -300,7 +300,7 @@ const extractConversation = async (env: RunEnv, startOffset: number, endOffset: 
 
 	const lastNewChatTag = tagsInMeta.findLast(
 		(t) =>
-			newChatTags.some((n) => t.tag.slice(1).split('/')[0].toLowerCase() === n.toLowerCase()) &&
+			newChatTags.some((n) => t.tag.slice(1).toLowerCase() === n.toLowerCase()) &&
 			startOffset <= t.position.start.offset &&
 			t.position.end.offset <= endOffset
 	)
@@ -365,9 +365,7 @@ export const extractConversationsTextOnly = async (env: RunEnv) => {
 		options: { newChatTags }
 	} = env
 
-	const conversationTags = tags.filter((t) =>
-		newChatTags.some((n) => t.tag.slice(1).split('/')[0].toLowerCase() === n.toLowerCase())
-	) // support Nested tags
+	const conversationTags = tags.filter((t) => newChatTags.some((n) => t.tag.slice(1).toLowerCase() === n.toLowerCase()))
 
 	const positionOffsets = conversationTags.flatMap((tag) => [
 		tag.position.start.offset - 1,
@@ -403,9 +401,7 @@ export const getMsgPositionByLine = (env: RunEnv, line: number) => {
 		options: { systemTags, userTags, assistantTags }
 	} = env
 	const msgTags = [...systemTags, ...userTags, ...assistantTags]
-	const msgTagsInMeta = tagsInMeta.filter((t) =>
-		msgTags.some((n) => t.tag.slice(1).split('/')[0].toLowerCase() === n.toLowerCase())
-	)
+	const msgTagsInMeta = tagsInMeta.filter((t) => msgTags.some((n) => t.tag.slice(1).toLowerCase() === n.toLowerCase()))
 	console.debug('msgTagsInMeta', msgTagsInMeta)
 	const msgIndex = msgTagsInMeta.findLastIndex((t) => t.position.start.line <= line)
 	if (msgIndex < 0) return [-1, -1]

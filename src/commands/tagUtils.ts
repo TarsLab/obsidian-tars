@@ -167,7 +167,7 @@ const getTagMeta = (app: App, editor: Editor, range: EditorRange, settings: Plug
 		const systemTags = settings.systemTags
 		const newChatTags = settings.newChatTags
 
-		const lowerCaseTag = firstTag.tag.slice(1).split('/')[0].toLowerCase()
+		const lowerCaseTag = firstTag.tag.slice(1).toLowerCase()
 		const isNewChat = newChatTags.some((nt) => nt.toLowerCase() === lowerCaseTag)
 
 		if (isNewChat) {
@@ -230,7 +230,7 @@ interface TagSettings {
 
 const getTagRole = (tag: TagCache, settings: TagSettings): TagRole | null => {
 	const { userTags, assistantTags, systemTags, newChatTags } = settings
-	const lowerCaseTag = tag.tag.slice(1).split('/')[0].toLowerCase()
+	const lowerCaseTag = tag.tag.slice(1).toLowerCase()
 
 	const role = userTags.some((ut) => ut.toLowerCase() === lowerCaseTag)
 		? 'user'
