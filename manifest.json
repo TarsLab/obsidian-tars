@@ -1,7 +1,7 @@
 {
 	"id": "tars",
 	"name": "Tars",
-	"version": "3.5.0",
+	"version": "3.5.1",
 	"minAppVersion": "1.5.8",
 	"description": "Text generation based on tag suggestions, using DeepSeek, Claude, OpenAI, OpenRouter, SiliconFlow, Gemini, Qwen & more.",
 	"author": "Tarslab",
