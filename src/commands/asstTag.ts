@@ -183,7 +183,7 @@ const insertMarkSlowMo = async (editor: Editor, mark: string, delayDuration: num
 
 	let lnToWrite = insertText(editor, mark[0] + mark[1]) // Insert the first two characters with the # symbol
 	for (let i = 2; i < mark.length; i++) {
-		await new Promise((resolve) => setTimeout(resolve, delay))
+		await new Promise((resolve) => window.setTimeout(resolve, delay))
 		lnToWrite = insertText(editor, mark[i])
 	}
 	return lnToWrite

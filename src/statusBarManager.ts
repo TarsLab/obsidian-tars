@@ -104,7 +104,7 @@ class ErrorDetailModal extends Modal {
 
 export class StatusBarManager {
 	private state: StatusBarState
-	private autoHideTimer: NodeJS.Timeout | null = null
+	private autoHideTimer: number | null = null
 
 	constructor(
 		private app: App,
@@ -134,8 +134,7 @@ export class StatusBarManager {
 			}
 		})
 
-		this.statusBarItem.style.cursor = 'pointer'
-		this.statusBarItem.style.transition = 'opacity 0.2s ease'
+		this.statusBarItem.addClass('tars-status-bar-item')
 	}
 
 	private updateState(newState: Partial<StatusBarState>) {
@@ -157,7 +156,7 @@ export class StatusBarManager {
 
 	setGeneratingStatus(round: number) {
 		if (this.autoHideTimer) {
-			clearTimeout(this.autoHideTimer)
+			window.clearTimeout(this.autoHideTimer)
 			this.autoHideTimer = null
 		}
 
@@ -184,7 +183,7 @@ export class StatusBarManager {
 
 	setSuccessStatus(stats: GenerationStats) {
 		if (this.autoHideTimer) {
-			clearTimeout(this.autoHideTimer)
+			window.clearTimeout(this.autoHideTimer)
 			this.autoHideTimer = null
 		}
 
@@ -200,7 +199,7 @@ export class StatusBarManager {
 
 	setErrorStatus(error: Error) {
 		if (this.autoHideTimer) {
-			clearTimeout(this.autoHideTimer)
+			window.clearTimeout(this.autoHideTimer)
 			this.autoHideTimer = null
 		}
 
@@ -221,12 +220,12 @@ export class StatusBarManager {
 		})
 
 		// 2 minutes later, automatically clear the error status
-		this.autoHideTimer = setTimeout(() => this.clearStatus(), 1000 * 60 * 2)
+		this.autoHideTimer = window.setTimeout(() => this.clearStatus(), 1000 * 60 * 2)
 	}
 
 	setCancelledStatus() {
 		if (this.autoHideTimer) {
-			clearTimeout(this.autoHideTimer)
+			window.clearTimeout(this.autoHideTimer)
 			this.autoHideTimer = null
 		}
 
@@ -240,12 +239,12 @@ export class StatusBarManager {
 		})
 
 		// 1 minute later, automatically clear the status
-		this.autoHideTimer = setTimeout(() => this.clearStatus(), 1000 * 60 * 1)
+		this.autoHideTimer = window.setTimeout(() => this.clearStatus(), 1000 * 60 * 1)
 	}
 
 	clearStatus() {
 		if (this.autoHideTimer) {
-			clearTimeout(this.autoHideTimer)
+			window.clearTimeout(this.autoHideTimer)
 			this.autoHideTimer = null
 		}
 
@@ -265,7 +264,7 @@ export class StatusBarManager {
 
 	dispose() {
 		if (this.autoHideTimer) {
-			clearTimeout(this.autoHideTimer)
+			window.clearTimeout(this.autoHideTimer)
 			this.autoHideTimer = null
 		}
 	}

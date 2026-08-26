@@ -24,7 +24,7 @@ export const loadTemplateFileCommand = (
 
 			if (isCreated) {
 				await workspaceOpenFile(app, filePath)
-				await new Promise((resolve) => setTimeout(resolve, 2000)) // Wait for file metadata to load, 2s
+				await new Promise((resolve) => window.setTimeout(resolve, 2000)) // Wait for file metadata to load, 2s
 			}
 
 			const { promptTemplates, reporter } = await getPromptTemplatesFromFile(app, filePath)
@@ -89,7 +89,7 @@ export const promptTemplateCmd = (id: string, name: string, app: App, settings: 
 			const { from, to } = range
 			editor.setSelection(from, to)
 			// Letting users see the selected text might improve the experience, but it's not essential.
-			await new Promise((resolve) => setTimeout(resolve, 500))
+			await new Promise((resolve) => window.setTimeout(resolve, 500))
 			applyTemplate(editor, template.template)
 		} catch (error) {
 			console.error(error)

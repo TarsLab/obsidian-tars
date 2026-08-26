@@ -484,7 +484,7 @@ export class TarsSettingTab extends PluginSettingTab {
 		let textInput: HTMLInputElement | null = null
 		group.addSetting((setting) =>
 			setting
-				.setName('baseURL')
+				.setName('Base URL')
 				.setDesc(t('Default:') + ' ' + defaultValue)
 				.addExtraButton((btn) => {
 					btn
@@ -527,7 +527,7 @@ export class TarsSettingTab extends PluginSettingTab {
 	addAPISecretOptional = (group: SettingGroup, options: BaseOptions & Pick<Optional, 'apiSecret'>, desc: string = '') =>
 		group.addSetting((setting) =>
 			setting
-				.setName('API Secret')
+				.setName('API secret')
 				.setDesc(desc)
 				.addText((text) =>
 					text
@@ -643,7 +643,7 @@ export class TarsSettingTab extends PluginSettingTab {
 		group.addSetting((setting) =>
 			setting
 				.setName(t('Endpoint'))
-				.setDesc('e.g. https://docs-test-001.openai.azure.com/')
+				.setDesc('E.g. https://docs-test-001.openai.azure.com/')
 				.addText((text) =>
 					text
 						.setPlaceholder('')
@@ -669,7 +669,7 @@ export class TarsSettingTab extends PluginSettingTab {
 		group.addSetting((setting) =>
 			setting
 				.setName(t('API version'))
-				.setDesc('e.g. 2024-xx-xx-preview')
+				.setDesc('E.g. 2024-xx-xx-preview')
 				.addText((text) =>
 					text
 						.setPlaceholder('')

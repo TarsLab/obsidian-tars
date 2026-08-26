@@ -25,18 +25,18 @@ export class SelectModelModal extends FuzzySuggestModal<string> {
 		const title = template.item
 		let lastIndex = 0
 
-		const div = el.createEl('div')
+		const div = el.createDiv()
 
 		for (const match of template.match.matches) {
 			const before = title.slice(lastIndex, match[0])
 			const matched = title.slice(match[0], match[0] + match[1])
-			div.createEl('span', { text: before })
-			div.createEl('span', { text: matched, cls: 'fuzzy-match-highlight' })
+			div.createSpan({ text: before })
+			div.createSpan({ text: matched, cls: 'fuzzy-match-highlight' })
 			lastIndex = match[0] + match[1]
 		}
 
 		// Add the remaining text after the last match
-		div.createEl('span', { text: title.slice(lastIndex) })
+		div.createSpan({ text: title.slice(lastIndex) })
 	}
 
 	onChooseItem(model: string, _evt: MouseEvent | KeyboardEvent) {
@@ -66,23 +66,23 @@ export class SelectVendorModal extends FuzzySuggestModal<Vendor> {
 		const title = template.item.name
 		let lastIndex = 0
 
-		const div = el.createEl('div')
+		const div = el.createDiv()
 
 		for (const match of template.match.matches) {
 			const before = title.slice(lastIndex, match[0])
 			const matched = title.slice(match[0], match[0] + match[1])
-			div.createEl('span', { text: before })
-			div.createEl('span', { text: matched, cls: 'fuzzy-match-highlight' })
+			div.createSpan({ text: before })
+			div.createSpan({ text: matched, cls: 'fuzzy-match-highlight' })
 			lastIndex = match[0] + match[1]
 		}
 
 		// Add the remaining text after the last match
-		div.createEl('span', { text: title.slice(lastIndex) })
+		div.createSpan({ text: title.slice(lastIndex) })
 
-		const tagsContainer = el.createEl('div', { cls: 'capability-tags-container' })
+		const tagsContainer = el.createDiv({ cls: 'capability-tags-container' })
 
 		template.item.capabilities.forEach((capability) => {
-			tagsContainer.createEl('span', {
+			tagsContainer.createSpan({
 				text: `${getCapabilityEmoji(capability)} ${t(capability)}`,
 				cls: 'capability-tag'
 			})

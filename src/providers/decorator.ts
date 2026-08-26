@@ -25,7 +25,7 @@ export const withStreamLogging = (originalFunc: SendRequest, createPlainText: Cr
 			}
 		} finally {
 			const lastMsg = messages[messages.length - 1]
-			// eslint-disable-next-line no-control-regex
+			// eslint-disable-next-line no-control-regex -- control chars are intentional: they are illegal in filenames and must be stripped
 			const ILLEGAL_FILENAME_CHARS = /[<>:"/\\|?*\u0000-\u001F\u007F-\u009F]/g
 			const brief = lastMsg.content.slice(0, 20).replace(ILLEGAL_FILENAME_CHARS, '').trim() || 'untitled'
 

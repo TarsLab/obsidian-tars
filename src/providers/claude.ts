@@ -104,7 +104,7 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 		const client = new Anthropic({
 			apiKey,
 			baseURL,
-			fetch: globalThis.fetch,
+			fetch: (...args: Parameters<typeof window.fetch>) => window.fetch(...args),
 			dangerouslyAllowBrowser: true
 		})
 

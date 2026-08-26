@@ -117,3 +117,8 @@ summary.tars-setting-h4 {
 .error-modal-buttons button:active {
 	background-color: var(--interactive-active);
 }
+
+.tars-status-bar-item {
+	cursor: pointer;
+	transition: opacity 0.2s ease;
+}
