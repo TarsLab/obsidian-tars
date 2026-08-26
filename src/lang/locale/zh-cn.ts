@@ -232,6 +232,7 @@ export default {
 	'Stack Trace': '堆栈跟踪',
 	'Copy Error Info': '复制错误信息',
 	'Error info copied to clipboard': '错误信息已复制到剪贴板',
+	'Failed to copy error info to clipboard': '复制错误信息到剪贴板失败',
 	'Unknown Error': '未知错误',
 	'Tars AI assistant is ready': 'Tars AI 助手已就绪',
 	'Generating round': '正在生成第',

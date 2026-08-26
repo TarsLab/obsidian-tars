@@ -79,7 +79,7 @@ const createToken = async (apiKeySecret: string, expireInMinutes: number) => {
 		id: encoded,
 		exp: payload.exp,
 		apiKeySecret: apiKeySecret
-	} as Token
+	}
 }
 
 /**

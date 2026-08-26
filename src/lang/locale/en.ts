@@ -235,6 +235,7 @@ Translate the following content into English：{{s}}
 	'Stack Trace': 'Stack Trace',
 	'Copy Error Info': 'Copy Error Info',
 	'Error info copied to clipboard': 'Error info copied to clipboard',
+	'Failed to copy error info to clipboard': 'Failed to copy error info to clipboard',
 	'Unknown Error': 'Unknown Error',
 	'Tars AI assistant is ready': 'Tars AI assistant is ready',
 	'Generating round': 'Generating round',

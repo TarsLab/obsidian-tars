@@ -90,8 +90,13 @@ class ErrorDetailModal extends Modal {
 			const buttonContainer = contentEl.createDiv({ cls: 'error-modal-buttons' })
 			const copyBtn = buttonContainer.createEl('button', { text: t('Copy Error Info') })
 			copyBtn.onclick = () => {
-				navigator.clipboard.writeText(JSON.stringify(this.error, null, 2))
-				new Notice(t('Error info copied to clipboard'))
+				navigator.clipboard
+					.writeText(JSON.stringify(this.error, null, 2))
+					.then(() => new Notice(t('Error info copied to clipboard')))
+					.catch((e) => {
+						console.error('Failed to copy error info to clipboard', e)
+						new Notice(t('Failed to copy error info to clipboard'))
+					})
 			}
 		}
 	}

@@ -34,7 +34,7 @@ const createToken = async (apiKey: string, apiSecret: string) => {
 		exp: Date.now() + result.expires_in,
 		apiKey,
 		apiSecret
-	} as Token
+	}
 }
 
 const validOrCreate = async (currentToken: Token | undefined, apiKey: string, apiSecret: string) => {

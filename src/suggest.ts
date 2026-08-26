@@ -135,7 +135,7 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 			query: JSON.stringify({
 				...suggestTag,
 				replacement: toMark(suggestTag.role, suggestTag.tag, shouldInsertNewLine)
-			} as TagEntry)
+			})
 		}
 	}
 
