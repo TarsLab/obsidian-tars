@@ -39,11 +39,6 @@ export default tseslint.config(
 			'@typescript-eslint/no-restricted-imports': 'off',
 			'no-restricted-globals': 'off',
 
-			// getSettingDefinitions() only exists in the Obsidian 1.13 typings.
-			// Adopting it would mean raising minAppVersion from 1.11 and dropping
-			// everyone still on 1.11/1.12.
-			'obsidianmd/settings-tab/prefer-setting-definitions': 'off',
-
 			// Type-safety debt, almost entirely in the axios-backed providers whose
 			// responses are typed `any`. Tracked as warnings so it stays visible
 			// without blocking the build; fixing it means typing those responses.
