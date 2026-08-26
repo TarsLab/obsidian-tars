@@ -4,14 +4,14 @@
 		"inlineSourceMap": true,
 		"inlineSources": true,
 		"module": "NodeNext",
-		"target": "ES6",
+		"target": "ES2021",
 		"allowJs": true,
 		"noImplicitAny": true,
 		"moduleResolution": "nodenext",
 		"importHelpers": true,
 		"isolatedModules": true,
 		"strictNullChecks": true,
-		"lib": ["DOM", "ES5", "ES6", "ES7", "ES2023"]
+		"lib": ["DOM", "ES2023"]
 	},
 	"include": ["src/**/*.ts"]
 }

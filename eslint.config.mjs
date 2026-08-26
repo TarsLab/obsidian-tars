@@ -1,17 +1,61 @@
 import pluginJs from '@eslint/js'
 import prettierConfig from 'eslint-config-prettier'
+import obsidianmd from 'eslint-plugin-obsidianmd'
+import globals from 'globals'
 import tseslint from 'typescript-eslint'
 
-export default [
-	{ files: ['**/*.{js,ts}'] },
-	{ ignores: ['version-bump.mjs', 'main.js'] },
+export default tseslint.config(
+	{ ignores: ['version-bump.mjs', 'esbuild.config.mjs', 'eslint.config.mjs', 'main.js'] },
 	pluginJs.configs.recommended,
 	...tseslint.configs.recommended,
+	...obsidianmd.configs.recommended,
 	prettierConfig,
 	{
+		// Same call as above, on the manifest side: axios stays, so the
+		// "replace it with fetch" advice does not apply here.
+		files: ['**/package.json'],
+		rules: { 'depend/ban-dependencies': 'off' }
+	},
+	{
+		// obsidianmd also lints manifest.json/package.json; the type-aware rules
+		// below only make sense on TypeScript sources.
+		files: ['**/*.ts'],
+		languageOptions: {
+			// Desktop Obsidian is Electron, so both sets of globals are in play.
+			globals: { ...globals.browser, ...globals.node },
+			parserOptions: {
+				projectService: true,
+				tsconfigRootDir: import.meta.dirname
+			}
+		},
 		rules: {
 			'@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
-			'@typescript-eslint/ban-ts-comment': 'off'
+			'@typescript-eslint/ban-ts-comment': 'off',
+
+			// The guidelines want Obsidian's requestUrl instead of axios/fetch, but
+			// requestUrl only ever resolves to a buffered body (arrayBuffer/json/text).
+			// Every provider here streams tokens as they arrive via
+			// `responseType: 'stream'`, so requestUrl cannot replace them.
+			'@typescript-eslint/no-restricted-imports': 'off',
+			'no-restricted-globals': 'off',
+
+			// getSettingDefinitions() only exists in the Obsidian 1.13 typings.
+			// Adopting it would mean raising minAppVersion from 1.11 and dropping
+			// everyone still on 1.11/1.12.
+			'obsidianmd/settings-tab/prefer-setting-definitions': 'off',
+
+			// Type-safety debt, almost entirely in the axios-backed providers whose
+			// responses are typed `any`. Tracked as warnings so it stays visible
+			// without blocking the build; fixing it means typing those responses.
+			'@typescript-eslint/await-thenable': 'warn',
+			'@typescript-eslint/no-floating-promises': 'warn',
+			'@typescript-eslint/no-misused-promises': 'warn',
+			'@typescript-eslint/no-unnecessary-type-assertion': 'warn',
+			'@typescript-eslint/no-unsafe-argument': 'warn',
+			'@typescript-eslint/no-unsafe-assignment': 'warn',
+			'@typescript-eslint/no-unsafe-call': 'warn',
+			'@typescript-eslint/no-unsafe-member-access': 'warn',
+			'@typescript-eslint/no-unsafe-return': 'warn'
 		}
 	}
-]
+)
