@@ -26,6 +26,11 @@ import { getCapabilityEmoji } from './providers/utils'
 import { zhipuVendor } from './providers/zhipu'
 import { availableVendors, DEFAULT_SETTINGS } from './settings'
 
+/** The parts of a rendered settings tab that obsidian.d.ts does not describe. */
+interface SettingTabInternals {
+	renderedItems?: { type?: string; children?: { settingEl?: HTMLElement }[] }[]
+}
+
 export class TarsSettingTab extends PluginSettingTab {
 	plugin: TarsPlugin
 
@@ -91,6 +96,7 @@ export class TarsSettingTab extends PluginSettingTab {
 			// Initially, vendor and tag might be the same, but vendor is read-only to mark vendor type, while tag can be modified by users
 			await this.plugin.saveSettings()
 			this.update()
+			this.openProviderPage(this.plugin.settings.providers.length - 1)
 		}
 		new SelectVendorModal(this.app, availableVendors, onChoose).open()
 	}
@@ -116,6 +122,26 @@ export class TarsSettingTab extends PluginSettingTab {
 	closeProviderPage = () => {
 		const setting = (this.app as App & { setting?: { closePage?: () => void } }).setting
 		setting?.closePage?.()
+	}
+
+	/**
+	 * Open a provider's sub-page, the way clicking its row does.
+	 *
+	 * A provider that was just added does nothing until it has an API key, and
+	 * when its default tag is already taken it arrives with no tag at all — so
+	 * staying on the list leaves the user hunting for a nameless row. Land on the
+	 * page instead, where both fields are in front of them.
+	 *
+	 * The settings modal's openPage() wants a page object, and one only exists
+	 * once a row has been activated, so the row is the only handle there is.
+	 * Neither renderedItems nor that wiring is in obsidian.d.ts, hence the
+	 * structural type and the optional calls: if a future release changes either,
+	 * the provider is still added and the user opens it themselves.
+	 */
+	openProviderPage = (index: number) => {
+		const rendered = (this as SettingTabInternals).renderedItems
+		const list = rendered?.find((item) => item.type === 'list')
+		list?.children?.[index]?.settingEl?.click()
 	}
 
 	/** One provider rendered as a navigable sub-page. */

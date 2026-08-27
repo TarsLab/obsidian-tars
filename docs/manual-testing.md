@@ -114,6 +114,12 @@ is in `obsidian.d.ts`:
 Treat them as test-only. `src/settingTab.ts` reaches for `closePage()` in one
 place, behind a narrow structural type, because there is no alternative.
 
+Going the other way is worse. `app.setting.openPage()` wants a page object, and
+one is only built when a row is activated — the rendered list holds
+`{type, key, def, settingEl}`, no page — so a row's `settingEl.click()` is the
+only handle there is. That is what `openProviderPage()` uses to land on a newly
+added provider.
+
 ### `update()` rebuilds the open page too
 
 `update()` re-reads `getSettingDefinitions()` and re-renders. It does not
@@ -171,7 +177,7 @@ const names = () => Array.from(C().querySelectorAll('.setting-item-name')).map((
 
 | #   | Check                                                                | Passes when                                                                                     |
 | --- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| 1   | Add a provider: `+` in the list header, pick a vendor                | count grows, it appears in the list, `pageStack` stays `0`                                      |
+| 1   | Add a provider: `+` in the list header, pick a vendor                | count grows and `pageStack` becomes `1` — the new provider's own page, tag field included       |
 | 2   | Missing API key                                                      | providers with an empty key show a warning; Ollama, which needs none, does not                  |
 | 3   | Rename a tag, then `closePage()`                                     | typing does not tear down the page; the list entry shows the new tag                            |
 | 4   | Invalid tags: a name already in use, `#` in the name, a space, empty | all four rejected, stored tag unchanged                                                         |
