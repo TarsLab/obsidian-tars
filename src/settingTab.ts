@@ -22,6 +22,7 @@ import { ollamaVendor } from './providers/ollama'
 import { openRouterVendor } from './providers/openRouter'
 import { siliconFlowVendor } from './providers/siliconflow'
 import { getCapabilityEmoji } from './providers/utils'
+import { zhipuVendor } from './providers/zhipu'
 import { availableVendors, DEFAULT_SETTINGS } from './settings'
 
 export class TarsSettingTab extends PluginSettingTab {
@@ -973,6 +974,12 @@ const MODEL_FETCH_CONFIGS = {
 	},
 	[grokVendor.name]: {
 		url: 'https://api.x.ai/v1/models',
+		requiresApiKey: true
+	},
+	[zhipuVendor.name]: {
+		// The raw API key works here as a bearer token; the JWT that chat requests
+		// need is not required to list models.
+		url: 'https://open.bigmodel.cn/api/paas/v4/models',
 		requiresApiKey: true
 	}
 } as const

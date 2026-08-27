@@ -33,6 +33,7 @@ const sendRequestFunc = (settings: ZhipuOptions): SendRequest =>
 		const { apiKey, baseURL, model, token: currentToken, tokenExpireInMinutes, enableWebSearch } = options
 		const remains = bodyParams(parameters, optionsExcludingParams)
 		if (!apiKey) throw new Error(t('API key is required'))
+		if (!model) throw new Error(t('Model is required'))
 		console.debug('zhipu options', { baseURL, apiKey, model, currentToken, tokenExpireInMinutes, enableWebSearch })
 
 		const { token } = await validOrCreate(currentToken, apiKey, tokenExpireInMinutes)
@@ -143,20 +144,18 @@ const validOrCreate = async (currentToken: Token | undefined, apiKeySecret: stri
 	}
 }
 
-const models = ['glm-4-plus', 'glm-4-air', 'glm-4-airx', 'glm-4-long', 'glm-4-flash', 'glm-4-flashx']
-
 export const zhipuVendor: Vendor = {
 	name: 'Zhipu',
 	defaultOptions: {
 		apiKey: '',
 		baseURL: 'https://open.bigmodel.cn/api/paas/v4/',
-		model: models[0],
+		model: '',
 		tokenExpireInMinutes: 60 * 24,
 		enableWebSearch: false,
 		parameters: {}
 	} as ZhipuOptions,
 	sendRequestFunc,
-	models,
+	models: [],
 	websiteToObtainKey: 'https://open.bigmodel.cn/',
-	capabilities: ['Text Generation', 'Web Search']
+	capabilities: ['Text Generation', 'Web Search', 'Reasoning']
 }
