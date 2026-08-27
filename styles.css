@@ -22,8 +22,6 @@ summary.tars-setting-h4 {
 }
 
 .capability-tag {
-	display: inline-flex;
-	align-items: center;
 	display: inline-block;
 	padding: var(--size-2-1) var(--size-2-3);
 	font-size: var(--font-ui-smaller);

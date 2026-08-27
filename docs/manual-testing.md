@@ -83,6 +83,10 @@ D.querySelectorAll('.suggestion-item').length
 it is not a liveness check. `app.setting.activeTab.containerEl.isConnected`
 is the one that means what it looks like.
 
+`obsidian dev:screenshot` captures the main window too, so it cannot show a
+settings pane. Assert on the DOM instead — a `ButtonComponent`'s styling, for
+instance, is readable as its class (`mod-cta`, `mod-destructive`).
+
 ### Navigation lives on internal APIs
 
 `SettingTab` and `SettingPage` expose nothing for navigating between the

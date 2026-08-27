@@ -301,7 +301,6 @@ export class TarsSettingTab extends PluginSettingTab {
 						slider
 							.setLimits(1.5, 4, 0.5)
 							.setValue(this.plugin.settings.answerDelayInMilliseconds / 1000)
-							.setDynamicTooltip()
 							.onChange(async (value) => {
 								this.plugin.settings.answerDelayInMilliseconds = Math.round(value * 1000)
 								await this.plugin.saveSettings()
@@ -713,7 +712,6 @@ export class TarsSettingTab extends PluginSettingTab {
 					slider
 						.setLimits(200, 800, 100)
 						.setValue(options.displayWidth)
-						.setDynamicTooltip()
 						.onChange(async (value) => {
 							options.displayWidth = value
 							await this.plugin.saveSettings()
@@ -729,7 +727,6 @@ export class TarsSettingTab extends PluginSettingTab {
 					slider
 						.setLimits(1, 5, 1)
 						.setValue(options.n)
-						.setDynamicTooltip()
 						.onChange(async (value) => {
 							options.n = value
 							await this.plugin.saveSettings()
@@ -821,7 +818,6 @@ export class TarsSettingTab extends PluginSettingTab {
 					slider
 						.setLimits(10, 100, 10)
 						.setValue(options.output_compression)
-						.setDynamicTooltip()
 						.onChange(async (value) => {
 							options.output_compression = value
 							await this.plugin.saveSettings()
@@ -900,7 +896,7 @@ export class TarsSettingTab extends PluginSettingTab {
 		render: (setting) => {
 			setting.addButton((btn) => {
 				btn
-					.setWarning()
+					.setDestructive()
 					.setButtonText(t('Remove'))
 					.onClick(async () => {
 						this.plugin.settings.providers.splice(index, 1)
