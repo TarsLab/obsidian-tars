@@ -1,0 +1,315 @@
+import OpenAI from 'openai'
+import { Plugin, requestUrl } from 'obsidian'
+import { Message, ProviderSettings } from '../../src/providers'
+import { stripStainlessHeaders } from '../../src/providers/utils'
+import { availableVendors } from '../../src/settings'
+
+/**
+ * Development-only harness. Loaded as a separate plugin so that it can import the
+ * real vendor code and still call `require('obsidian')` for the genuine
+ * `requestUrl` — neither is reachable from `obsidian eval`, and neither is worth
+ * shipping inside main.js.
+ *
+ * Drive it from the CLI:
+ *   obsidian eval code='(async()=>app.plugins.plugins["tars-smoke"].cors())()'
+ *   obsidian eval code='(async()=>app.plugins.plugins["tars-smoke"].chat())()'
+ */
+
+const DUMMY_KEY = 'sk-deliberately-invalid'
+
+/** The endpoint each vendor actually posts to, for the CORS probe. */
+const ENDPOINTS: Record<string, string> = {
+	OpenAI: 'https://api.openai.com/v1/chat/completions',
+	Claude: 'https://api.anthropic.com/v1/messages',
+	DeepSeek: 'https://api.deepseek.com/chat/completions',
+	Doubao: 'https://ark.cn-beijing.volces.com/api/v3/chat/completions',
+	Grok: 'https://api.x.ai/v1/chat/completions',
+	Kimi: 'https://api.moonshot.cn/v1/chat/completions',
+	OpenRouter: 'https://openrouter.ai/api/v1/chat/completions',
+	QianFan: 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat',
+	Qwen: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+	SiliconFlow: 'https://api.siliconflow.cn/v1/chat/completions',
+	Zhipu: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+	// candidates from open issues
+	MiniMax: 'https://api.minimaxi.com/v1/chat/completions',
+	LongCat: 'https://api.longcat.chat/openai/v1/chat/completions',
+	ModelScope: 'https://api-inference.modelscope.cn/v1/chat/completions',
+	OpenCodeZen: 'https://opencode.ai/zen/v1/chat/completions',
+	// third-party relays this vault is configured against
+	'closeAI/openai': 'https://api.openai-proxy.org/v1/chat/completions',
+	'closeAI/claude': 'https://api.openai-proxy.org/anthropic/v1/messages'
+}
+
+/** A blocked request can hang until Chromium gives up, which is far too long. */
+const PROBE_TIMEOUT_MS = 8000
+
+/** The headers the OpenAI SDK attaches to every request whether you want them or not. */
+const STAINLESS = {
+	'x-stainless-os': 'MacOS',
+	'x-stainless-lang': 'js',
+	'x-stainless-arch': 'arm64',
+	'x-stainless-runtime': 'browser:chrome',
+	'x-stainless-runtime-version': '1.0.0',
+	'x-stainless-package-version': '5.1.1',
+	'x-stainless-retry-count': '0',
+	'x-stainless-timeout': '600'
+}
+
+type Reach = 'ok' | 'blocked' | 'error'
+
+interface PluginRegistry {
+	plugins: { plugins: Record<string, { settings?: { providers?: ProviderSettings[] } }> }
+}
+
+// Truncates as well as pads: a provider's error text is arbitrarily long, and one
+// overlong cell shifts every column after it, which makes the table unreadable
+// exactly when something has gone wrong.
+const pad = (s: string, n: number) => (s.length >= n ? s.slice(0, n - 1) + ' ' : s + ' '.repeat(n - s.length))
+
+export default class SmokePlugin extends Plugin {
+	async onload() {
+		// Nothing to register; the harness is driven entirely from `obsidian eval`.
+	}
+
+	/**
+	 * Classifies each endpoint as reachable, CORS-blocked, or network-down.
+	 *
+	 * `fetch` is subject to CORS; `requestUrl` is not, but both traverse the same
+	 * network. A failure in one and not the other is therefore decisive, which
+	 * matters because a CORS rejection and an unreachable host both surface as the
+	 * same useless "Failed to fetch". An invalid key is enough: the preflight runs
+	 * before authentication, so a 401 already proves the browser let the call out.
+	 */
+	async cors(filter?: string): Promise<string> {
+		const targets = Object.entries(ENDPOINTS).filter(
+			([name]) => !filter || name.toLowerCase().includes(filter.toLowerCase())
+		)
+
+		// Probing serially costs a timeout per unreachable host; there are enough of
+		// those to push a serial run past two minutes.
+		const rows = await Promise.all(
+			targets.map(async ([name, url]) => {
+				const auth: Record<string, string> =
+					name === 'Claude'
+						? {
+								'x-api-key': DUMMY_KEY,
+								'anthropic-version': '2023-06-01',
+								'anthropic-dangerous-direct-browser-access': 'true',
+								'Content-Type': 'application/json'
+							}
+						: { Authorization: `Bearer ${DUMMY_KEY}`, 'Content-Type': 'application/json' }
+
+				const body = JSON.stringify({ model: 'probe', messages: [{ role: 'user', content: 'hi' }], max_tokens: 1 })
+
+				const [plain, stain, direct] = await Promise.all([
+					this.viaFetch(url, auth, body),
+					this.viaFetch(url, { ...auth, ...STAINLESS }, body),
+					this.viaRequestUrl(url, auth, body)
+				])
+
+				let verdict: string
+				// requestUrl ignores CORS but still needs the network, so it is what
+				// separates "the browser refused this" from "the host is unreachable".
+				// Both surface as the same "Failed to fetch" without it.
+				if (direct.reach === 'blocked') verdict = 'NO NETWORK — says nothing about CORS'
+				else if (plain.reach === 'blocked') verdict = 'CORS: blocked outright — requestUrl only, no streaming'
+				else if (stain.reach === 'blocked') verdict = 'CORS: ** x-stainless-* rejected — strip them **'
+				else verdict = 'ok'
+
+				return pad(name, 15) + pad(plain.note, 20) + pad(stain.note, 20) + pad(direct.note, 16) + verdict
+			})
+		)
+
+		return [
+			pad('PROVIDER', 15) + pad('fetch', 20) + pad('fetch+stainless', 20) + pad('network', 16) + 'VERDICT',
+			'-'.repeat(100),
+			...rows
+		].join('\n')
+	}
+
+	/**
+	 * The same question as cors(), asked through the OpenAI SDK instead of raw
+	 * fetch — which is what actually ships. Constructs each client twice, with the
+	 * SDK's telemetry headers left alone and with `stripStainlessHeaders` applied,
+	 * so the effect of the fix is visible per provider rather than inferred.
+	 *
+	 * Costs nothing: an invalid key still proves the browser let the request out.
+	 */
+	async sdk(filter?: string): Promise<string> {
+		// Anthropic and QianFan do not go through this SDK, so they are not listed.
+		const skip = ['Claude', 'QianFan', 'closeAI/claude']
+		const targets = Object.entries(ENDPOINTS).filter(
+			([name]) => !skip.includes(name) && (!filter || name.toLowerCase().includes(filter.toLowerCase()))
+		)
+
+		const attempt = async (baseURL: string, strip: boolean) => {
+			try {
+				const client = new OpenAI({
+					apiKey: DUMMY_KEY,
+					baseURL,
+					dangerouslyAllowBrowser: true,
+					maxRetries: 0,
+					timeout: PROBE_TIMEOUT_MS,
+					...(strip ? { defaultHeaders: stripStainlessHeaders } : {})
+				})
+				await client.chat.completions.create({ model: 'probe', messages: [{ role: 'user', content: 'hi' }] })
+				return 'HTTP 200'
+			} catch (e) {
+				const msg = (e as Error).message ?? String(e)
+				// An HTTP status means the request left the browser, which is the
+				// only thing being asked here — 401 is a pass, not a failure.
+				const status = /(\d{3}) status code/.exec(msg)
+				if (status) return `HTTP ${status[1]}`
+				if (/Connection error|Failed to fetch/i.test(msg)) return 'BLOCKED'
+				return msg.slice(0, 24)
+			}
+		}
+
+		const rows = await Promise.all(
+			targets.map(async ([name, url]) => {
+				const baseURL = url.replace(/\/chat\/completions$/, '')
+				const [before, after] = await Promise.all([attempt(baseURL, false), attempt(baseURL, true)])
+				const verdict =
+					before === 'BLOCKED' && after !== 'BLOCKED'
+						? '** FIXED by stripping x-stainless-* **'
+						: before === 'BLOCKED'
+							? 'still blocked — not a header problem'
+							: 'was already working'
+				return pad(name, 15) + pad(before, 26) + pad(after, 26) + verdict
+			})
+		)
+
+		return [
+			pad('PROVIDER', 15) + pad('SDK as-is', 26) + pad('SDK stripped', 26) + 'VERDICT',
+			'-'.repeat(90),
+			...rows
+		].join('\n')
+	}
+
+	private async viaFetch(url: string, headers: Record<string, string>, body: string) {
+		try {
+			const r = await fetch(url, { method: 'POST', headers, body, signal: AbortSignal.timeout(PROBE_TIMEOUT_MS) })
+			return { reach: 'ok' as Reach, note: `HTTP ${r.status}` }
+		} catch (e) {
+			// A CORS rejection and a dead host are indistinguishable here by design;
+			// the requestUrl column is what tells them apart.
+			return { reach: 'blocked' as Reach, note: (e as Error).message.slice(0, 20) }
+		}
+	}
+
+	private async viaRequestUrl(url: string, headers: Record<string, string>, body: string) {
+		try {
+			// requestUrl takes no AbortSignal, so the timeout has to be raced alongside it.
+			const r = await Promise.race([
+				requestUrl({ url, method: 'POST', headers, body, throw: false }),
+				new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error('timeout')), PROBE_TIMEOUT_MS))
+			])
+			return { reach: 'ok' as Reach, note: `HTTP ${r.status}` }
+		} catch (e) {
+			return { reach: 'blocked' as Reach, note: (e as Error).message.slice(0, 14) }
+		}
+	}
+
+	/**
+	 * Runs every configured provider through its real `sendRequestFunc` and reports
+	 * time-to-first-token, output and failure mode — the regression baseline that
+	 * `archive/TEST.md` was, except re-runnable.
+	 *
+	 * Uses whatever is in the Tars plugin's own settings, so it spends real API
+	 * credit on real keys.
+	 */
+	async chat(opts: { only?: string; timeoutMs?: number; model?: string; sample?: number } = {}): Promise<string> {
+		const timeoutMs = opts.timeoutMs ?? 45_000
+		// `App.plugins` is not in obsidian.d.ts. Reach for it behind a narrow
+		// structural type, the way src/settingTab.ts reaches for closePage().
+		const tars = (this.app as unknown as PluginRegistry).plugins?.plugins?.['tars']
+		if (!tars) return 'Tars plugin is not loaded — enable it first.'
+		const providers: ProviderSettings[] = tars.settings?.providers ?? []
+		if (!providers.length) return 'No providers configured.'
+
+		const messages: Message[] = [{ role: 'user', content: 'What is 1+1? Reply with the digit only.' }]
+		const lines = [
+			pad('TAG', 14) + pad('VENDOR', 12) + pad('FIRST', 9) + pad('TOTAL', 9) + pad('CHARS', 7) + 'RESULT',
+			'-'.repeat(92)
+		]
+
+		for (const p of providers) {
+			if (opts.only && !p.tag.toLowerCase().includes(opts.only.toLowerCase())) continue
+			const vendor = availableVendors.find((v) => v.name === p.vendor)
+			if (!vendor) {
+				lines.push(pad(p.tag, 14) + pad(p.vendor, 12) + 'unknown vendor')
+				continue
+			}
+			// Image generation writes attachments into the vault; keep the harness read-only.
+			if (vendor.capabilities.includes('Image Generation')) {
+				lines.push(pad(p.tag, 14) + pad(p.vendor, 12) + 'skipped (image generation)')
+				continue
+			}
+
+			const controller = new AbortController()
+			const t0 = performance.now()
+			let first = -1
+			let out = ''
+			let result = 'ok'
+
+			try {
+				// Overriding the model here rather than in the vault keeps the harness
+				// from editing the settings it is supposed to be observing.
+				const options = opts.model ? { ...p.options, model: opts.model } : p.options
+				const send = vendor.sendRequestFunc(options)
+				const drain = (async () => {
+					for await (const chunk of send(messages, controller, async () => {
+						throw new Error('smoke test sends no embeds')
+					})) {
+						if (first < 0) first = performance.now() - t0
+						out += chunk
+						if (out.length > 300) {
+							controller.abort()
+							break
+						}
+					}
+				})()
+				// Aborting the controller is a request, not a guarantee: a vendor SDK
+				// that ignores the signal keeps the harness hostage. Ollama took 75s
+				// against a 30s budget that way. Race a hard deadline alongside it.
+				await Promise.race([
+					drain,
+					new Promise<never>((_, reject) =>
+						window.setTimeout(() => {
+							controller.abort()
+							reject(new Error(`smoke-deadline ${timeoutMs}ms`))
+						}, timeoutMs)
+					)
+				])
+			} catch (e) {
+				const msg = (e as Error).message ?? String(e)
+				// axios reports a CORS rejection as a bare "Network Error"; the OpenAI
+				// SDK and raw fetch report "Failed to fetch". Neither names CORS.
+				if (/Failed to fetch|Network Error/i.test(msg)) result = `NETWORK/CORS: ${msg.slice(0, 40)}`
+				else if (/smoke-deadline/.test(msg)) result = `TIMEOUT >${timeoutMs}ms`
+				else if (/abort/i.test(msg) && out.length) result = 'ok (truncated)'
+				else if (/abort/i.test(msg)) result = `TIMEOUT >${timeoutMs}ms`
+				else result = `ERROR: ${msg.slice(0, 50)}`
+			}
+
+			const total = performance.now() - t0
+			// A reasoning model that never opens a callout is issue #116's signature.
+			const reasoning = out.includes('[!') ? ' +reasoning-callout' : ''
+			if (result === 'ok' && !out.trim()) result = 'EMPTY RESPONSE'
+
+			// Seeing the bytes matters when the question is how a provider formats
+			// its answer rather than whether it answered — issue #116, for one.
+			if (opts.sample && out) lines.push(`    ${JSON.stringify(out.slice(0, opts.sample))}`)
+			lines.push(
+				pad(opts.model ? `${p.tag}:${opts.model}` : p.tag, 14) +
+					pad(p.vendor, 12) +
+					pad(first < 0 ? '-' : `${Math.round(first)}ms`, 9) +
+					pad(`${Math.round(total)}ms`, 9) +
+					pad(String(out.length), 7) +
+					result +
+					reasoning
+			)
+		}
+		return lines.join('\n')
+	}
+}

@@ -8,7 +8,8 @@
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
 		"lint": "eslint .",
-		"format": "prettier --write src/"
+		"format": "prettier --write src/",
+		"smoke": "node esbuild.smoke.mjs"
 	},
 	"keywords": [],
 	"author": "C Jack<https://github.com/ae86jack>",

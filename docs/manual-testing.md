@@ -63,9 +63,20 @@ obsidian dev:console level=error
 obsidian dev:debug off
 ```
 
+This document covers the settings UI. For providers — CORS, streaming, and the
+network paths that make a working provider look broken — see
+[Testing providers against real networks](provider-testing.md).
+
 ## Traps
 
 Each of these produced a wrong conclusion at least once.
+
+### `obsidian eval` has no top-level await
+
+Wrap anything asynchronous in `(async () => { ... })()`. The CLI awaits the
+promise you return, so the value comes back normally, but a bare `await` is a
+syntax error. `require` works, absolute paths included — `require('obsidian')`
+does not, since only real plugins are given that module.
 
 ### The settings window is a separate window
 

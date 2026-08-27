@@ -198,3 +198,10 @@ neither the build nor the linter can tell you whether it works. See
 [Manual testing against a running Obsidian](docs/manual-testing.md) for
 driving a live instance with the Obsidian CLI, plus a checklist to run before
 a release.
+
+Providers fail for reasons that live outside the code — Obsidian calls every API
+cross-origin from `app://obsidian.md`, and a CORS rejection is indistinguishable
+from an unreachable host unless you test for it deliberately. See
+[Testing providers against real networks](docs/provider-testing.md) for the two
+harnesses that tell them apart, and `npm run smoke` for the one that runs inside
+Obsidian.

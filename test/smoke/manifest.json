@@ -1,0 +1,9 @@
+{
+	"id": "tars-smoke",
+	"name": "Tars Smoke Test",
+	"version": "0.0.0",
+	"minAppVersion": "1.13.0",
+	"description": "Development-only harness. Runs Tars' real provider code inside Obsidian. Never released.",
+	"author": "Tarslab",
+	"isDesktopOnly": false
+}
