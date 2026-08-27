@@ -2,17 +2,7 @@ import * as jose from 'jose'
 import OpenAI from 'openai'
 import { t } from 'src/lang/helper'
 import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
-import {
-	CALLOUT_BLOCK_END,
-	CALLOUT_BLOCK_START,
-	bodyParams,
-	createThinkTagParser,
-	stripStainlessHeaders
-} from './utils'
-
-type ZhipuDelta = OpenAI.ChatCompletionChunk.Choice.Delta & {
-	reasoning_content?: string
-} // hack, the GLM-4.5 and 4.6 thinking models add a reasoning_content field
+import { bodyParams, streamWithThinking, stripStainlessHeaders } from './utils'
 
 interface Token {
 	id: string
@@ -70,36 +60,10 @@ const sendRequestFunc = (settings: ZhipuOptions): SendRequest =>
 			}
 		)
 
-		// Zhipu carries thinking two different ways depending on the model, and until
-		// now neither reached the note. GLM-4.5 and 4.6 stream it in
-		// `reasoning_content`, which this loop used to discard outright — asking
-		// glm-4.6 for a digit meant eighteen seconds of silence and then "2". GLM-Z1
-		// instead marks it with `<think>` tags inside `content`, which arrived as
-		// plain text with no callout around it. Both end up in the same collapsed
-		// quote block now.
-		const thinkTags = createThinkTagParser()
-		let startReasoning = false
-
-		for await (const part of stream) {
-			const delta = part.choices[0]?.delta as ZhipuDelta
-			const reasonContent = delta?.reasoning_content
-
-			if (reasonContent) {
-				const prefix = !startReasoning ? ((startReasoning = true), CALLOUT_BLOCK_START) : ''
-				yield prefix + reasonContent.replace(/\n/g, '\n> ') // Each line of the callout needs to have '>' at the beginning
-				continue
-			}
-
-			if (delta?.content) {
-				const prefix = startReasoning ? ((startReasoning = false), CALLOUT_BLOCK_END) : ''
-				const text = thinkTags.push(delta.content)
-				if (prefix || text) yield prefix + text
-			}
-		}
-
-		// The buffer holds back anything that might still have become a tag.
-		const tail = thinkTags.flush()
-		if (tail) yield tail
+		// GLM-4.5 and 4.6 stream their thinking in `reasoning_content`; GLM-Z1 marks
+		// it with `<think>` tags inside `content`. Both reach the note as a callout
+		// (issue #116).
+		yield* streamWithThinking(stream)
 	}
 
 const createToken = async (apiKeySecret: string, expireInMinutes: number) => {

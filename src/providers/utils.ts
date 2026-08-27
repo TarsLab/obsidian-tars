@@ -1,3 +1,4 @@
+import type OpenAI from 'openai'
 import { EmbedCache } from 'obsidian'
 import { t } from 'src/lang/helper'
 import { Capability, ResolveEmbedAsBinary } from '.'
@@ -211,4 +212,49 @@ export const getCapabilityEmoji = (capability: Capability): string => {
 		case 'Reasoning':
 			return '🧠'
 	}
+}
+
+type ThinkingDelta = OpenAI.ChatCompletionChunk.Choice.Delta & {
+	reasoning_content?: string
+}
+
+/**
+ * Yields a chat stream's text with the model's thinking inside a collapsed callout.
+ *
+ * A provider that reasons has two ways to say so and may use either, sometimes
+ * across models of the same family. Zhipu puts it in `reasoning_content` on
+ * GLM-4.5 and 4.6 but in `<think>` tags on GLM-Z1; MiniMax decides by the
+ * `reasoning_split` parameter, defaulting to the tags. Handling only one leaves
+ * the thinking either discarded or dumped into the note as plain text — which was
+ * issue #116, and is an open complaint against MiniMax-M2.7 elsewhere.
+ *
+ * So handle both. `createThinkTagParser` deals with tags split across chunks;
+ * `reasoning_content` needs no buffering because the field is already separate.
+ */
+export async function* streamWithThinking(
+	stream: AsyncIterable<OpenAI.ChatCompletionChunk>
+): AsyncGenerator<string, void, unknown> {
+	const thinkTags = createThinkTagParser()
+	let startReasoning = false
+
+	for await (const part of stream) {
+		const delta = part.choices[0]?.delta as ThinkingDelta
+		const reasonContent = delta?.reasoning_content
+
+		if (reasonContent) {
+			const prefix = !startReasoning ? ((startReasoning = true), CALLOUT_BLOCK_START) : ''
+			yield prefix + reasonContent.replace(/\n/g, '\n> ') // Each line of the callout needs to have '>' at the beginning
+			continue
+		}
+
+		if (delta?.content) {
+			const prefix = startReasoning ? ((startReasoning = false), CALLOUT_BLOCK_END) : ''
+			const text = thinkTags.push(delta.content)
+			if (prefix || text) yield prefix + text
+		}
+	}
+
+	// The parser holds back anything that might still have become a tag.
+	const tail = thinkTags.flush()
+	if (tail) yield tail
 }
