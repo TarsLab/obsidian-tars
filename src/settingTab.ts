@@ -3,7 +3,6 @@ import {
 	Notice,
 	PluginSettingTab,
 	requestUrl,
-	SettingDefinition,
 	SettingDefinitionItem,
 	SettingDefinitionPage,
 	SettingDefinitionRender
@@ -130,7 +129,7 @@ export class TarsSettingTab extends PluginSettingTab {
 		}
 	}
 
-	messageTagsDefs = (): SettingDefinition[] => {
+	messageTagsDefs = (): SettingDefinitionRender[] => {
 		const tagSetting = (
 			name: string,
 			read: () => string[],
@@ -171,12 +170,6 @@ export class TarsSettingTab extends PluginSettingTab {
 
 		const { settings } = this.plugin
 		return [
-			{
-				// Description-only row under the group heading; no control of its own.
-				name: t('Message tags'),
-				desc: t('Keywords for tags in the text box are separated by spaces'),
-				searchable: false
-			},
 			tagSetting(
 				settings.roleEmojis.newChat + ' ' + t('New chat tags'),
 				() => settings.newChatTags,
