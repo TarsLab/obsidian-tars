@@ -8,6 +8,7 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, baseURL: baseUrl, model } = options
 		if (!apiKey) throw new Error(t('API key is required'))
+		if (!model) throw new Error(t('Model is required'))
 
 		const [system_msg, messagesWithoutSys, lastMsg] =
 			messages[0].role === 'system'
@@ -36,7 +37,7 @@ export const geminiVendor: Vendor = {
 	defaultOptions: {
 		apiKey: '',
 		baseURL: 'https://generativelanguage.googleapis.com',
-		model: 'gemini-1.5-flash',
+		model: '',
 		parameters: {}
 	},
 	sendRequestFunc,

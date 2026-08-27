@@ -16,6 +16,7 @@ import { SelectModelModal, SelectVendorModal } from './modal'
 import { BaseOptions, Optional, ProviderSettings, Vendor } from './providers'
 import { ClaudeOptions, claudeVendor } from './providers/claude'
 import { GptImageOptions, gptImageVendor } from './providers/gptImage'
+import { geminiVendor } from './providers/gemini'
 import { grokVendor } from './providers/grok'
 import { kimiVendor } from './providers/kimi'
 import { longCatVendor } from './providers/longcat'
@@ -439,7 +440,7 @@ export class TarsSettingTab extends PluginSettingTab {
 
 	modelFetchDef = (
 		settings: ProviderSettings,
-		modelConfig: { url: string; requiresApiKey: boolean },
+		modelConfig: ModelFetchConfig,
 		desc: string
 	): SettingDefinitionRender => ({
 		name: t('Model'),
@@ -456,7 +457,8 @@ export class TarsSettingTab extends PluginSettingTab {
 						}
 						try {
 							const models = await fetchModels(
-								modelConfig.url,
+								modelConfig,
+								settings.options.baseURL,
 								modelConfig.requiresApiKey ? settings.options.apiKey : undefined
 							)
 							const onChoose = async (selectedModel: string) => {
@@ -974,16 +976,37 @@ const isValidUrl = (url: string) => {
 	}
 }
 
-const fetchModels = async (url: string, apiKey?: string): Promise<string[]> => {
+/**
+ * How to ask one provider what models it has.
+ *
+ * `url` may be derived from the provider's own base URL, because a provider
+ * reached through a relay does not list its models at the vendor's address —
+ * this vault reaches Gemini through one, and a hardcoded URL would ask the wrong
+ * host. `parse` exists because not everyone answers in OpenAI's shape.
+ */
+interface ModelFetchConfig {
+	url: string | ((baseURL: string) => string)
+	requiresApiKey: boolean
+	/** Defaults to a bearer token. */
+	authHeader?: string
+	/** Defaults to OpenAI's `{ data: [{ id }] }`. */
+	parse?: (json: unknown) => string[]
+}
+
+const fetchModels = async (config: ModelFetchConfig, baseURL: string, apiKey?: string): Promise<string[]> => {
+	const url = typeof config.url === 'function' ? config.url(baseURL) : config.url
+	const authHeader = config.authHeader ?? 'Authorization'
+	const authValue = config.authHeader ? apiKey : `Bearer ${apiKey}`
 	const response = await requestUrl({
 		url,
 		headers: {
-			...(apiKey && { Authorization: `Bearer ${apiKey}` }),
+			...(apiKey && { [authHeader]: authValue as string }),
 			'Content-Type': 'application/json'
 		}
 	})
-	const result = response.json
-	return result.data.map((model: { id: string }) => model.id)
+	if (config.parse) return config.parse(response.json)
+	const result = response.json as { data: { id: string }[] }
+	return result.data.map((model) => model.id)
 }
 
 // Model fetching configurations for different vendors
@@ -1003,6 +1026,21 @@ const MODEL_FETCH_CONFIGS = {
 	[grokVendor.name]: {
 		url: 'https://api.x.ai/v1/models',
 		requiresApiKey: true
+	},
+	[geminiVendor.name]: {
+		// Google answers `{ models: [{ name: "models/…" }] }` rather than OpenAI's
+		// shape, and authenticates with its own header. The list mixes in Veo video
+		// and image models, and `supportedGenerationMethods` does not separate them
+		// — every entry claims generateContent, Veo included — so the names are all
+		// there is to go on. Anything missed is still reachable through
+		// "Override input parameters".
+		url: (baseURL: string) => `${baseURL.replace(/\/+$/, '')}/v1beta/models`,
+		requiresApiKey: true,
+		authHeader: 'x-goog-api-key',
+		parse: (json: unknown) =>
+			(json as { models?: { name?: string }[] }).models
+				?.map((model) => (model.name ?? '').replace(/^models\//, ''))
+				.filter((id) => id && !/^veo-|image/.test(id)) ?? []
 	},
 	[longCatVendor.name]: {
 		url: 'https://api.longcat.chat/openai/v1/models',
