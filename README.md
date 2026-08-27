@@ -7,7 +7,7 @@
 
 # Tars
 
-Tars is an Obsidian plugin that supports text generation based on tag suggestions, using services like Claude, OpenAI, Gemini, 🔥DeepSeek, 🔥SiliconFlow, 🔥OpenRouter, Ollama, Kimi, Doubao, Qwen, Zhipu, QianFan & more. The name Tars comes from the robot Tars in the movie "Interstellar". The plugin supports both desktop and mobile devices.
+Tars is an Obsidian plugin that supports text generation based on tag suggestions, using services like Claude, OpenAI, Gemini, 🔥DeepSeek, 🔥SiliconFlow, 🔥OpenRouter, 🔥MiniMax, 🔥LongCat, Ollama, Kimi, Doubao, Qwen, Zhipu, QianFan & more. The name Tars comes from the robot Tars in the movie "Interstellar". The plugin supports both desktop and mobile devices.
 
 ## 🌟 3.1 Multimodal
 
@@ -56,6 +56,8 @@ Tars is an Obsidian plugin that supports text generation based on tag suggestion
 - [Doubao](https://www.volcengine.com/product/doubao)
 - [Gemini](https://gemini.google.com)
 - [Kimi](https://www.moonshot.cn)
+- [LongCat](https://longcat.chat/platform/)
+- [MiniMax](https://platform.minimaxi.com/)
 - [Ollama](https://www.ollama.com)
 - [OpenAI](https://platform.openai.com/api-keys)
 - [OpenRouter](https://openrouter.ai)
@@ -72,8 +74,10 @@ If the AI provider you want is not in the list above, you can propose a specific
 - Azure: Supports o1, deepseek-r1, gpt-4o, etc.
 - 🔥DeepSeek: The reasoning model deepseek-reasoner's CoT is output in callout format
 - Doubao: Supports bot API, [Supports DeepSeek web search plugin and knowledge base plugin](https://github.com/TarsLab/obsidian-tars/issues/68)
+- 🔥LongCat: Reasoning output in callout format
+- 🔥MiniMax: Reasoning output in callout format
 - 🔥SiliconFlow: Supports many models such as DeepSeek V3/R1
-- Zhipu: Web search option
+- 🔥Zhipu: Web search option, and reasoning output in callout format for GLM-4.5 / 4.6 / Z1
 
 ## How to use
 

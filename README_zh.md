@@ -7,7 +7,7 @@
 
 # 简介
 
-Tars 是一个 Obsidian 插件，基于标签建议进行文本生成，支持 Claude、OpenAI、Gemini、🔥DeepSeek、🔥SiliconFlow、🔥OpenRouter、Ollama、Kimi、豆包、阿里千问、智谱、百度千帆等。Tars 这个名字来源于电影《星际穿越》中的机器人 Tars（塔斯）。插件支持桌面端和移动端。
+Tars 是一个 Obsidian 插件，基于标签建议进行文本生成，支持 Claude、OpenAI、Gemini、🔥DeepSeek、🔥SiliconFlow、🔥OpenRouter、🔥MiniMax、🔥LongCat、Ollama、Kimi、豆包、阿里千问、智谱、百度千帆等。Tars 这个名字来源于电影《星际穿越》中的机器人 Tars（塔斯）。插件支持桌面端和移动端。
 
 ## 🌟 3.1 多模态
 
@@ -56,6 +56,8 @@ Tars 是一个 Obsidian 插件，基于标签建议进行文本生成，支持 C
 - [Doubao 豆包](https://www.volcengine.com/product/doubao)
 - [Gemini](https://gemini.google.com)
 - [Kimi](https://www.moonshot.cn)
+- [LongCat 龙猫](https://longcat.chat/platform/)
+- [MiniMax 海螺](https://platform.minimaxi.com/)
 - [Ollama](https://www.ollama.com)
 - [OpenAI](https://platform.openai.com/api-keys)
 - [OpenRouter](https://openrouter.ai)
@@ -72,8 +74,10 @@ Tars 是一个 Obsidian 插件，基于标签建议进行文本生成，支持 C
 - Azure: 支持 o1，deepseek-r1，gpt-4o 等等
 - 🔥DeepSeek：推理模型 deepseek-reasoner 的思维链以 callout 格式输出
 - Doubao: 支持应用（bot）API，[支持 deepseek 联网插件和知识库插件](https://github.com/TarsLab/obsidian-tars/issues/68)
+- 🔥LongCat 龙猫：推理内容以 callout 格式输出
+- 🔥MiniMax 海螺：推理内容以 callout 格式输出
 - 🔥SiliconFlow：支持 DeepSeek V3/R1 等等众多模型
-- Zhipu：网络搜索选项
+- 🔥Zhipu 智谱：网络搜索选项，GLM-4.5 / 4.6 / Z1 的推理内容以 callout 格式输出
 
 ## 如何使用
 
