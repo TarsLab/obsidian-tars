@@ -102,7 +102,7 @@ cp build/tars-smoke/{main.js,manifest.json} "$VAULT/.obsidian/plugins/tars-smoke
 obsidian eval code='(async()=>{await app.plugins.loadManifests();await app.plugins.enablePlugin("tars-smoke")})()'
 ```
 
-Three entry points:
+Four entry points:
 
 **`cors()`** — classifies every endpoint using the table above. Costs nothing
 and touches no keys: the preflight runs before authentication, so a deliberately
@@ -142,6 +142,24 @@ gone".
 A listed model is not a guaranteed model. `claude-sonnet-4-0` appears in the list
 this vault's relay returns and still answers `404 not_found_error` when asked a
 question, which is why the model field stays typeable next to the picker.
+
+**`image()`** — the one thing `chat()` refuses to do. Image vendors are skipped
+there because they spend credit _and_ write a file into the vault, so this has to
+be asked for by name. It saves the attachment through the editor's own
+`getAvailablePathForAttachment` + `createBinary`, because the binary handoff is
+the part worth testing: a Node `Buffer` standing in for an `ArrayBuffer` worked
+on desktop and threw on every phone.
+
+```bash
+obsidian eval code='(async()=>app.plugins.plugins["tars-smoke"].image({
+  only:"GptImage", options:{n:1, quality:"low", size:"1024x1024"}}))()'
+```
+
+`options` overrides the provider's settings for that run only, so one cheap
+image can be asked for without editing the vault. Note that those are _settings_
+and `bodyParams` filters them back out of the request body — to prove an
+override reaches the API, put it in the provider's `parameters` instead and give
+it a value the API will reject.
 
 Run `chat()` before a change and after it, and diff. A provider that stops
 streaming, starts returning empty, or loses its reasoning callout shows up as a

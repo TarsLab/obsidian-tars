@@ -439,4 +439,86 @@ export default class SmokePlugin extends Plugin {
 		}
 		return lines.join('\n')
 	}
+	/**
+	 * Runs an image vendor for real.
+	 *
+	 * `chat()` skips these on purpose: they spend credit and they write a file into
+	 * the vault, so this has to be asked for by name. The attachment goes through
+	 * the same `getAvailablePathForAttachment` + `createBinary` the editor uses,
+	 * because the binary handoff is the part worth testing — a Node `Buffer`
+	 * standing in for an ArrayBuffer worked on desktop and threw on every phone.
+	 *
+	 * `options` overrides the provider's settings for this run only, so a probe can
+	 * ask for one cheap image without editing the vault:
+	 *   image({ options: { n: 1, quality: 'low', size: '1024x1024' } })
+	 */
+	async image(
+		opts: {
+			only?: string
+			prompt?: string
+			timeoutMs?: number
+			options?: Record<string, unknown>
+		} = {}
+	): Promise<string> {
+		const timeoutMs = opts.timeoutMs ?? 120_000
+		const tars = (this.app as unknown as PluginRegistry).plugins?.plugins?.['tars']
+		if (!tars) return 'Tars plugin is not loaded — enable it first.'
+		const providers: ProviderSettings[] = tars.settings?.providers ?? []
+
+		const messages: Message[] = [
+			{ role: 'user', content: opts.prompt ?? 'A single small red circle centred on white. Flat vector, no text.' }
+		]
+		const lines: string[] = []
+
+		for (const p of providers) {
+			if (opts.only && !p.tag.toLowerCase().includes(opts.only.toLowerCase())) continue
+			const vendor = availableVendors.find((v) => v.name === p.vendor)
+			if (!vendor?.capabilities.includes('Image Generation')) continue
+
+			const written: string[] = []
+			const saveAttachment = async (fileName: string, data: ArrayBuffer) => {
+				// Deliberately the editor's own implementation, byte for byte: what is
+				// being tested is that what the vendor hands over is something the
+				// vault will accept.
+				const path = await this.app.fileManager.getAvailablePathForAttachment(fileName)
+				await this.app.vault.createBinary(path, data)
+				written.push(`${path} (${data.byteLength} bytes)`)
+			}
+
+			const controller = new AbortController()
+			const t0 = performance.now()
+			let out = ''
+			let result = 'ok'
+			try {
+				const send = vendor.sendRequestFunc({ ...p.options, ...opts.options })
+				const drain = (async () => {
+					for await (const chunk of send(
+						messages,
+						controller,
+						async () => {
+							throw new Error('this probe sends no embeds')
+						},
+						saveAttachment
+					))
+						out += chunk
+				})()
+				await Promise.race([
+					drain,
+					new Promise<never>((_, reject) =>
+						window.setTimeout(() => {
+							controller.abort()
+							reject(new Error(`deadline ${timeoutMs}ms`))
+						}, timeoutMs)
+					)
+				])
+			} catch (e) {
+				result = `ERROR: ${((e as Error).message ?? String(e)).slice(0, 300)}`
+			}
+
+			lines.push(`${p.tag} (${p.vendor}) — ${Math.round(performance.now() - t0)}ms — ${result}`)
+			for (const w of written) lines.push(`  wrote ${w}`)
+			if (out) lines.push(`  yielded ${JSON.stringify(out)}`)
+		}
+		return lines.length ? lines.join('\n') : 'No image-generation provider matched.'
+	}
 }
