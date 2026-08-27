@@ -271,7 +271,14 @@ export default class SmokePlugin extends Plugin {
 	 * credit on real keys.
 	 */
 	async chat(
-		opts: { only?: string; timeoutMs?: number; model?: string; sample?: number; maxChars?: number } = {}
+		opts: {
+			only?: string
+			timeoutMs?: number
+			model?: string
+			sample?: number
+			maxChars?: number
+			errChars?: number
+		} = {}
 	): Promise<string> {
 		const timeoutMs = opts.timeoutMs ?? 45_000
 		// Enough to see an answer begin; raise it to inspect where a callout ends.
@@ -341,11 +348,15 @@ export default class SmokePlugin extends Plugin {
 				const msg = (e as Error).message ?? String(e)
 				// axios reports a CORS rejection as a bare "Network Error"; the OpenAI
 				// SDK and raw fetch report "Failed to fetch". Neither names CORS.
-				if (/Failed to fetch|Network Error/i.test(msg)) result = `NETWORK/CORS: ${msg.slice(0, 40)}`
+				// Fifty characters is enough to see that a provider said 400 and not
+				// enough to see why, which is the moment the column is wanted. Widen it
+				// per-run rather than by default, so the table still lines up.
+				const errChars = opts.errChars ?? 50
+				if (/Failed to fetch|Network Error/i.test(msg)) result = `NETWORK/CORS: ${msg.slice(0, errChars)}`
 				else if (/smoke-deadline/.test(msg)) result = `TIMEOUT >${timeoutMs}ms`
 				else if (/abort/i.test(msg) && out.length) result = 'ok (truncated)'
 				else if (/abort/i.test(msg)) result = `TIMEOUT >${timeoutMs}ms`
-				else result = `ERROR: ${msg.slice(0, 50)}`
+				else result = `ERROR: ${msg.slice(0, errChars)}`
 			}
 
 			const total = performance.now() - t0
