@@ -183,3 +183,18 @@ These are HTTP status codes:
 - Try using "Source mode" for conversation interaction. When you expect long text output, change the editing mode from "Live preview" to "Source mode" so Obsidian doesn't need to render the content. After the output is complete, switch back to "Live preview" mode.
 
 [Related issue](https://github.com/TarsLab/obsidian-tars/issues/78)
+
+## Development
+
+```bash
+npm install
+npm run dev     # watch build
+npm run build   # type-check, then production bundle
+npm run lint
+```
+
+The settings tab is rendered by Obsidian from `getSettingDefinitions()`, so
+neither the build nor the linter can tell you whether it works. See
+[Manual testing against a running Obsidian](docs/manual-testing.md) for
+driving a live instance with the Obsidian CLI, plus a checklist to run before
+a release.

@@ -74,8 +74,8 @@ Obsidian opens settings in a popout. `document` inside `obsidian eval` is the
 which reads exactly like a button that does nothing.
 
 ```js
-const W = app.setting.win        // the settings window
-const D = W.document             // query this, not `document`
+const W = app.setting.win // the settings window
+const D = W.document // query this, not `document`
 D.querySelectorAll('.suggestion-item').length
 ```
 
@@ -89,12 +89,12 @@ is the one that means what it looks like.
 provider list and a provider's page. The settings modal does, and none of it
 is in `obsidian.d.ts`:
 
-| | |
-|---|---|
-| `app.setting.pageStack.length` | `0` on the list, `1` inside a provider page |
-| `app.setting.getCurrentPageEl()` | the element the user is looking at |
-| `app.setting.closePage()` | go back one level |
-| `app.setting.openTabById('tars')` | open the plugin's tab |
+|                                   |                                             |
+| --------------------------------- | ------------------------------------------- |
+| `app.setting.pageStack.length`    | `0` on the list, `1` inside a provider page |
+| `app.setting.getCurrentPageEl()`  | the element the user is looking at          |
+| `app.setting.closePage()`         | go back one level                           |
+| `app.setting.openTabById('tars')` | open the plugin's tab                       |
 
 Treat them as test-only. `src/settingTab.ts` reaches for `closePage()` in one
 place, behind a narrow structural type, because there is no alternative.
@@ -112,10 +112,10 @@ the deferred path in `settingTab.ts` rather than calling `update()` directly.
 Synthetic events have to match what the component listens for, or a working
 control looks broken:
 
-| Component | Event |
-|---|---|
-| `TextComponent`, `TextAreaComponent` | `input` |
-| `SliderComponent` | `change` |
+| Component                            | Event    |
+| ------------------------------------ | -------- |
+| `TextComponent`, `TextAreaComponent` | `input`  |
+| `SliderComponent`                    | `change` |
 
 ```js
 el.value = '3'
@@ -145,24 +145,26 @@ Run against a scratch vault, restoring `data.json` at the end.
 
 ```js
 // helpers, paste into obsidian eval
-const s = app.setting, p = app.plugins.plugins['tars']
+const s = app.setting,
+	p = app.plugins.plugins['tars']
 const C = () => s.activeTab.containerEl
-const rows = () => Array.from(C().querySelectorAll('.setting-item')).filter(e => e.querySelector('.setting-item-name'))
-const row = (name) => rows().find(e => e.querySelector('.setting-item-name').textContent.includes(name))
-const names = () => Array.from(C().querySelectorAll('.setting-item-name')).map(e => e.textContent)
+const rows = () =>
+	Array.from(C().querySelectorAll('.setting-item')).filter((e) => e.querySelector('.setting-item-name'))
+const row = (name) => rows().find((e) => e.querySelector('.setting-item-name').textContent.includes(name))
+const names = () => Array.from(C().querySelectorAll('.setting-item-name')).map((e) => e.textContent)
 ```
 
-| # | Check | Passes when |
-|---|---|---|
-| 1 | Add a provider: `+` in the list header, pick a vendor | count grows, it appears in the list, `pageStack` stays `0` |
-| 2 | Missing API key | providers with an empty key show a warning; Ollama, which needs none, does not |
-| 3 | Rename a tag, then `closePage()` | typing does not tear down the page; the list entry shows the new tag |
-| 4 | Invalid tags: a name already in use, `#` in the name, a space, empty | all four rejected, stored tag unchanged |
-| 5 | Remove, from inside the provider's page | count drops, `pageStack` returns to `0`, the entry is gone |
-| 6 | Reset buttons: base URL, the three message tags, answer delay | field, stored value **and** any number rendered beside a slider all return to the default |
-| 7 | Default system message toggle | switches the textarea's `disabled` state both ways |
-| 8 | Section structure | four headings (AI assistants, Message tags, System message, Advanced), no heading printed twice |
-| 9 | `obsidian dev:errors` | empty |
+| #   | Check                                                                | Passes when                                                                                     |
+| --- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| 1   | Add a provider: `+` in the list header, pick a vendor                | count grows, it appears in the list, `pageStack` stays `0`                                      |
+| 2   | Missing API key                                                      | providers with an empty key show a warning; Ollama, which needs none, does not                  |
+| 3   | Rename a tag, then `closePage()`                                     | typing does not tear down the page; the list entry shows the new tag                            |
+| 4   | Invalid tags: a name already in use, `#` in the name, a space, empty | all four rejected, stored tag unchanged                                                         |
+| 5   | Remove, from inside the provider's page                              | count drops, `pageStack` returns to `0`, the entry is gone                                      |
+| 6   | Reset buttons: base URL, the three message tags, answer delay        | field, stored value **and** any number rendered beside a slider all return to the default       |
+| 7   | Default system message toggle                                        | switches the textarea's `disabled` state both ways                                              |
+| 8   | Section structure                                                    | four headings (AI assistants, Message tags, System message, Advanced), no heading printed twice |
+| 9   | `obsidian dev:errors`                                                | empty                                                                                           |
 
 Check 6 is worth doing by eye as well: a reset that writes to a component's
 underlying element instead of calling the component's `setValue()` moves the
