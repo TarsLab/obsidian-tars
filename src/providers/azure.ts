@@ -15,6 +15,7 @@ const sendRequestFunc = (settings: AzureOptions): SendRequest =>
 		const { apiKey, model, endpoint, apiVersion } = options
 		const remains = bodyParams(parameters, optionsExcludingParams)
 		if (!apiKey) throw new Error(t('API key is required'))
+		if (!model) throw new Error(t('Model is required'))
 
 		const client = new AzureOpenAI({
 			endpoint,
@@ -76,20 +77,22 @@ const sendRequestFunc = (settings: AzureOptions): SendRequest =>
 		}
 	}
 
-const models = ['o3-mini', 'deepseek-r1', 'phi-4', 'o1', 'o1-mini', 'gpt-4o', 'gpt-4o-mini']
-
 export const azureVendor: Vendor = {
 	name: 'Azure',
 	defaultOptions: {
 		apiKey: '',
 		baseURL: '',
-		model: models[0],
+		model: '',
 		endpoint: '',
 		apiVersion: '',
 		parameters: {}
 	} as AzureOptions,
 	sendRequestFunc,
-	models,
+	// Azure addresses a deployment, not a model: the name is whatever it was given
+	// in the portal, so no list can be offered — neither a curated one nor a
+	// fetched one, since listing deployments needs a management credential rather
+	// than the inference key.
+	models: [],
 	websiteToObtainKey: 'https://portal.azure.com',
 	capabilities: ['Text Generation', 'Reasoning']
 }

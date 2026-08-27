@@ -14,6 +14,7 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 		const { apiKey, baseURL, model } = options
 		const remains = bodyParams(parameters, optionsExcludingParams)
 		if (!apiKey) throw new Error(t('API key is required'))
+		if (!model) throw new Error(t('Model is required'))
 
 		const client = new OpenAI({
 			apiKey,
@@ -50,18 +51,16 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 		}
 	}
 
-const models = ['deepseek-chat', 'deepseek-reasoner']
-
 export const deepSeekVendor: Vendor = {
 	name: 'DeepSeek',
 	defaultOptions: {
 		apiKey: '',
 		baseURL: 'https://api.deepseek.com',
-		model: models[0],
+		model: '',
 		parameters: {}
 	},
 	sendRequestFunc,
-	models,
+	models: [],
 	websiteToObtainKey: 'https://platform.deepseek.com',
 	capabilities: ['Text Generation', 'Reasoning']
 }

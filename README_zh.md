@@ -71,8 +71,8 @@ Tars 是一个 Obsidian 插件，基于标签建议进行文本生成，支持 C
 
 ### 助手特色
 
-- Azure: 支持 o1，deepseek-r1，gpt-4o 等等
-- 🔥DeepSeek：推理模型 deepseek-reasoner 的思维链以 callout 格式输出
+- Azure：模型一栏填的是你在 Azure 门户给部署起的名字，不是模型 id
+- 🔥DeepSeek：推理模型的思维链以 callout 格式输出
 - Doubao: 支持应用（bot）API，[支持 deepseek 联网插件和知识库插件](https://github.com/TarsLab/obsidian-tars/issues/68)
 - 🔥LongCat 龙猫：推理内容以 callout 格式输出
 - 🔥MiniMax 海螺：推理内容以 callout 格式输出
@@ -153,7 +153,9 @@ graph LR
 
 ### 设置页面没有想要的模型？
 
-可以在设置中的“覆盖输入参数”进行配置，输入 JSON 格式，例如 `{"model":"你想要的model"}`。
+大部分服务商的模型列表是调用官方接口取回来的，不是插件里写死的。列表里没有的模型——服务商不再公开的旧模型，或者只有你的账号能看到的模型——可以直接在“模型”输入框里填。
+
+也可以在“覆盖输入参数”里填 JSON，例如 `{"model":"你想要的model"}`，它的优先级高于“模型”输入框。
 
 ### 如何查看开发者控制台？
 

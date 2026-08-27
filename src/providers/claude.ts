@@ -79,6 +79,7 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 		} = options
 		let baseURL = originalBaseURL
 		if (!apiKey) throw new Error(t('API key is required'))
+		if (!model) throw new Error(t('Model is required'))
 
 		// Remove /v1/messages from baseURL if present, as Anthropic SDK will add it automatically
 		if (baseURL.endsWith('/v1/messages/')) {
@@ -175,26 +176,12 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 		}
 	}
 
-const models = [
-	'claude-sonnet-4-6',
-	'claude-opus-4-6',
-	'claude-sonnet-4-5',
-	'claude-opus-4-5',
-	'claude-haiku-4-5',
-	'claude-sonnet-4-0',
-	'claude-opus-4-0',
-	'claude-3-7-sonnet-latest',
-	'claude-3-5-sonnet-latest',
-	'claude-3-opus-latest',
-	'claude-3-5-haiku-latest'
-]
-
 export const claudeVendor: Vendor = {
 	name: 'Claude',
 	defaultOptions: {
 		apiKey: '',
 		baseURL: 'https://api.anthropic.com',
-		model: models[0],
+		model: '',
 		max_tokens: 8192,
 		enableWebSearch: false,
 		enableThinking: false,
@@ -202,7 +189,7 @@ export const claudeVendor: Vendor = {
 		parameters: {}
 	} as ClaudeOptions,
 	sendRequestFunc,
-	models,
+	models: [],
 	websiteToObtainKey: 'https://console.anthropic.com',
 	capabilities: ['Text Generation', 'Web Search', 'Reasoning', 'Image Vision', 'PDF Vision']
 }

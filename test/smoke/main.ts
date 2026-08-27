@@ -3,6 +3,7 @@ import { Plugin, requestUrl } from 'obsidian'
 import { Message, ProviderSettings } from '../../src/providers'
 import { stripStainlessHeaders } from '../../src/providers/utils'
 import { availableVendors } from '../../src/settings'
+import { fetchModels, MODEL_FETCH_CONFIGS, ModelFetchConfig } from '../../src/settingTab'
 
 /**
  * Development-only harness. Loaded as a separate plugin so that it can import the
@@ -364,6 +365,66 @@ export default class SmokePlugin extends Plugin {
 					result +
 					reasoning
 			)
+		}
+		return lines.join('\n')
+	}
+	/**
+	 * Asks every configured provider for its own model list.
+	 *
+	 * The settings tab fetches models for some vendors and ships a hardcoded array
+	 * for the rest, and those arrays go stale — issue #119 was exactly that. This
+	 * reports what each vendor's list endpoint actually answers, so the choice
+	 * between fetching a list and curating one rests on the response rather than on
+	 * documentation.
+	 *
+	 * Uses `requestUrl`, as the settings tab does, so CORS never enters into it:
+	 * what is being measured is reachability, authentication and response shape.
+	 */
+	async models(only?: string, timeoutMs = PROBE_TIMEOUT_MS, limit = 6): Promise<string> {
+		const tars = (this.app as unknown as PluginRegistry).plugins?.plugins?.['tars']
+		if (!tars) return 'Tars plugin is not loaded — enable it first.'
+		const providers: ProviderSettings[] = tars.settings?.providers ?? []
+		if (!providers.length) return 'No providers configured.'
+
+		const lines = [
+			pad('TAG', 14) + pad('VENDOR', 12) + pad('STATUS', 8) + pad('N', 5) + 'ENDPOINT — SAMPLE',
+			'-'.repeat(110)
+		]
+
+		for (const p of providers) {
+			if (only && !p.tag.toLowerCase().includes(only.toLowerCase())) continue
+			const config: ModelFetchConfig | undefined = (
+				MODEL_FETCH_CONFIGS as Record<string, ModelFetchConfig | undefined>
+			)[p.vendor]
+			if (!config) {
+				lines.push(pad(p.tag, 14) + pad(p.vendor, 12) + 'no list endpoint configured — the model is typed in by hand')
+				continue
+			}
+			const url = typeof config.url === 'function' ? config.url(p.options.baseURL) : config.url
+			try {
+				const ids = await Promise.race([
+					fetchModels(config, p.options.baseURL, config.requiresApiKey ? p.options.apiKey : undefined),
+					new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error('timeout')), timeoutMs))
+				])
+				lines.push(
+					pad(p.tag, 14) +
+						pad(p.vendor, 12) +
+						pad('ok', 8) +
+						pad(String(ids.length), 5) +
+						url +
+						(ids.length ? ` — ${ids.slice(0, limit).join(', ')}` : ' — empty list')
+				)
+			} catch (e) {
+				lines.push(
+					pad(p.tag, 14) +
+						pad(p.vendor, 12) +
+						pad('FAIL', 8) +
+						pad('-', 5) +
+						url +
+						' — ' +
+						(e as Error).message.slice(0, 70)
+				)
+			}
 		}
 		return lines.join('\n')
 	}

@@ -10,6 +10,7 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 		const { apiKey, baseURL, model } = options
 		const remains = bodyParams(parameters, optionsExcludingParams)
 		if (!apiKey) throw new Error(t('API key is required'))
+		if (!model) throw new Error(t('Model is required'))
 
 		const formattedMessages = await Promise.all(messages.map((msg) => formatMsg(msg, resolveEmbedAsBinary)))
 		const client = new OpenAI({
@@ -64,18 +65,16 @@ const formatMsg = async (msg: Message, resolveEmbedAsBinary: ResolveEmbedAsBinar
 	}
 }
 
-const models = ['qwen-turbo', 'qwen-plus', 'qwen-max', 'qwen-vl-max']
-
 export const qwenVendor: Vendor = {
 	name: 'Qwen',
 	defaultOptions: {
 		apiKey: '',
 		baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-		model: models[0],
+		model: '',
 		parameters: {}
 	},
 	sendRequestFunc,
-	models,
+	models: [],
 	websiteToObtainKey: 'https://dashscope.console.aliyun.com',
 	capabilities: ['Text Generation', 'Image Vision']
 }

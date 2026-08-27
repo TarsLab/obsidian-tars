@@ -102,7 +102,7 @@ cp build/tars-smoke/{main.js,manifest.json} "$VAULT/.obsidian/plugins/tars-smoke
 obsidian eval code='(async()=>{await app.plugins.loadManifests();await app.plugins.enablePlugin("tars-smoke")})()'
 ```
 
-Two entry points:
+Three entry points:
 
 **`cors()`** — classifies every endpoint using the table above. Costs nothing
 and touches no keys: the preflight runs before authentication, so a deliberately
@@ -119,6 +119,29 @@ real credit on real keys**, since it reads the Tars plugin's own settings.
 ```bash
 obsidian eval code='(async()=>app.plugins.plugins["tars-smoke"].chat({only:"Kimi"}))()'
 ```
+
+**`models()`** — asks every configured provider for its own model list, through
+the very `MODEL_FETCH_CONFIGS` and `fetchModels` the settings tab uses. Those are
+exported from `src/settingTab.ts` for this reason: a harness holding its own copy
+of the URLs stops testing them the moment one is edited. Costs nothing beyond a
+`GET`, but it does use real keys.
+
+```bash
+obsidian eval code='(async()=>app.plugins.plugins["tars-smoke"].models())()'
+# models(only?, timeoutMs = 8000, limit = 6) — widen the budget and the sample:
+obsidian eval code='(async()=>app.plugins.plugins["tars-smoke"].models("Claude",40000,99))()'
+```
+
+This is what a hardcoded model list is checked against. Two things it has already
+settled: DeepSeek no longer lists `deepseek-chat` or `deepseek-reasoner` at all,
+and eight seconds is not a generous timeout — Qwen, DeepSeek, OpenRouter and
+SiliconFlow all came back as `timeout` at 8s and answered fine at 40s. Read a
+`FAIL — timeout` as "ask again with a bigger budget", never as "the endpoint is
+gone".
+
+A listed model is not a guaranteed model. `claude-sonnet-4-0` appears in the list
+this vault's relay returns and still answers `404 not_found_error` when asked a
+question, which is why the model field stays typeable next to the picker.
 
 Run `chat()` before a change and after it, and diff. A provider that stops
 streaming, starts returning empty, or loses its reasoning callout shows up as a
@@ -222,3 +245,27 @@ and are not all plugin defects:
 The reasoning-callout column is issue #116's test: DeepSeek and Claude open one,
 and Zhipu is the row that should. Confirming it needs a Zhipu key in the vault
 under test.
+
+`models()` — the same vault, 40s budget, run while replacing the hardcoded model
+lists:
+
+| Tag         | Vendor      | N   | Note                                                       |
+| ----------- | ----------- | --- | ---------------------------------------------------------- |
+| Router      | OpenRouter  | 417 | —                                                          |
+| Qwen        | Qwen        | 242 | the four names once hardcoded are 4 of these               |
+| gpt         | OpenAI      | 132 | through a relay, so the list is the relay's                |
+| Doubao      | Doubao      | 130 | `/api/v3/models` answers to the inference key              |
+| Claude      | Claude      | 18  | derived from a base URL ending in `/v1/messages`           |
+| Gemini      | Gemini      | 15  | Veo and image entries filtered out                         |
+| Kimi        | Kimi        | 12  | —                                                          |
+| Zhipu       | Zhipu       | 10  | —                                                          |
+| MiniMax     | MiniMax     | 8   | —                                                          |
+| DeepSeek    | DeepSeek    | 3   | `deepseek-chat` and `deepseek-reasoner` are not among them |
+| LongCat     | LongCat     | 1   | —                                                          |
+| SiliconFlow | SiliconFlow | —   | 403, account awaiting identity verification                |
+| Ollama      | Ollama      | —   | **unverified**: no server reachable from this machine      |
+
+`Azure`, `QianFan` and `GptImage` have no entry in `MODEL_FETCH_CONFIGS`. Azure
+addresses a deployment whose name its owner chose, and listing deployments needs
+a management credential rather than the inference key; the other two keep a
+curated list.

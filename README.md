@@ -71,8 +71,8 @@ If the AI provider you want is not in the list above, you can propose a specific
 
 ### Assistant features
 
-- Azure: Supports o1, deepseek-r1, gpt-4o, etc.
-- 🔥DeepSeek: The reasoning model deepseek-reasoner's CoT is output in callout format
+- Azure: the model field holds the deployment name you chose in the portal, not a model id
+- 🔥DeepSeek: the reasoning model's CoT is output in callout format
 - Doubao: Supports bot API, [Supports DeepSeek web search plugin and knowledge base plugin](https://github.com/TarsLab/obsidian-tars/issues/68)
 - 🔥LongCat: Reasoning output in callout format
 - 🔥MiniMax: Reasoning output in callout format
@@ -153,7 +153,9 @@ There are several ways:
 
 ### Can't find the model you want in the settings?
 
-You can configure it in the "Override input parameters" section in the settings by entering JSON format, such as `{"model":"your-desired-model"}`.
+Most providers are asked for their own model list, so the choices come from the API rather than from a list baked into the plugin. A model missing from it — one the provider no longer advertises, or one only your account can see — can still be typed straight into the model field.
+
+It can also be set under "Override input parameters" as JSON, such as `{"model":"your-desired-model"}`, which takes precedence over the model field.
 
 ### How to view the developer console?
 

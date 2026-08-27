@@ -20,6 +20,7 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 		const { apiKey, baseURL, model } = options
 		const remains = bodyParams(parameters, optionsExcludingParams)
 		if (!apiKey) throw new Error(t('API key is required'))
+		if (!model) throw new Error(t('Model is required'))
 
 		const formattedMessages = await Promise.all(messages.map((msg) => formatMsg(msg, resolveEmbedAsBinary)))
 		const client = new OpenAI({

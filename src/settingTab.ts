@@ -6,7 +6,8 @@ import {
 	SettingDefinitionItem,
 	SettingDefinitionPage,
 	SettingDefinitionRender,
-	SliderComponent
+	SliderComponent,
+	TextComponent
 } from 'obsidian'
 import { exportCmd, replaceCmd, replaceCmdId } from './commands'
 import { exportCmdId } from './commands/export'
@@ -15,14 +16,18 @@ import TarsPlugin from './main'
 import { SelectModelModal, SelectVendorModal } from './modal'
 import { BaseOptions, Optional, ProviderSettings, Vendor } from './providers'
 import { ClaudeOptions, claudeVendor } from './providers/claude'
+import { deepSeekVendor } from './providers/deepSeek'
+import { doubaoVendor } from './providers/doubao'
 import { GptImageOptions, gptImageVendor } from './providers/gptImage'
 import { geminiVendor } from './providers/gemini'
 import { grokVendor } from './providers/grok'
 import { kimiVendor } from './providers/kimi'
 import { longCatVendor } from './providers/longcat'
 import { miniMaxVendor } from './providers/minimax'
+import { openAIVendor } from './providers/openAI'
 import { ollamaVendor } from './providers/ollama'
 import { openRouterVendor } from './providers/openRouter'
+import { qwenVendor } from './providers/qwen'
 import { siliconFlowVendor } from './providers/siliconflow'
 import { getCapabilityEmoji } from './providers/utils'
 import { zhipuVendor } from './providers/zhipu'
@@ -446,42 +451,56 @@ export class TarsSettingTab extends PluginSettingTab {
 		name: t('Model'),
 		desc,
 		render: (setting) => {
-			setting.addButton((btn) => {
-				btn
-					.setButtonText(settings.options.model ? settings.options.model : t('Select the model to use'))
-					.onClick(async () => {
-						// Check if API key is required but not provided
-						if (modelConfig.requiresApiKey && !settings.options.apiKey) {
-							new Notice(t('Please input API key first'))
-							return
-						}
-						try {
-							const models = await fetchModels(
-								modelConfig,
-								settings.options.baseURL,
-								modelConfig.requiresApiKey ? settings.options.apiKey : undefined
-							)
-							const onChoose = async (selectedModel: string) => {
-								settings.options.model = selectedModel
-								await this.plugin.saveSettings()
-								btn.setButtonText(selectedModel)
-							}
-							new SelectModelModal(this.app, models, onChoose).open()
-						} catch (error) {
-							if (error instanceof Error) {
-								const errorMessage = error.message.toLowerCase()
-								if (errorMessage.includes('401') || errorMessage.includes('unauthorized')) {
-									new Notice('🔑 ' + t('API key may be incorrect. Please check your API key.'))
-								} else if (errorMessage.includes('403') || errorMessage.includes('forbidden')) {
-									new Notice('🚫 ' + t('Access denied. Please check your API permissions.'))
-								} else {
-									new Notice('🔴 ' + error.message)
-								}
-							} else {
-								new Notice('🔴 ' + String(error))
-							}
-						}
+			// A fetched list is a convenience, not the only way in. A provider can
+			// refuse to list its models and still answer questions perfectly well —
+			// SiliconFlow returns 403 until the account is identity-verified — and a
+			// button on its own would leave the model unsettable in exactly that
+			// case. The text field is what keeps the provider usable.
+			let modelInput: TextComponent | undefined
+			setting.addText((text) => {
+				modelInput = text
+				text
+					.setPlaceholder(t('Select the model to use'))
+					.setValue(settings.options.model)
+					.onChange(async (value) => {
+						settings.options.model = value.trim()
+						await this.plugin.saveSettings()
 					})
+			})
+			setting.addButton((btn) => {
+				btn.setButtonText(t('Select the model to use')).onClick(async () => {
+					// Check if API key is required but not provided
+					if (modelConfig.requiresApiKey && !settings.options.apiKey) {
+						new Notice(t('Please input API key first'))
+						return
+					}
+					try {
+						const models = await fetchModels(
+							modelConfig,
+							settings.options.baseURL,
+							modelConfig.requiresApiKey ? settings.options.apiKey : undefined
+						)
+						const onChoose = async (selectedModel: string) => {
+							settings.options.model = selectedModel
+							await this.plugin.saveSettings()
+							modelInput?.setValue(selectedModel)
+						}
+						new SelectModelModal(this.app, models, onChoose).open()
+					} catch (error) {
+						if (error instanceof Error) {
+							const errorMessage = error.message.toLowerCase()
+							if (errorMessage.includes('401') || errorMessage.includes('unauthorized')) {
+								new Notice('🔑 ' + t('API key may be incorrect. Please check your API key.'))
+							} else if (errorMessage.includes('403') || errorMessage.includes('forbidden')) {
+								new Notice('🚫 ' + t('Access denied. Please check your API permissions.'))
+							} else {
+								new Notice('🔴 ' + error.message)
+							}
+						} else {
+							new Notice('🔴 ' + String(error))
+						}
+					}
+				})
 			})
 		}
 	})
@@ -979,21 +998,27 @@ const isValidUrl = (url: string) => {
 /**
  * How to ask one provider what models it has.
  *
+ * Exported alongside `fetchModels` and `MODEL_FETCH_CONFIGS` so that the smoke
+ * harness probes the configuration the settings tab actually uses. A harness that
+ * keeps its own copy of these URLs stops testing them the moment one is edited.
+ *
  * `url` may be derived from the provider's own base URL, because a provider
  * reached through a relay does not list its models at the vendor's address —
  * this vault reaches Gemini through one, and a hardcoded URL would ask the wrong
  * host. `parse` exists because not everyone answers in OpenAI's shape.
  */
-interface ModelFetchConfig {
+export interface ModelFetchConfig {
 	url: string | ((baseURL: string) => string)
 	requiresApiKey: boolean
 	/** Defaults to a bearer token. */
 	authHeader?: string
+	/** Anything the endpoint demands beyond authentication, such as an API version. */
+	headers?: Record<string, string>
 	/** Defaults to OpenAI's `{ data: [{ id }] }`. */
 	parse?: (json: unknown) => string[]
 }
 
-const fetchModels = async (config: ModelFetchConfig, baseURL: string, apiKey?: string): Promise<string[]> => {
+export const fetchModels = async (config: ModelFetchConfig, baseURL: string, apiKey?: string): Promise<string[]> => {
 	const url = typeof config.url === 'function' ? config.url(baseURL) : config.url
 	const authHeader = config.authHeader ?? 'Authorization'
 	const authValue = config.authHeader ? apiKey : `Bearer ${apiKey}`
@@ -1001,6 +1026,7 @@ const fetchModels = async (config: ModelFetchConfig, baseURL: string, apiKey?: s
 		url,
 		headers: {
 			...(apiKey && { [authHeader]: authValue as string }),
+			...config.headers,
 			'Content-Type': 'application/json'
 		}
 	})
@@ -1010,7 +1036,47 @@ const fetchModels = async (config: ModelFetchConfig, baseURL: string, apiKey?: s
 }
 
 // Model fetching configurations for different vendors
-const MODEL_FETCH_CONFIGS = {
+export const MODEL_FETCH_CONFIGS = {
+	[claudeVendor.name]: {
+		// The Anthropic SDK appends its own path to the base URL, so what is stored
+		// in the settings may be a bare host or may already carry /v1/messages —
+		// this vault's relay stores the latter. Strip whichever tail is present
+		// before asking for the sibling /v1/models.
+		url: (baseURL: string) =>
+			baseURL
+				.replace(/\/+$/, '')
+				.replace(/(\/v1)?\/messages$/, '')
+				.replace(/\/v1$/, '') + '/v1/models',
+		requiresApiKey: true,
+		authHeader: 'x-api-key',
+		headers: { 'anthropic-version': '2023-06-01' }
+	},
+	[deepSeekVendor.name]: {
+		url: (baseURL: string) => baseURL.replace(/\/+$/, '') + '/models',
+		requiresApiKey: true
+	},
+	[qwenVendor.name]: {
+		url: (baseURL: string) => baseURL.replace(/\/+$/, '') + '/models',
+		requiresApiKey: true
+	},
+	[openAIVendor.name]: {
+		url: (baseURL: string) => baseURL.replace(/\/+$/, '') + '/models',
+		requiresApiKey: true
+	},
+	[doubaoVendor.name]: {
+		// Doubao's base URL is the completions endpoint itself, not a prefix.
+		url: (baseURL: string) => baseURL.replace(/\/+$/, '').replace(/\/chat\/completions$/, '') + '/models',
+		requiresApiKey: true
+	},
+	[ollamaVendor.name]: {
+		// Ollama has an OpenAI-compatible /v1/models, but /api/tags is what its own
+		// documentation points at and it is the list of models actually pulled onto
+		// the machine, which is the only list worth offering.
+		url: (baseURL: string) => baseURL.replace(/\/+$/, '') + '/api/tags',
+		requiresApiKey: false,
+		parse: (json: unknown) =>
+			(json as { models?: { name?: string }[] }).models?.map((model) => model.name ?? '').filter(Boolean) ?? []
+	},
 	[siliconFlowVendor.name]: {
 		url: 'https://api.siliconflow.cn/v1/models?type=text&sub_type=chat',
 		requiresApiKey: true
