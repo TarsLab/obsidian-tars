@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+# A newer push to the same branch makes the running check obsolete.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      # Same install as the release build, so a lockfile that only resolves
+      # under `npm install` fails here rather than at release time.
+      - name: Install
+        run: npm ci
+
+      # tsc --noEmit, then the production bundle.
+      - name: Build
+        run: npm run build
+
+      - name: Lint
+        run: npm run lint
