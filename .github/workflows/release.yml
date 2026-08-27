@@ -33,6 +33,7 @@ jobs:
           subject-path: |
             main.js
             styles.css
+            manifest.json
 
       - name: Create release
         env:
