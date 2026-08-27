@@ -33,7 +33,29 @@ same one `fetch` uses: an unreachable host reports `net::ERR_TIMED_OUT` through
 it, a Chromium error code. Node's `https` module is _not_ a substitute — it
 bypasses Chromium's proxy settings, so it can reach a host the plugin cannot.
 
-## The second trap: your shell is not Obsidian
+## The second trap: an invalid key only tests the error path
+
+cors() and sdk() cost nothing because a preflight runs before authentication, so
+an invalid key is enough to see whether the browser let a request out. That is
+true, and it is also how they mislead.
+
+A gateway that attaches CORS headers to real responses may attach none to the
+rejections it writes itself. Then every probe — invalid key, or valid key with a
+made-up model — reads as blocked, and a provider that streams perfectly is
+recorded as unusable. LongCat was written off this way (issue #120) until a real
+request showed it working: its preflight advertises
+`access-control-allow-origin`, its 200s carry it, and its 4xx carry nothing.
+
+So a `blocked` verdict from cors() is a finding about the error path only. What
+settles it is a request that succeeds — chat(), with a configured provider and a
+model that exists. A real key alone is not enough, since the probe still sends a
+model that does not exist.
+
+The cost of this is real in the other direction too: users of such a provider
+see "Failed to fetch" instead of whatever the API actually said, because the
+browser refuses to hand over a response with no CORS headers on it.
+
+## The third trap: your shell is not Obsidian
 
 Obsidian honours the macOS system proxy. A terminal usually does not, and an
 agent sandbox may inject its own. On the machine this was written on the two
@@ -169,9 +191,11 @@ What this overturns:
 - **Kimi's history has a cause.** "kimi 电脑端 跨域Error … kimi 用 axios 可以"
   was never about axios being better; axios simply does not send
   `X-Stainless-*`. Strip those headers and the OpenAI SDK works there too.
-- **LongCat and OpenCode Zen are not drop-in.** Both advertise usable CORS
-  headers to a shell and refuse the browser, so neither is the "copy
-  `deepSeek.ts`, change the base URL" job it looks like.
+- **LongCat was a false alarm** — see the trap above. It streams fine; only its
+  error responses lack CORS headers, which is all an invalid key can provoke.
+  OpenCode Zen, Doubao and OpenAI still read as blocked, and for the same reason
+  none of those verdicts should be trusted until a successful request is tried
+  against them.
 - **ModelScope cannot be judged from this machine at all** — the proxy route
   cannot reach it. Issue #108's cause is still visible in its headers
   (`Access-Control-Allow-Headers` is a fixed nginx allowlist carrying

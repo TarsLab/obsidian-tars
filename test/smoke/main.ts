@@ -112,7 +112,14 @@ export default class SmokePlugin extends Plugin {
 				// separates "the browser refused this" from "the host is unreachable".
 				// Both surface as the same "Failed to fetch" without it.
 				if (direct.reach === 'blocked') verdict = 'NO NETWORK — says nothing about CORS'
-				else if (plain.reach === 'blocked') verdict = 'CORS: blocked outright — requestUrl only, no streaming'
+				else if (plain.reach === 'blocked')
+					// This probe can only ever provoke an error: the key is invalid and
+					// the model is made up. A gateway that puts CORS headers on real
+					// responses may put none on its own rejections, and then a provider
+					// that works perfectly reads as blocked. LongCat did exactly that.
+					// Only a request that succeeds tells the two apart, which means
+					// chat(), with a configured provider and a real model.
+					verdict = 'CORS: blocked on the error path — only chat() tells this from a real block'
 				else if (stain.reach === 'blocked') verdict = 'CORS: ** x-stainless-* rejected — strip them **'
 				else verdict = 'ok'
 
@@ -184,6 +191,50 @@ export default class SmokePlugin extends Plugin {
 			'-'.repeat(90),
 			...rows
 		].join('\n')
+	}
+
+	/**
+	 * The preflight response as the browser saw it, for when cors() says a provider
+	 * is blocked and the question is why.
+	 *
+	 * requestUrl ignores CORS but travels the same route, so it can read the
+	 * headers Chromium refused on — which a shell cannot, since a shell may not
+	 * take that route at all.
+	 */
+	async preflight(url: string, requestHeaders = 'authorization,content-type', apiKey = DUMMY_KEY): Promise<string> {
+		// A preflight passing is only half of it: the response to the real request
+		// has to carry Access-Control-Allow-Origin as well, and a gateway that
+		// answers OPTIONS itself may not put it on what the backend returns.
+		const look = async (method: string, headers: Record<string, string>, body?: string) => {
+			try {
+				const r = await requestUrl({ url, method, headers, body, throw: false })
+				const cors = Object.entries(r.headers).filter(([k]) => k.toLowerCase().startsWith('access-control'))
+				return (
+					`  HTTP ${r.status}\n` +
+					(cors.length
+						? cors.map(([k, v]) => `    ${k}: ${v}`).join('\n')
+						: '    (no access-control-* headers — the browser refuses here)')
+				)
+			} catch (e) {
+				return `  unreachable: ${(e as Error).message}`
+			}
+		}
+
+		const optionsRes = await look('OPTIONS', {
+			Origin: 'app://obsidian.md',
+			'Access-Control-Request-Method': 'POST',
+			'Access-Control-Request-Headers': requestHeaders
+		})
+		const postRes = await look(
+			'POST',
+			{ Origin: 'app://obsidian.md', Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+			JSON.stringify({ model: 'probe', messages: [{ role: 'user', content: 'hi' }] })
+		)
+		// A GET that succeeds is the only way to see the success path when the POST
+		// is refused for quota: a gateway may attach CORS headers on one and not the
+		// other, and an invalid key would never reveal the difference.
+		const listRes = await look('GET', { Origin: 'app://obsidian.md', Authorization: `Bearer ${apiKey}` })
+		return `preflight (OPTIONS)\n${optionsRes}\n\nactual request (POST)\n${postRes}\n\nsame URL via GET\n${listRes}`
 	}
 
 	private async viaFetch(url: string, headers: Record<string, string>, body: string) {
