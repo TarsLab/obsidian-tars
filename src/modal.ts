@@ -5,9 +5,9 @@ import { getCapabilityEmoji } from './providers/utils'
 
 export class SelectModelModal extends FuzzySuggestModal<string> {
 	models: string[]
-	onChoose: (result: string) => void
+	onChoose: (result: string) => Promise<void>
 
-	constructor(app: App, models: string[], onChoose: (result: string) => void) {
+	constructor(app: App, models: string[], onChoose: (result: string) => Promise<void>) {
 		super(app)
 		this.models = models
 		this.onChoose = onChoose
@@ -40,15 +40,16 @@ export class SelectModelModal extends FuzzySuggestModal<string> {
 	}
 
 	onChooseItem(model: string, _evt: MouseEvent | KeyboardEvent) {
-		this.onChoose(model)
+		// FuzzySuggestModal does not await this hook; the modal is already closing.
+		void this.onChoose(model)
 	}
 }
 
 export class SelectVendorModal extends FuzzySuggestModal<Vendor> {
 	vendors: Vendor[]
-	onChoose: (result: Vendor) => void
+	onChoose: (result: Vendor) => Promise<void>
 
-	constructor(app: App, vendors: Vendor[], onChoose: (vendor: Vendor) => void) {
+	constructor(app: App, vendors: Vendor[], onChoose: (vendor: Vendor) => Promise<void>) {
 		super(app)
 		this.vendors = vendors
 		this.onChoose = onChoose
@@ -90,6 +91,7 @@ export class SelectVendorModal extends FuzzySuggestModal<Vendor> {
 	}
 
 	onChooseItem(vendor: Vendor, _evt: MouseEvent | KeyboardEvent) {
-		this.onChoose(vendor)
+		// FuzzySuggestModal does not await this hook; the modal is already closing.
+		void this.onChoose(vendor)
 	}
 }

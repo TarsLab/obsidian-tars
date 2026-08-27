@@ -174,10 +174,11 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 		}
 	}
 
-	async selectSuggestion(element: TagEntry, _evt: MouseEvent | KeyboardEvent) {
+	selectSuggestion(element: TagEntry, _evt: MouseEvent | KeyboardEvent) {
 		if (!this.context) return
 		const editor = this.context.editor
-		editor.replaceRange(element.replacement, this.context.start, this.context.end)
+		const messagesStart = this.context.start
+		editor.replaceRange(element.replacement, messagesStart, this.context.end)
 
 		if (element.role !== 'assistant' || element.replacement.includes('\n')) {
 			this.close()
@@ -185,6 +186,12 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 		}
 		console.debug('element', element)
 
+		// EditorSuggest declares this hook as returning void, so Obsidian never awaits
+		// it. Generation runs detached; runGeneration reports its own failures.
+		void this.runGeneration(element, editor, messagesStart)
+	}
+
+	private async runGeneration(element: TagEntry, editor: Editor, messagesStart: EditorPosition) {
 		try {
 			const provider = this.settings.providers.find((p) => p.tag === element.tag)
 			if (!provider) {
@@ -192,7 +199,7 @@ export class TagEditorSuggest extends EditorSuggest<TagEntry> {
 			}
 
 			const env = await buildRunEnv(this.app, this.settings)
-			const messagesEndOffset = editor.posToOffset(this.context.start)
+			const messagesEndOffset = editor.posToOffset(messagesStart)
 			console.debug('endOffset', messagesEndOffset)
 			await generate(
 				env,

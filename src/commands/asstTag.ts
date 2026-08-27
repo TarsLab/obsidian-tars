@@ -147,8 +147,8 @@ const regenerate = async (
 }
 
 class ConfirmModal extends Modal {
-	onConfirm: () => void
-	constructor(app: App, onConfirm: () => void) {
+	onConfirm: () => Promise<void>
+	constructor(app: App, onConfirm: () => Promise<void>) {
 		super(app)
 		this.onConfirm = onConfirm
 	}

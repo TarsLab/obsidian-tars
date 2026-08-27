@@ -38,9 +38,9 @@ const convertToTag = (speaker: string) => {
 }
 
 class ReplaceTagModal extends Modal {
-	onSubmit: (tags: ReplaceTag[]) => void
+	onSubmit: (tags: ReplaceTag[]) => Promise<void>
 	recommendTags: ReplaceTag[]
-	constructor(app: App, recommendTags: ReplaceTag[], onSubmit: (tags: ReplaceTag[]) => void) {
+	constructor(app: App, recommendTags: ReplaceTag[], onSubmit: (tags: ReplaceTag[]) => Promise<void>) {
 		super(app)
 		this.recommendTags = recommendTags
 		this.onSubmit = onSubmit

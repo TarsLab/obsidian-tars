@@ -63,7 +63,9 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 				}
 			}
 		} finally {
-			reader.cancel()
+			// We are tearing down either way; an aborted stream makes cancel() reject
+			// and there is nobody left to report that to.
+			await reader.cancel().catch(() => undefined)
 		}
 	}
 
