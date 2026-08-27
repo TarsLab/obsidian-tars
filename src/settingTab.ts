@@ -103,7 +103,7 @@ export class TarsSettingTab extends PluginSettingTab {
 			desc: vendor.capabilities.map((cap) => `${getCapabilityEmoji(cap)} ${t(cap)}`).join('    '),
 			displayValue: () => settings.options.model || '',
 			status: () => (vendor.name !== ollamaVendor.name && !settings.options.apiKey ? 'warning' : null),
-			items: this.providerDefs(index, settings, vendor, () => this.update())
+			items: this.providerDefs(index, settings, vendor)
 		}
 	}
 
@@ -346,17 +346,23 @@ export class TarsSettingTab extends PluginSettingTab {
 	// Setting definitions, one builder per setting.
 	// ---------------------------------------------------------------------------
 
-	tagDef = (
-		settings: ProviderSettings,
-		index: number,
-		defaultTag: string,
-		onTagChanged: (tag: string) => void
-	): SettingDefinitionRender => ({
+	tagDef = (settings: ProviderSettings, index: number, defaultTag: string): SettingDefinitionRender => ({
 		name: '✨ ' + t('Assistant message tag'),
 		desc: t('Tag used to trigger AI text generation'),
 		aliases: [settings.tag, defaultTag],
+		// The provider page is titled after the tag, but SettingDefinitionPage.name is
+		// a plain string rather than a getter, so the title only changes when the tab
+		// re-renders. Calling update() from onChange (or from a blur handler) blanks
+		// the pane, because a re-render while a sub-page is open destroys that page.
+		//
+		// The cleanup below runs as the page is being left. Deferring update() by a
+		// tick lets navigation settle first, so the re-render lands on the list --
+		// where the new title is what the user is looking at -- instead of on the
+		// page they were editing.
 		render: (setting) => {
-			setting.addText((text) =>
+			let tagChanged = false
+
+			setting.addText((text) => {
 				text
 					.setPlaceholder(defaultTag)
 					.setValue(settings.tag)
@@ -373,10 +379,19 @@ export class TarsSettingTab extends PluginSettingTab {
 						}
 
 						settings.tag = trimmed
-						onTagChanged(trimmed)
+						tagChanged = true
 						await this.plugin.saveSettings()
 					})
-			)
+			})
+
+			return () => {
+				if (!tagChanged) return
+				tagChanged = false
+				window.setTimeout(() => {
+					// Skip if the settings pane closed while this was queued.
+					if (this.containerEl.isConnected) this.update()
+				}, 0)
+			}
 		}
 	})
 
@@ -803,18 +818,13 @@ export class TarsSettingTab extends PluginSettingTab {
 	]
 
 	/** Every setting for one provider, in render order. */
-	providerDefs = (
-		index: number,
-		settings: ProviderSettings,
-		vendor: Vendor,
-		onTagChanged: (tag: string) => void
-	): SettingDefinitionRender[] => {
+	providerDefs = (index: number, settings: ProviderSettings, vendor: Vendor): SettingDefinitionRender[] => {
 		const capabilities =
 			t('Supported features') +
 			' : ' +
 			vendor.capabilities.map((cap) => `${getCapabilityEmoji(cap)} ${t(cap)}`).join('    ')
 
-		const defs: SettingDefinitionRender[] = [this.tagDef(settings, index, vendor.name, onTagChanged)]
+		const defs: SettingDefinitionRender[] = [this.tagDef(settings, index, vendor.name)]
 
 		const modelConfig = MODEL_FETCH_CONFIGS[vendor.name as keyof typeof MODEL_FETCH_CONFIGS]
 		if (modelConfig) {
