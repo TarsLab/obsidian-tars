@@ -102,6 +102,71 @@ export const getMimeTypeFromFilename = (filename: string) => {
 export const CALLOUT_BLOCK_START = ' \n\n> [!quote]-  \n> '
 export const CALLOUT_BLOCK_END = '\n\n'
 
+const THINK_OPEN = '<think>'
+const THINK_CLOSE = '</think>'
+
+/** Length of the longest suffix of `text` that could still grow into `tag`. */
+const partialTagSuffix = (text: string, tag: string) => {
+	for (let n = Math.min(text.length, tag.length - 1); n > 0; n--) {
+		if (tag.startsWith(text.slice(-n))) return n
+	}
+	return 0
+}
+
+/** Inside a callout every line needs its own '>', including ones the model wraps. */
+const quoteLines = (text: string, inside: boolean) => (inside ? text.replace(/\n/g, '\n> ') : text)
+
+/**
+ * Turns a content stream that marks its thinking with `<think>` tags into one
+ * where the thinking sits in a collapsed callout.
+ *
+ * The tags cannot be recognised a chunk at a time. GLM-Z1 streams `<think>` as
+ * `'<th'`, `'ink'`, `'>\nOkay'` — the tag spans three chunks and its last
+ * character arrives fused to the first word of the thinking. Comparing a chunk
+ * against `'<think>'` finds nothing, which is why such a model's thinking ends up
+ * rendered as ordinary text.
+ *
+ * Hence the buffer: hold back whatever trailing text could still turn out to be
+ * the beginning of a tag, and release it once enough has arrived to decide.
+ * `flush()` empties that buffer when the stream ends, and closes the callout if
+ * the model never emitted its `</think>`.
+ */
+export const createThinkTagParser = () => {
+	let buffer = ''
+	let thinking = false
+
+	return {
+		push(chunk: string): string {
+			buffer += chunk
+			let out = ''
+
+			for (;;) {
+				const tag = thinking ? THINK_CLOSE : THINK_OPEN
+				const at = buffer.indexOf(tag)
+				if (at === -1) break
+				// Text before the tag still belongs to the state being left.
+				out += quoteLines(buffer.slice(0, at), thinking)
+				buffer = buffer.slice(at + tag.length)
+				thinking = !thinking
+				out += thinking ? CALLOUT_BLOCK_START : CALLOUT_BLOCK_END
+			}
+
+			const held = partialTagSuffix(buffer, thinking ? THINK_CLOSE : THINK_OPEN)
+			const ready = buffer.slice(0, buffer.length - held)
+			buffer = buffer.slice(buffer.length - held)
+			return out + quoteLines(ready, thinking)
+		},
+
+		flush(): string {
+			const rest = quoteLines(buffer, thinking)
+			buffer = ''
+			if (!thinking) return rest
+			thinking = false
+			return rest + CALLOUT_BLOCK_END
+		}
+	}
+}
+
 export const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
 	let binary = ''
 	const bytes = new Uint8Array(buffer)
