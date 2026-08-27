@@ -18,6 +18,7 @@ import { ClaudeOptions, claudeVendor } from './providers/claude'
 import { GptImageOptions, gptImageVendor } from './providers/gptImage'
 import { grokVendor } from './providers/grok'
 import { kimiVendor } from './providers/kimi'
+import { longCatVendor } from './providers/longcat'
 import { miniMaxVendor } from './providers/minimax'
 import { ollamaVendor } from './providers/ollama'
 import { openRouterVendor } from './providers/openRouter'
@@ -1001,6 +1002,10 @@ const MODEL_FETCH_CONFIGS = {
 	},
 	[grokVendor.name]: {
 		url: 'https://api.x.ai/v1/models',
+		requiresApiKey: true
+	},
+	[longCatVendor.name]: {
+		url: 'https://api.longcat.chat/openai/v1/models',
 		requiresApiKey: true
 	},
 	[miniMaxVendor.name]: {
