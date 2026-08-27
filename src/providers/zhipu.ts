@@ -2,7 +2,7 @@ import * as jose from 'jose'
 import OpenAI from 'openai'
 import { t } from 'src/lang/helper'
 import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
-import { stripStainlessHeaders } from './utils'
+import { bodyParams, stripStainlessHeaders } from './utils'
 
 interface Token {
 	id: string
@@ -20,7 +20,8 @@ const sendRequestFunc = (settings: ZhipuOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, _resolveEmbedAsBinary: ResolveEmbedAsBinary) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
-		const { apiKey, baseURL, model, token: currentToken, tokenExpireInMinutes, enableWebSearch, ...remains } = options
+		const { apiKey, baseURL, model, token: currentToken, tokenExpireInMinutes, enableWebSearch } = options
+		const remains = bodyParams(parameters, optionsExcludingParams)
 		if (!apiKey) throw new Error(t('API key is required'))
 		console.debug('zhipu options', { baseURL, apiKey, model, currentToken, tokenExpireInMinutes, enableWebSearch })
 

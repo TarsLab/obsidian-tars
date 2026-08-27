@@ -1,11 +1,13 @@
 import { Ollama } from 'ollama/browser'
 import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
+import { bodyParams } from './utils'
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, _resolveEmbedAsBinary: ResolveEmbedAsBinary) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
-		const { baseURL, model, ...remains } = options
+		const { baseURL, model } = options
+		const remains = bodyParams(parameters, optionsExcludingParams)
 
 		const ollama = new Ollama({ host: baseURL })
 		const response = await ollama.chat({ model, messages, stream: true, ...remains })

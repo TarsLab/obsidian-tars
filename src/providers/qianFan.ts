@@ -2,6 +2,7 @@ import axios from 'axios'
 import { Notice, Platform, requestUrl } from 'obsidian'
 import { t } from 'src/lang/helper'
 import { BaseOptions, Message, Optional, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
+import { bodyParams } from './utils'
 
 interface TokenResponse {
 	access_token: string
@@ -80,7 +81,8 @@ const sendRequestFunc = (settings: QianFanOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, _resolveEmbedAsBinary: ResolveEmbedAsBinary) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
-		const { apiKey, apiSecret, baseURL, model, token: currentToken, ...remains } = options
+		const { apiKey, apiSecret, baseURL, model, token: currentToken } = options
+		const remains = bodyParams(parameters, optionsExcludingParams)
 		if (!apiKey) throw new Error(t('API key is required'))
 		if (!apiSecret) throw new Error(t('API secret is required'))
 		if (!model) throw new Error(t('Model is required'))

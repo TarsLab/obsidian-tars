@@ -1,7 +1,7 @@
 import { AzureOpenAI } from 'openai'
 import { t } from 'src/lang/helper'
 import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
-import { CALLOUT_BLOCK_END, CALLOUT_BLOCK_START, stripStainlessHeaders } from './utils'
+import { CALLOUT_BLOCK_END, CALLOUT_BLOCK_START, bodyParams, stripStainlessHeaders } from './utils'
 
 interface AzureOptions extends BaseOptions {
 	endpoint: string
@@ -12,7 +12,8 @@ const sendRequestFunc = (settings: AzureOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, _resolveEmbedAsBinary: ResolveEmbedAsBinary) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters } // 这样的设计，让parameters 可以覆盖掉前面的设置 optionsExcludingParams
-		const { apiKey, model, endpoint, apiVersion, ...remains } = options
+		const { apiKey, model, endpoint, apiVersion } = options
+		const remains = bodyParams(parameters, optionsExcludingParams)
 		if (!apiKey) throw new Error(t('API key is required'))
 
 		const client = new AzureOpenAI({

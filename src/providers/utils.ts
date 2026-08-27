@@ -21,6 +21,25 @@ import { Capability, ResolveEmbedAsBinary } from '.'
  * `test/smoke`'s cors() is what tells you a provider needs this: it is the one
  * that fails only in the `fetch+stainless` column.
  */
+/**
+ * The extra parameters a provider should put in its request body.
+ *
+ * `parameters` is the only user-declared input to a request body. Everything else
+ * stored on a provider is plugin state: an API key, a cached token, a UI
+ * preference, or a field left behind by a feature that no longer exists. The
+ * older idiom took the request body from whatever remained of the settings after
+ * destructuring, which sent all of that to the API — a `proxyUrl: ''` from a
+ * removed feature is enough to earn a `400 Unrecognized request argument
+ * supplied: proxyUrl` from a backend that validates its input.
+ *
+ * Keys that name a provider setting are dropped even when they arrive through
+ * `parameters`, since there they are overriding configuration rather than adding
+ * to the body — which is what putting `model` in `parameters` has always meant.
+ * Passing the settings object rather than a list keeps the two from drifting.
+ */
+export const bodyParams = (parameters: Record<string, unknown>, providerSettings: object): Record<string, unknown> =>
+	Object.fromEntries(Object.entries(parameters ?? {}).filter(([key]) => !Object.hasOwn(providerSettings, key)))
+
 export const stripStainlessHeaders: Record<string, null> = {
 	'x-stainless-arch': null,
 	'x-stainless-custom-poll-interval': null,
