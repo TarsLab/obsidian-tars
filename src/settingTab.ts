@@ -18,6 +18,7 @@ import { ClaudeOptions, claudeVendor } from './providers/claude'
 import { GptImageOptions, gptImageVendor } from './providers/gptImage'
 import { grokVendor } from './providers/grok'
 import { kimiVendor } from './providers/kimi'
+import { miniMaxVendor } from './providers/minimax'
 import { ollamaVendor } from './providers/ollama'
 import { openRouterVendor } from './providers/openRouter'
 import { siliconFlowVendor } from './providers/siliconflow'
@@ -974,6 +975,10 @@ const MODEL_FETCH_CONFIGS = {
 	},
 	[grokVendor.name]: {
 		url: 'https://api.x.ai/v1/models',
+		requiresApiKey: true
+	},
+	[miniMaxVendor.name]: {
+		url: 'https://api.minimaxi.com/v1/models',
 		requiresApiKey: true
 	},
 	[zhipuVendor.name]: {

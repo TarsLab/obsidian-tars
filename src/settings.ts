@@ -8,6 +8,7 @@ import { geminiVendor } from './providers/gemini'
 import { gptImageVendor } from './providers/gptImage'
 import { grokVendor } from './providers/grok'
 import { kimiVendor } from './providers/kimi'
+import { miniMaxVendor } from './providers/minimax'
 import { ollamaVendor } from './providers/ollama'
 import { openAIVendor } from './providers/openAI'
 import { openRouterVendor } from './providers/openRouter'
@@ -85,6 +86,7 @@ export const availableVendors: Vendor[] = [
 	gptImageVendor,
 	grokVendor,
 	kimiVendor,
+	miniMaxVendor,
 	ollamaVendor,
 	openRouterVendor,
 	qianFanVendor,
