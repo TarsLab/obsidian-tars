@@ -6,8 +6,7 @@ import {
 	SettingDefinitionItem,
 	SettingDefinitionPage,
 	SettingDefinitionRender,
-	SliderComponent,
-	TextComponent
+	SliderComponent
 } from 'obsidian'
 import { exportCmd, replaceCmd, replaceCmdId } from './commands'
 import { exportCmdId } from './commands/export'
@@ -464,56 +463,69 @@ export class TarsSettingTab extends PluginSettingTab {
 		name: t('Model'),
 		desc,
 		render: (setting) => {
-			// A fetched list is a convenience, not the only way in. A provider can
-			// refuse to list its models and still answer questions perfectly well —
-			// SiliconFlow returns 403 until the account is identity-verified — and a
-			// button on its own would leave the model unsettable in exactly that
-			// case. The text field is what keeps the provider usable.
-			let modelInput: TextComponent | undefined
-			setting.addText((text) => {
-				modelInput = text
-				text
-					.setPlaceholder(t('Select the model to use'))
-					.setValue(settings.options.model)
-					.onChange(async (value) => {
-						settings.options.model = value.trim()
-						await this.plugin.saveSettings()
-					})
-			})
-			setting.addButton((btn) => {
-				btn.setButtonText(t('Select the model to use')).onClick(async () => {
-					// Check if API key is required but not provided
-					if (modelConfig.requiresApiKey && !settings.options.apiKey) {
-						new Notice(t('Please input API key first'))
-						return
-					}
-					try {
-						const models = await fetchModels(
-							modelConfig,
-							settings.options.baseURL,
-							modelConfig.requiresApiKey ? settings.options.apiKey : undefined
-						)
-						const onChoose = async (selectedModel: string) => {
-							settings.options.model = selectedModel
+			/**
+			 * A button that cannot open is a dead end, and the provider behind it may
+			 * be perfectly usable — SiliconFlow answers 403 here until an account is
+			 * identity-verified and answers questions regardless. Hand the row over to
+			 * a text field so the model stays settable.
+			 *
+			 * Rewriting this row rather than re-rendering the tab, for two reasons: a
+			 * failed read describes the network a moment ago and has no business being
+			 * remembered, and `deferredUpdate()` is dropped while a provider page is
+			 * open — the tab's own containerEl is detached there. Leaving the page and
+			 * returning restores the button, which is the retry.
+			 */
+			const fallBackToTextField = () => {
+				setting.clear()
+				setting.setDesc('⚠️ ' + t('Could not read the model list. Enter the model name.') + ' ' + desc)
+				setting.addText((text) =>
+					text
+						.setPlaceholder(t('Model'))
+						.setValue(settings.options.model)
+						.onChange(async (value) => {
+							settings.options.model = value.trim()
 							await this.plugin.saveSettings()
-							modelInput?.setValue(selectedModel)
+						})
+				)
+			}
+
+			setting.addButton((btn) => {
+				btn
+					.setButtonText(settings.options.model ? settings.options.model : t('Select the model to use'))
+					.onClick(async () => {
+						// Check if API key is required but not provided
+						if (modelConfig.requiresApiKey && !settings.options.apiKey) {
+							new Notice(t('Please input API key first'))
+							return
 						}
-						new SelectModelModal(this.app, models, onChoose).open()
-					} catch (error) {
-						if (error instanceof Error) {
-							const errorMessage = error.message.toLowerCase()
-							if (errorMessage.includes('401') || errorMessage.includes('unauthorized')) {
-								new Notice('🔑 ' + t('API key may be incorrect. Please check your API key.'))
-							} else if (errorMessage.includes('403') || errorMessage.includes('forbidden')) {
-								new Notice('🚫 ' + t('Access denied. Please check your API permissions.'))
-							} else {
-								new Notice('🔴 ' + error.message)
+						try {
+							const models = await fetchModels(
+								modelConfig,
+								settings.options.baseURL,
+								modelConfig.requiresApiKey ? settings.options.apiKey : undefined
+							)
+							const onChoose = async (selectedModel: string) => {
+								settings.options.model = selectedModel
+								await this.plugin.saveSettings()
+								btn.setButtonText(selectedModel)
 							}
-						} else {
-							new Notice('🔴 ' + String(error))
+							new SelectModelModal(this.app, models, onChoose).open()
+						} catch (error) {
+							if (error instanceof Error) {
+								const errorMessage = error.message.toLowerCase()
+								if (errorMessage.includes('401') || errorMessage.includes('unauthorized')) {
+									new Notice('🔑 ' + t('API key may be incorrect. Please check your API key.'))
+								} else if (errorMessage.includes('403') || errorMessage.includes('forbidden')) {
+									new Notice('🚫 ' + t('Access denied. Please check your API permissions.'))
+								} else {
+									new Notice('🔴 ' + error.message)
+								}
+							} else {
+								new Notice('🔴 ' + String(error))
+							}
+							fallBackToTextField()
 						}
-					}
-				})
+					})
 			})
 		}
 	})

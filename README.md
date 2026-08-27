@@ -153,9 +153,11 @@ There are several ways:
 
 ### Can't find the model you want in the settings?
 
-Most providers are asked for their own model list, so the choices come from the API rather than from a list baked into the plugin. A model missing from it — one the provider no longer advertises, or one only your account can see — can still be typed straight into the model field.
+Most providers are asked for their own model list, so the choices come from the API rather than from a list baked into the plugin — a model the provider no longer advertises will not be among them.
 
-It can also be set under "Override input parameters" as JSON, such as `{"model":"your-desired-model"}`, which takes precedence over the model field.
+Set it under "Override input parameters" as JSON, such as `{"model":"your-desired-model"}`, which takes precedence over the model chosen in the picker.
+
+If the list cannot be read at all — an account still awaiting verification, a relay that does not implement it — the row turns into a plain text field and the model can be typed in directly.
 
 ### How to view the developer console?
 

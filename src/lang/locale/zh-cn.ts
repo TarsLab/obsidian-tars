@@ -109,6 +109,7 @@ export default {
 	'Keyword for tag must be unique': '标签关键字必须唯一',
 	Model: '模型',
 	'Supported features': '支持功能',
+	'Could not read the model list. Enter the model name.': '无法获取模型列表，请手动填写模型名称。',
 	'Select the model to use': '选择要使用的模型',
 	'Please input API key first': '请先输入 API key',
 	'Please enter a number': '请输入一个数字',

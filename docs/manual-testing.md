@@ -126,6 +126,18 @@ one is only built when a row is activated — the rendered list holds
 only handle there is. That is what `openProviderPage()` uses to land on a newly
 added provider.
 
+### A tab's `containerEl` is detached while a sub-page is open
+
+Open a provider's page and the tab's own `containerEl.isConnected` becomes
+`false` — `app.setting.getCurrentPageEl()` is a different element by then. So
+`deferredUpdate()`, which guards on exactly that, is **silently dropped for
+anything issued from inside a provider page**. `tagDef` only appears to work
+because its update fires as the page is being left.
+
+Anything that has to change a row while its page is open must rewrite the row —
+`setting.clear()`, then add the components again — rather than ask for a
+re-render. `modelFetchDef` does this when a provider's model list cannot be read.
+
 ### `update()` rebuilds the open page too
 
 `update()` re-reads `getSettingDefinitions()` and re-renders. It does not
@@ -181,17 +193,18 @@ const row = (name) => rows().find((e) => e.querySelector('.setting-item-name').t
 const names = () => Array.from(C().querySelectorAll('.setting-item-name')).map((e) => e.textContent)
 ```
 
-| #   | Check                                                                | Passes when                                                                                                                                                                 |
-| --- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Add a provider: `+` in the list header, pick a vendor                | count grows and `pageStack` becomes `1` — the new provider's own page, tag field included; the tag is non-empty and unique, so a second provider of one vendor is `Vendor2` |
-| 2   | Missing API key                                                      | providers with an empty key show a warning; Ollama, which needs none, does not                                                                                              |
-| 3   | Rename a tag, then `closePage()`                                     | typing does not tear down the page; the list entry shows the new tag                                                                                                        |
-| 4   | Invalid tags: a name already in use, `#` in the name, a space, empty | all four rejected, stored tag unchanged                                                                                                                                     |
-| 5   | Remove, from inside the provider's page                              | count drops, `pageStack` returns to `0`, the entry is gone                                                                                                                  |
-| 6   | Reset buttons: base URL, the three message tags, answer delay        | field, stored value **and** any number rendered beside a slider all return to the default                                                                                   |
-| 7   | Default system message toggle                                        | switches the textarea's `disabled` state both ways                                                                                                                          |
-| 8   | Section structure                                                    | four headings (AI assistants, Message tags, System message, Advanced), no heading printed twice                                                                             |
-| 9   | `obsidian dev:errors`                                                | empty                                                                                                                                                                       |
+| #   | Check                                                                                         | Passes when                                                                                                                                                                     |
+| --- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Add a provider: `+` in the list header, pick a vendor                                         | count grows and `pageStack` becomes `1` — the new provider's own page, tag field included; the tag is non-empty and unique, so a second provider of one vendor is `Vendor2`     |
+| 2   | Missing API key                                                                               | providers with an empty key show a warning; Ollama, which needs none, does not                                                                                                  |
+| 3   | Rename a tag, then `closePage()`                                                              | typing does not tear down the page; the list entry shows the new tag                                                                                                            |
+| 4   | Invalid tags: a name already in use, `#` in the name, a space, empty                          | all four rejected, stored tag unchanged                                                                                                                                         |
+| 5   | Remove, from inside the provider's page                                                       | count drops, `pageStack` returns to `0`, the entry is gone                                                                                                                      |
+| 6   | Reset buttons: base URL, the three message tags, answer delay                                 | field, stored value **and** any number rendered beside a slider all return to the default                                                                                       |
+| 7   | Model row on a provider whose list cannot be read (an unverified SiliconFlow account will do) | the button is replaced in place by a text field carrying the current model, the description gains a ⚠️, typing saves, and leaving the page and returning brings the button back |
+| 8   | Default system message toggle                                                                 | switches the textarea's `disabled` state both ways                                                                                                                              |
+| 9   | Section structure                                                                             | four headings (AI assistants, Message tags, System message, Advanced), no heading printed twice                                                                                 |
+| 10  | `obsidian dev:errors`                                                                         | empty                                                                                                                                                                           |
 
 Check 6 is worth doing by eye as well: a reset that writes to a component's
 underlying element instead of calling the component's `setValue()` moves the

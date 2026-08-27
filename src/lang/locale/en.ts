@@ -113,6 +113,7 @@ export default {
 	'Keyword for tag must be unique': 'Keyword for tag must be unique',
 	Model: 'Model',
 	'Supported features': 'Supported features',
+	'Could not read the model list. Enter the model name.': 'Could not read the model list. Enter the model name.',
 	'Select the model to use': 'Select the model to use',
 	'Please input API key first': 'Please input API key first',
 	'Please enter a number': 'Please enter a number',
