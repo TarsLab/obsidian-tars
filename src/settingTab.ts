@@ -93,6 +93,29 @@ export class TarsSettingTab extends PluginSettingTab {
 		new SelectVendorModal(this.app, availableVendors, onChoose).open()
 	}
 
+	/**
+	 * Re-render on the next tick rather than right now, so the interaction that
+	 * triggered it finishes first. Dropped if the settings pane closed meanwhile.
+	 */
+	deferredUpdate = () => {
+		window.setTimeout(() => {
+			if (this.containerEl.isConnected) this.update()
+		}, 0)
+	}
+
+	/**
+	 * Navigate from a provider's sub-page back to the list.
+	 *
+	 * The settings modal's closePage() is the only way back and is not part of
+	 * obsidian.d.ts, hence the narrow structural type and the optional calls: if a
+	 * future release renames it the provider is still removed and the list behind
+	 * still refreshes, and the user just presses back themselves.
+	 */
+	closeProviderPage = () => {
+		const setting = (this.app as App & { setting?: { closePage?: () => void } }).setting
+		setting?.closePage?.()
+	}
+
 	/** One provider rendered as a navigable sub-page. */
 	providerPage = (index: number, settings: ProviderSettings): SettingDefinitionPage => {
 		const vendor = availableVendors.find((v) => v.name === settings.vendor)
@@ -352,13 +375,13 @@ export class TarsSettingTab extends PluginSettingTab {
 		aliases: [settings.tag, defaultTag],
 		// The provider page is titled after the tag, but SettingDefinitionPage.name is
 		// a plain string rather than a getter, so the title only changes when the tab
-		// re-renders. Calling update() from onChange (or from a blur handler) blanks
-		// the pane, because a re-render while a sub-page is open destroys that page.
+		// re-renders. update() rebuilds the rows of the open sub-page along with the
+		// list behind it, so calling it from onChange destroys the input being typed
+		// into -- which is what made the pane appear to go blank.
 		//
-		// The cleanup below runs as the page is being left. Deferring update() by a
-		// tick lets navigation settle first, so the re-render lands on the list --
-		// where the new title is what the user is looking at -- instead of on the
-		// page they were editing.
+		// The cleanup below runs as the page is being left instead, deferred a tick
+		// so navigation settles first and the re-render lands on the list, where the
+		// new title is what the user is looking at.
 		render: (setting) => {
 			let tagChanged = false
 
@@ -387,10 +410,7 @@ export class TarsSettingTab extends PluginSettingTab {
 			return () => {
 				if (!tagChanged) return
 				tagChanged = false
-				window.setTimeout(() => {
-					// Skip if the settings pane closed while this was queued.
-					if (this.containerEl.isConnected) this.update()
-				}, 0)
+				this.deferredUpdate()
 			}
 		}
 	})
@@ -871,9 +891,33 @@ export class TarsSettingTab extends PluginSettingTab {
 		}
 
 		defs.push(this.parametersDef(settings.options))
+		defs.push(this.removeDef(index, vendor))
 
 		return defs
 	}
+
+	/**
+	 * Removing a provider from inside its own page. The list's onDelete renders no
+	 * affordance for `page` items, and SettingPage exposes no way to navigate back,
+	 * so the row lives here as it did before the declarative rewrite.
+	 */
+	removeDef = (index: number, vendor: Vendor): SettingDefinitionRender => ({
+		name: t('Remove') + ' ' + vendor.name,
+		render: (setting) => {
+			setting.addButton((btn) => {
+				btn
+					.setWarning()
+					.setButtonText(t('Remove'))
+					.onClick(async () => {
+						this.plugin.settings.providers.splice(index, 1)
+						await this.plugin.saveSettings()
+						// Leave the page first: it belongs to the provider just deleted.
+						this.closeProviderPage()
+						this.update()
+					})
+			})
+		}
+	})
 }
 
 const getSummary = (tag: string, defaultTag: string) =>
