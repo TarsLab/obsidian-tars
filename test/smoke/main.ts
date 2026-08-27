@@ -218,8 +218,12 @@ export default class SmokePlugin extends Plugin {
 	 * Uses whatever is in the Tars plugin's own settings, so it spends real API
 	 * credit on real keys.
 	 */
-	async chat(opts: { only?: string; timeoutMs?: number; model?: string; sample?: number } = {}): Promise<string> {
+	async chat(
+		opts: { only?: string; timeoutMs?: number; model?: string; sample?: number; maxChars?: number } = {}
+	): Promise<string> {
 		const timeoutMs = opts.timeoutMs ?? 45_000
+		// Enough to see an answer begin; raise it to inspect where a callout ends.
+		const maxChars = opts.maxChars ?? 300
 		// `App.plugins` is not in obsidian.d.ts. Reach for it behind a narrow
 		// structural type, the way src/settingTab.ts reaches for closePage().
 		const tars = (this.app as unknown as PluginRegistry).plugins?.plugins?.['tars']
@@ -263,7 +267,7 @@ export default class SmokePlugin extends Plugin {
 					})) {
 						if (first < 0) first = performance.now() - t0
 						out += chunk
-						if (out.length > 300) {
+						if (out.length > maxChars) {
 							controller.abort()
 							break
 						}

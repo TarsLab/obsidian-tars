@@ -135,6 +135,28 @@ const quoteLines = (text: string, inside: boolean) => (inside ? text.replace(/\n
 export const createThinkTagParser = () => {
 	let buffer = ''
 	let thinking = false
+	// Whitespace is held rather than emitted. If a tag turns out to follow it, it
+	// was padding around the tag and belongs to neither side: models write
+	// `<think>\n…\n</think>\n\n`, and the callout markers bring their own spacing,
+	// so emitting both leaves a run of blank lines between thinking and answer.
+	let pendingWhitespace = ''
+	// True until the current section has produced something other than whitespace.
+	let atSectionStart = true
+
+	/** Queues text for the section being read, holding back what may be padding. */
+	const take = (text: string): string => {
+		const body = atSectionStart ? text.replace(/^\s+/, '') : text
+		if (!body) return ''
+
+		const trailing = /\s+$/.exec(body)
+		const held = trailing ? trailing[0] : ''
+		const ready = held ? body.slice(0, -held.length) : body
+
+		const out = ready ? pendingWhitespace + ready : ''
+		pendingWhitespace = ready ? held : pendingWhitespace + held
+		if (ready) atSectionStart = false
+		return quoteLines(out, thinking)
+	}
 
 	return {
 		push(chunk: string): string {
@@ -146,21 +168,25 @@ export const createThinkTagParser = () => {
 				const at = buffer.indexOf(tag)
 				if (at === -1) break
 				// Text before the tag still belongs to the state being left.
-				out += quoteLines(buffer.slice(0, at), thinking)
+				out += take(buffer.slice(0, at))
 				buffer = buffer.slice(at + tag.length)
+				pendingWhitespace = ''
 				thinking = !thinking
 				out += thinking ? CALLOUT_BLOCK_START : CALLOUT_BLOCK_END
+				atSectionStart = true
 			}
 
 			const held = partialTagSuffix(buffer, thinking ? THINK_CLOSE : THINK_OPEN)
 			const ready = buffer.slice(0, buffer.length - held)
 			buffer = buffer.slice(buffer.length - held)
-			return out + quoteLines(ready, thinking)
+			return out + take(ready)
 		},
 
 		flush(): string {
-			const rest = quoteLines(buffer, thinking)
+			// Whatever is left was never a tag after all; trailing padding still is.
+			const rest = take(buffer)
 			buffer = ''
+			pendingWhitespace = ''
 			if (!thinking) return rest
 			thinking = false
 			return rest + CALLOUT_BLOCK_END
@@ -235,26 +261,34 @@ export async function* streamWithThinking(
 	stream: AsyncIterable<OpenAI.ChatCompletionChunk>
 ): AsyncGenerator<string, void, unknown> {
 	const thinkTags = createThinkTagParser()
-	let startReasoning = false
+	let inReasoning = false
+
+	// A provider that reports thinking in `reasoning_content` is describing what
+	// the tags describe, so say it in tags and let one parser handle both. The
+	// seams — the padding models leave around their thinking — then get trimmed
+	// the same way whichever form arrives, and a model using both still works.
+	const feed = (text: string) => thinkTags.push(text)
 
 	for await (const part of stream) {
 		const delta = part.choices[0]?.delta as ThinkingDelta
-		const reasonContent = delta?.reasoning_content
+		const reasoning = delta?.reasoning_content
+		const content = delta?.content
 
-		if (reasonContent) {
-			const prefix = !startReasoning ? ((startReasoning = true), CALLOUT_BLOCK_START) : ''
-			yield prefix + reasonContent.replace(/\n/g, '\n> ') // Each line of the callout needs to have '>' at the beginning
+		if (reasoning) {
+			let out = inReasoning ? '' : ((inReasoning = true), feed(THINK_OPEN))
+			out += feed(reasoning)
+			if (out) yield out
 			continue
 		}
 
-		if (delta?.content) {
-			const prefix = startReasoning ? ((startReasoning = false), CALLOUT_BLOCK_END) : ''
-			const text = thinkTags.push(delta.content)
-			if (prefix || text) yield prefix + text
+		if (content) {
+			let out = inReasoning ? ((inReasoning = false), feed(THINK_CLOSE)) : ''
+			out += feed(content)
+			if (out) yield out
 		}
 	}
 
-	// The parser holds back anything that might still have become a tag.
+	// Closes a block the model never closed, and releases anything still buffered.
 	const tail = thinkTags.flush()
 	if (tail) yield tail
 }
