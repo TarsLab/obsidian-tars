@@ -1,8 +1,8 @@
-import { Notice } from 'obsidian'
+import { base64ToArrayBuffer, Notice } from 'obsidian'
 import OpenAI from 'openai'
 import { t } from 'src/lang/helper'
 import { BaseOptions, Message, ResolveEmbedAsBinary, SaveAttachment, SendRequest, Vendor } from '.'
-import { getMimeTypeFromFilename, stripStainlessHeaders } from './utils'
+import { bodyParams, getMimeTypeFromFilename, stripStainlessHeaders } from './utils'
 
 const models = ['gpt-image-1']
 
@@ -37,6 +37,7 @@ const sendRequestFunc = (settings: GptImageOptions): SendRequest =>
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, baseURL, model, displayWidth, background, n, output_compression, output_format, quality, size } =
 			options
+		const remains = bodyParams(parameters, optionsExcludingParams)
 		if (!apiKey) throw new Error(t('API key is required'))
 		if (!saveAttachment) throw new Error('saveAttachment is required')
 
@@ -85,7 +86,8 @@ const sendRequestFunc = (settings: GptImageOptions): SendRequest =>
 					model,
 					n,
 					size,
-					quality
+					quality,
+					...remains
 				},
 				{ signal: controller.signal }
 			)
@@ -99,7 +101,8 @@ const sendRequestFunc = (settings: GptImageOptions): SendRequest =>
 					n,
 					output_compression: output_format === 'jpeg' || output_format === 'webp' ? output_compression : undefined,
 					output_format,
-					quality
+					quality,
+					...remains
 				},
 				{ signal: controller.signal }
 			)
@@ -121,7 +124,10 @@ const sendRequestFunc = (settings: GptImageOptions): SendRequest =>
 				console.error(`No base64 image data returned for image ${i + 1}`)
 				continue
 			}
-			const imageBuffer = Buffer.from(imageBase64, 'base64')
+			// `Buffer` is a Node global, and Obsidian's mobile webview has none — this
+			// threw `Buffer is not defined` on every phone. Obsidian ships the
+			// conversion itself, and it returns the ArrayBuffer saveAttachment wants.
+			const imageBuffer = base64ToArrayBuffer(imageBase64)
 			const indexFlag = n > 1 ? `-${i + 1}` : ''
 			const filename = `gptImage-${formatTime}${indexFlag}.${output_format}`
 			console.debug(`Saving image as ${filename}`)

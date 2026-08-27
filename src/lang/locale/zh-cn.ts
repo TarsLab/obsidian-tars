@@ -38,6 +38,7 @@ export default {
 	// providers
 	'API key is required': '请配置对应的 API key',
 	'API secret is required': '请配置对应的 API secret',
+	'Endpoint is required': '请填写 Endpoint',
 	'Model is required': '请配置对应的模型',
 	'API URL is required': '请配置对应的 API URL',
 	'API key may be incorrect. Please check your API key.': 'API key 可能不正确，请检查您的 API key。',

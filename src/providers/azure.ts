@@ -16,6 +16,11 @@ const sendRequestFunc = (settings: AzureOptions): SendRequest =>
 		const remains = bodyParams(parameters, optionsExcludingParams)
 		if (!apiKey) throw new Error(t('API key is required'))
 		if (!model) throw new Error(t('Model is required'))
+		// Left empty, the endpoint reaches the SDK, which falls back to
+		// `process.env.AZURE_OPENAI_ENDPOINT` without checking that `process`
+		// exists. On mobile there is none, so its "Must provide one of…" message
+		// arrives as `process is not defined` instead.
+		if (!endpoint) throw new Error(t('Endpoint is required'))
 
 		const client = new AzureOpenAI({
 			endpoint,

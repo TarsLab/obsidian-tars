@@ -38,6 +38,7 @@ export default {
 	// providers
 	'API key is required': 'API key is required',
 	'API secret is required': 'API secret is required',
+	'Endpoint is required': 'Endpoint is required',
 	'Model is required': 'Model is required',
 	'API URL is required': 'API URL is required',
 	'API key may be incorrect. Please check your API key.': 'API key may be incorrect. Please check your API key.',

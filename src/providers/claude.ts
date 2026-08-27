@@ -4,6 +4,7 @@ import { t } from 'src/lang/helper'
 import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 import {
 	arrayBufferToBase64,
+	bodyParams,
 	CALLOUT_BLOCK_END,
 	CALLOUT_BLOCK_START,
 	getCapabilityEmoji,
@@ -78,6 +79,7 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 			budget_tokens = 1600
 		} = options
 		let baseURL = originalBaseURL
+		const remains = bodyParams(parameters, optionsExcludingParams)
 		if (!apiKey) throw new Error(t('API key is required'))
 		if (!model) throw new Error(t('Model is required'))
 
@@ -128,7 +130,13 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 					type: 'enabled',
 					budget_tokens
 				}
-			})
+			}),
+			// "Override input parameters" reached this vendor and went nowhere: every
+			// key beyond the four Claude declares as its own settings was dropped
+			// without a word. Last, as in every other vendor — the setting is called
+			// override, and `bodyParams` has already removed anything that names one
+			// of this provider's own settings.
+			...remains
 		}
 
 		const stream = await client.messages.create(requestParams, {
