@@ -5,7 +5,8 @@ import {
 	requestUrl,
 	SettingDefinitionItem,
 	SettingDefinitionPage,
-	SettingDefinitionRender
+	SettingDefinitionRender,
+	SliderComponent
 } from 'obsidian'
 import { exportCmd, replaceCmd, replaceCmdId } from './commands'
 import { exportCmdId } from './commands/export'
@@ -281,7 +282,9 @@ export class TarsSettingTab extends PluginSettingTab {
 				'If you encounter errors with missing user messages when executing assistant commands on selected text, it may be due to the need for more time to parse the messages. Please slightly increase the delay time.'
 			),
 			render: (setting) => {
-				let answerDelayInput: HTMLInputElement | null = null
+				// Keep the component, not its sliderEl: assigning to the raw input moves
+				// the handle but leaves the value Obsidian prints beside it stale.
+				let answerDelaySlider: SliderComponent | null = null
 				setting
 					.addExtraButton((btn) => {
 						btn
@@ -290,13 +293,11 @@ export class TarsSettingTab extends PluginSettingTab {
 							.onClick(async () => {
 								this.plugin.settings.answerDelayInMilliseconds = DEFAULT_SETTINGS.answerDelayInMilliseconds
 								await this.plugin.saveSettings()
-								if (answerDelayInput) {
-									answerDelayInput.value = (this.plugin.settings.answerDelayInMilliseconds / 1000).toString()
-								}
+								answerDelaySlider?.setValue(this.plugin.settings.answerDelayInMilliseconds / 1000)
 							})
 					})
 					.addSlider((slider) => {
-						answerDelayInput = slider.sliderEl
+						answerDelaySlider = slider
 						slider
 							.setLimits(1.5, 4, 0.5)
 							.setValue(this.plugin.settings.answerDelayInMilliseconds / 1000)
