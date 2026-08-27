@@ -90,13 +90,9 @@ export class TarsSettingTab extends PluginSettingTab {
 	/** Opens the vendor picker and appends the chosen provider. */
 	promptForNewProvider = () => {
 		const onChoose = async (vendor: Vendor) => {
-			const defaultTag = vendor.name
-			const isTagDuplicate = this.plugin.settings.providers.map((e) => e.tag).includes(defaultTag)
-			const newTag = isTagDuplicate ? '' : defaultTag
-
 			const deepCopiedOptions = JSON.parse(JSON.stringify(vendor.defaultOptions))
 			this.plugin.settings.providers.push({
-				tag: newTag,
+				tag: this.unusedTag(vendor.name),
 				vendor: vendor.name,
 				options: deepCopiedOptions
 			})
@@ -106,6 +102,23 @@ export class TarsSettingTab extends PluginSettingTab {
 			this.openProviderPage(this.plugin.settings.providers.length - 1)
 		}
 		new SelectVendorModal(this.app, availableVendors, onChoose).open()
+	}
+
+	/**
+	 * A tag for a new provider that no other provider is already using.
+	 *
+	 * The tag is what triggers the assistant, so a provider without one cannot be
+	 * used at all — and it is not inert while it waits to be named: an empty tag
+	 * registers a command palette entry reading "# :". A second provider of the
+	 * same vendor used to be saved with exactly that and left for the user to
+	 * notice, so number it instead. Numbering rather than spacing because a tag
+	 * may not contain a space.
+	 */
+	unusedTag = (vendorName: string) => {
+		const taken = new Set(this.plugin.settings.providers.map((e) => e.tag.toLowerCase()))
+		let tag = vendorName
+		for (let n = 2; taken.has(tag.toLowerCase()); n++) tag = vendorName + n
+		return tag
 	}
 
 	/**
@@ -134,10 +147,10 @@ export class TarsSettingTab extends PluginSettingTab {
 	/**
 	 * Open a provider's sub-page, the way clicking its row does.
 	 *
-	 * A provider that was just added does nothing until it has an API key, and
-	 * when its default tag is already taken it arrives with no tag at all — so
-	 * staying on the list leaves the user hunting for a nameless row. Land on the
-	 * page instead, where both fields are in front of them.
+	 * A provider that was just added does nothing until it has an API key, and its
+	 * tag is a generated one that the user will usually want to replace, so staying
+	 * on the list leaves both fields a click away. Land on the page instead, where
+	 * they are in front of them.
 	 *
 	 * The settings modal's openPage() wants a page object, and one only exists
 	 * once a row has been activated, so the row is the only handle there is.

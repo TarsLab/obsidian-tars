@@ -90,6 +90,12 @@ const D = W.document // query this, not `document`
 D.querySelectorAll('.suggestion-item').length
 ```
 
+A modal lands in whichever window opened it, and `obsidian eval` is the main
+window. Click the real control and the vendor picker appears in
+`app.setting.win`; call `promptForNewProvider()` from eval and the same picker
+appears in `document` instead. That difference is an artefact of the test, not
+of the plugin, so query both before concluding a modal failed to open.
+
 `app.setting.containerEl.isConnected` is `false` even while settings is open;
 it is not a liveness check. `app.setting.activeTab.containerEl.isConnected`
 is the one that means what it looks like.
@@ -175,17 +181,17 @@ const row = (name) => rows().find((e) => e.querySelector('.setting-item-name').t
 const names = () => Array.from(C().querySelectorAll('.setting-item-name')).map((e) => e.textContent)
 ```
 
-| #   | Check                                                                | Passes when                                                                                     |
-| --- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| 1   | Add a provider: `+` in the list header, pick a vendor                | count grows and `pageStack` becomes `1` — the new provider's own page, tag field included       |
-| 2   | Missing API key                                                      | providers with an empty key show a warning; Ollama, which needs none, does not                  |
-| 3   | Rename a tag, then `closePage()`                                     | typing does not tear down the page; the list entry shows the new tag                            |
-| 4   | Invalid tags: a name already in use, `#` in the name, a space, empty | all four rejected, stored tag unchanged                                                         |
-| 5   | Remove, from inside the provider's page                              | count drops, `pageStack` returns to `0`, the entry is gone                                      |
-| 6   | Reset buttons: base URL, the three message tags, answer delay        | field, stored value **and** any number rendered beside a slider all return to the default       |
-| 7   | Default system message toggle                                        | switches the textarea's `disabled` state both ways                                              |
-| 8   | Section structure                                                    | four headings (AI assistants, Message tags, System message, Advanced), no heading printed twice |
-| 9   | `obsidian dev:errors`                                                | empty                                                                                           |
+| #   | Check                                                                | Passes when                                                                                                                                                                 |
+| --- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Add a provider: `+` in the list header, pick a vendor                | count grows and `pageStack` becomes `1` — the new provider's own page, tag field included; the tag is non-empty and unique, so a second provider of one vendor is `Vendor2` |
+| 2   | Missing API key                                                      | providers with an empty key show a warning; Ollama, which needs none, does not                                                                                              |
+| 3   | Rename a tag, then `closePage()`                                     | typing does not tear down the page; the list entry shows the new tag                                                                                                        |
+| 4   | Invalid tags: a name already in use, `#` in the name, a space, empty | all four rejected, stored tag unchanged                                                                                                                                     |
+| 5   | Remove, from inside the provider's page                              | count drops, `pageStack` returns to `0`, the entry is gone                                                                                                                  |
+| 6   | Reset buttons: base URL, the three message tags, answer delay        | field, stored value **and** any number rendered beside a slider all return to the default                                                                                   |
+| 7   | Default system message toggle                                        | switches the textarea's `disabled` state both ways                                                                                                                          |
+| 8   | Section structure                                                    | four headings (AI assistants, Message tags, System message, Advanced), no heading printed twice                                                                             |
+| 9   | `obsidian dev:errors`                                                | empty                                                                                                                                                                       |
 
 Check 6 is worth doing by eye as well: a reset that writes to a component's
 underlying element instead of calling the component's `setValue()` moves the
