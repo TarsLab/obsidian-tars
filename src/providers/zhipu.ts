@@ -2,6 +2,7 @@ import * as jose from 'jose'
 import OpenAI from 'openai'
 import { t } from 'src/lang/helper'
 import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
+import { stripStainlessHeaders } from './utils'
 
 interface Token {
 	id: string
@@ -29,7 +30,8 @@ const sendRequestFunc = (settings: ZhipuOptions): SendRequest =>
 		const client = new OpenAI({
 			apiKey: token.id,
 			baseURL,
-			dangerouslyAllowBrowser: true
+			dangerouslyAllowBrowser: true,
+			defaultHeaders: stripStainlessHeaders
 		})
 
 		const tools = (enableWebSearch

@@ -1,7 +1,7 @@
 import { AzureOpenAI } from 'openai'
 import { t } from 'src/lang/helper'
 import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
-import { CALLOUT_BLOCK_END, CALLOUT_BLOCK_START } from './utils'
+import { CALLOUT_BLOCK_END, CALLOUT_BLOCK_START, stripStainlessHeaders } from './utils'
 
 interface AzureOptions extends BaseOptions {
 	endpoint: string
@@ -15,7 +15,14 @@ const sendRequestFunc = (settings: AzureOptions): SendRequest =>
 		const { apiKey, model, endpoint, apiVersion, ...remains } = options
 		if (!apiKey) throw new Error(t('API key is required'))
 
-		const client = new AzureOpenAI({ endpoint, apiKey, apiVersion, deployment: model, dangerouslyAllowBrowser: true })
+		const client = new AzureOpenAI({
+			endpoint,
+			apiKey,
+			apiVersion,
+			deployment: model,
+			dangerouslyAllowBrowser: true,
+			defaultHeaders: stripStainlessHeaders
+		})
 
 		// 添加系统提示，要求模型在每次输出前加入 <think>，解决 Azure DeepSeek-R1 不推理的问题
 		messages = [

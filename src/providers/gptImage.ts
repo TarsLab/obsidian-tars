@@ -2,7 +2,7 @@ import { Notice } from 'obsidian'
 import OpenAI from 'openai'
 import { t } from 'src/lang/helper'
 import { BaseOptions, Message, ResolveEmbedAsBinary, SaveAttachment, SendRequest, Vendor } from '.'
-import { getMimeTypeFromFilename } from './utils'
+import { getMimeTypeFromFilename, stripStainlessHeaders } from './utils'
 
 const models = ['gpt-image-1']
 
@@ -54,7 +54,8 @@ const sendRequestFunc = (settings: GptImageOptions): SendRequest =>
 		const client = new OpenAI({
 			apiKey,
 			baseURL,
-			dangerouslyAllowBrowser: true
+			dangerouslyAllowBrowser: true,
+			defaultHeaders: stripStainlessHeaders
 		})
 
 		new Notice(t('This is a non-streaming request, please wait...'), 5 * 1000)

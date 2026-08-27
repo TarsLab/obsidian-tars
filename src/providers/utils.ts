@@ -2,6 +2,39 @@ import { EmbedCache } from 'obsidian'
 import { t } from 'src/lang/helper'
 import { Capability, ResolveEmbedAsBinary } from '.'
 
+/**
+ * Headers that unset the OpenAI SDK's telemetry, for its `defaultHeaders` option.
+ *
+ * The SDK stamps `X-Stainless-*` onto every request. Nothing needs them, but they
+ * join the CORS preflight, and a provider whose `Access-Control-Allow-Headers` is
+ * a fixed allowlist rejects the whole request for carrying them. ModelScope does
+ * (issue #108) and so does Kimi — which is the real reason `kimi.ts` reaches for
+ * axios rather than this SDK, since axios never sent them in the first place.
+ *
+ * Nothing in the failure names a header: it arrives as a bare "Failed to fetch".
+ *
+ * An explicit null unsets a default header, and the SDK merges `defaultHeaders`
+ * after its own, so this also clears the per-request `X-Stainless-Retry-Count`
+ * and `X-Stainless-Timeout`. The last three below belong to polling helpers this
+ * plugin does not call; they are listed so the set stays complete.
+ *
+ * `test/smoke`'s cors() is what tells you a provider needs this: it is the one
+ * that fails only in the `fetch+stainless` column.
+ */
+export const stripStainlessHeaders: Record<string, null> = {
+	'x-stainless-arch': null,
+	'x-stainless-custom-poll-interval': null,
+	'x-stainless-helper-method': null,
+	'x-stainless-lang': null,
+	'x-stainless-os': null,
+	'x-stainless-package-version': null,
+	'x-stainless-poll-helper': null,
+	'x-stainless-retry-count': null,
+	'x-stainless-runtime': null,
+	'x-stainless-runtime-version': null,
+	'x-stainless-timeout': null
+}
+
 export const getMimeTypeFromFilename = (filename: string) => {
 	const extension = filename.split('.').pop()?.toLowerCase() || ''
 

@@ -1,7 +1,7 @@
 import OpenAI from 'openai'
 import { t } from 'src/lang/helper'
 import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
-import { convertEmbedToImageUrl } from './utils'
+import { convertEmbedToImageUrl, stripStainlessHeaders } from './utils'
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, resolveEmbedAsBinary: ResolveEmbedAsBinary) {
@@ -14,7 +14,8 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 		const client = new OpenAI({
 			apiKey,
 			baseURL,
-			dangerouslyAllowBrowser: true
+			dangerouslyAllowBrowser: true,
+			defaultHeaders: stripStainlessHeaders
 		})
 
 		const stream = await client.chat.completions.create(

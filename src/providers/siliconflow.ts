@@ -1,7 +1,7 @@
 import OpenAI from 'openai'
 import { t } from 'src/lang/helper'
 import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
-import { CALLOUT_BLOCK_END, CALLOUT_BLOCK_START, convertEmbedToImageUrl } from './utils'
+import { CALLOUT_BLOCK_END, CALLOUT_BLOCK_START, convertEmbedToImageUrl, stripStainlessHeaders } from './utils'
 
 type DeepSeekDelta = OpenAI.ChatCompletionChunk.Choice.Delta & {
 	reasoning_content?: string
@@ -18,7 +18,8 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 		const client = new OpenAI({
 			apiKey,
 			baseURL,
-			dangerouslyAllowBrowser: true
+			dangerouslyAllowBrowser: true,
+			defaultHeaders: stripStainlessHeaders
 		})
 
 		const stream = await client.chat.completions.create(
