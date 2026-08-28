@@ -1,0 +1,117 @@
+{
+	"_comment": "Obsidian's own metadataCache for the notes in fixtures.ts, captured through the Obsidian CLI. This is what test/unit/markdown.test.ts holds parseDoc to. Regenerate as docs/manual-testing.md describes; never edit by hand.",
+	"obsidianVersion": "1.13.7",
+	"captured": "2026-08-28",
+	"notes": {
+		"callout": {
+			"tags": [
+				["#我", 0, 2, 0],
+				["#我", 25, 27, 3],
+				["#DeepSeek", 40, 49, 5]
+			],
+			"sections": [
+				["paragraph", 0, 11],
+				["callout", 13, 38],
+				["paragraph", 40, 74]
+			],
+			"links": [],
+			"embeds": []
+		},
+		"code": {
+			"tags": [
+				["#我", 0, 2, 0],
+				["#DeepSeek", 63, 72, 7]
+			],
+			"sections": [
+				["paragraph", 0, 15],
+				["code", 17, 61],
+				["paragraph", 63, 81]
+			],
+			"links": [],
+			"embeds": []
+		},
+		"embed": {
+			"tags": [
+				["#我", 0, 2, 0],
+				["#DeepSeek", 27, 36, 2]
+			],
+			"sections": [
+				["paragraph", 0, 25],
+				["paragraph", 27, 45]
+			],
+			"links": [],
+			"embeds": [["试卷.png", "![[试卷.png]]", "试卷.png", 14, 25]]
+		},
+		"link": {
+			"tags": [
+				["#我", 0, 2, 0],
+				["#DeepSeek", 21, 30, 2]
+			],
+			"sections": [
+				["paragraph", 0, 19],
+				["paragraph", 21, 36]
+			],
+			"links": [["笔记", "[[笔记]]", "笔记", 9, 15]],
+			"embeds": []
+		},
+		"multiParagraph": {
+			"tags": [
+				["#我", 0, 2, 0],
+				["#DeepSeek", 23, 32, 4]
+			],
+			"sections": [
+				["paragraph", 0, 9],
+				["paragraph", 11, 21],
+				["paragraph", 23, 38]
+			],
+			"links": [],
+			"embeds": []
+		},
+		"newChat": {
+			"tags": [
+				["#我", 0, 2, 0],
+				["#DeepSeek", 12, 21, 2],
+				["#新对话", 31, 35, 4],
+				["#我", 37, 39, 6],
+				["#DeepSeek", 49, 58, 8]
+			],
+			"sections": [
+				["paragraph", 0, 10],
+				["paragraph", 12, 29],
+				["paragraph", 31, 35],
+				["paragraph", 37, 47],
+				["paragraph", 49, 66]
+			],
+			"links": [],
+			"embeds": []
+		},
+		"simple": {
+			"tags": [
+				["#我", 0, 2, 0],
+				["#DeepSeek", 12, 21, 2],
+				["#我", 31, 33, 4]
+			],
+			"sections": [
+				["paragraph", 0, 10],
+				["paragraph", 12, 29],
+				["paragraph", 31, 40]
+			],
+			"links": [],
+			"embeds": []
+		},
+		"system": {
+			"tags": [
+				["#系统", 0, 3, 0],
+				["#我", 17, 19, 2],
+				["#DeepSeek", 29, 38, 4]
+			],
+			"sections": [
+				["paragraph", 0, 15],
+				["paragraph", 17, 27],
+				["paragraph", 29, 46]
+			],
+			"links": [],
+			"embeds": []
+		}
+	}
+}

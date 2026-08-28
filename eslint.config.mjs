@@ -5,7 +5,7 @@ import globals from 'globals'
 import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
-	{ ignores: ['version-bump.mjs', 'esbuild.config.mjs', 'esbuild.smoke.mjs', 'eslint.config.mjs', 'main.js', 'build/**'] },
+	{ ignores: ['version-bump.mjs', 'esbuild.config.mjs', 'esbuild.smoke.mjs', 'eslint.config.mjs', 'vitest.config.mts', 'main.js', 'build/**'] },
 	pluginJs.configs.recommended,
 	...tseslint.configs.recommended,
 	...obsidianmd.configs.recommended,
@@ -15,6 +15,13 @@ export default tseslint.config(
 		// "replace it with fetch" advice does not apply here.
 		files: ['**/package.json'],
 		rules: { 'depend/ban-dependencies': 'off' }
+	},
+	{
+		// The obsidianmd ruleset is advice for code running inside the app. The unit
+		// tests run in Node against a stubbed `obsidian`, where a hand-made TFile is
+		// a fixture, not a cast that could be wrong at runtime.
+		files: ['test/unit/**/*.ts'],
+		rules: { 'obsidianmd/no-tfile-tfolder-cast': 'off' }
 	},
 	{
 		// obsidianmd also lints manifest.json/package.json; the type-aware rules

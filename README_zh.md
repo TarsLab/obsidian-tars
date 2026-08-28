@@ -213,7 +213,12 @@ npm install
 npm run dev     # 监听构建
 npm run build   # 先类型检查，再打生产包
 npm run lint
+npm test        # 单元测试（vitest）
 ```
+
+`npm test` 覆盖的是不需要开 Obsidian 就能回答的部分：把笔记切成消息的标签解析器，
+以及把服务商的回答切回来的流解析器。它的样例不是拍脑袋写的，而是拿 Obsidian 自己的
+元数据对过——见[手工测试](docs/manual-testing.md#regenerating-the-parser-fixtures)。
 
 设置页由 Obsidian 依据 `getSettingDefinitions()` 渲染，构建和 lint 都无法验证它是否真的可用。
 参见[在运行中的 Obsidian 上手工测试](docs/manual-testing.md)：如何用 Obsidian CLI 驱动一个真实实例，

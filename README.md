@@ -213,7 +213,13 @@ npm install
 npm run dev     # watch build
 npm run build   # type-check, then production bundle
 npm run lint
+npm test        # unit tests (vitest)
 ```
+
+`npm test` covers what can be answered without the app: the tag parser that turns
+a note into messages, and the stream parsers that turn a provider's answer back
+into one. Its fixtures are checked against Obsidian's own metadata rather than
+assumed — see [Manual testing](docs/manual-testing.md#regenerating-the-parser-fixtures).
 
 The settings tab is rendered by Obsidian from `getSettingDefinitions()`, so
 neither the build nor the linter can tell you whether it works. See

@@ -146,6 +146,20 @@ from an `onChange` destroys the input mid-keystroke, which looks like the pane
 going blank. Anything that must re-render from inside a page should go through
 the deferred path in `settingTab.ts` rather than calling `update()` directly.
 
+### An `editorCallback` command does not fire from the CLI
+
+`obsidian command id=tars:assistant#DeepSeek` reports `Executed`, and
+`app.commands.executeCommandById(...)` returns `true`, but the callback never
+runs: nothing is inserted, nothing is logged, `dev:errors` stays empty. Setting
+`activeLeaf` with `focus: true` from `eval` is not the focus these commands
+require. Both readings look exactly like a broken command.
+
+Verified against an unmodified build in a `git worktree` before concluding
+anything from it — the same silence, so it is the harness and not the plugin.
+**Generating text has to be triggered by hand**, in the window, which also means
+a change to `buildRunEnv` or the conversation parser is not covered here. Those
+are what `npm test` is for.
+
 ### Components listen for different events
 
 Synthetic events have to match what the component listens for, or a working
@@ -219,6 +233,48 @@ the trap above about `update()` rebuilding the open page.
 Check 6 is worth doing by eye as well: a reset that writes to a component's
 underlying element instead of calling the component's `setValue()` moves the
 control but leaves the displayed value stale.
+
+## Regenerating the parser fixtures
+
+`test/unit/fixtures.json` is Obsidian's own `metadataCache` for the notes in
+`test/unit/fixtures.ts`, captured through the CLI. It is what
+`test/unit/markdown.test.ts` holds `parseDoc` to, so that the fixture builder
+the parser tests stand on is checked against the app rather than assumed. Never
+edit it by hand — recapture it, whenever a fixture changes or Obsidian's own
+parsing does:
+
+```bash
+DIR="$VAULT/_tars-fixture-check"
+mkdir -p "$DIR"
+npx tsx -e "
+import { FIXTURES } from './test/unit/fixtures.ts'
+import { writeFileSync } from 'node:fs'
+for (const [n, t] of Object.entries(FIXTURES)) writeFileSync('$DIR/' + n + '.md', t)
+"
+sleep 3   # the vault has to index them first
+
+obsidian eval code='(async()=>{
+  const ref = r => [r.link, r.original, r.displayText, r.position.start.offset, r.position.end.offset];
+  const out = {};
+  for (const f of app.vault.getMarkdownFiles().filter(f=>f.path.startsWith("_tars-fixture-check/"))) {
+    const c = app.metadataCache.getFileCache(f);
+    out[f.basename] = {
+      tags:(c.tags||[]).map(t=>[t.tag,t.position.start.offset,t.position.end.offset,t.position.start.line]),
+      sections:(c.sections||[]).map(s=>[s.type,s.position.start.offset,s.position.end.offset]),
+      links:(c.links||[]).map(ref),
+      embeds:(c.embeds||[]).map(ref)
+    };
+  }
+  return JSON.stringify(out);
+})()'
+
+rm -rf "$DIR"
+```
+
+Put the result under `notes` in `fixtures.json`, with the Obsidian version it
+came from, run `npx prettier --write test/unit/fixtures.json`, then `npm test`. A diff there is the useful signal: either a
+fixture moved, or the app changed how it parses — and in the second case the
+parser's behaviour has changed under the plugin whether or not anything here did.
 
 ## Cleanup
 

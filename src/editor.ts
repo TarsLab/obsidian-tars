@@ -62,6 +62,32 @@ interface TaggedBlock extends Tag {
 
 const ignoreSectionTypes: readonly string[] = ['callout']
 
+/**
+ * The sections a conversation is read from.
+ *
+ * A callout is where the user writes what the assistant is not to see, so the
+ * kind is dropped once here rather than tested for at every place a section is
+ * read.
+ */
+export const conversationSections = (sections: SectionCache[] = []) =>
+	sections.filter((s) => !ignoreSectionTypes.includes(s.type))
+
+/**
+ * The tags that speak: a tag written inside an ignored section does not.
+ *
+ * Takes the full section list, not the filtered one — the ignored sections are
+ * exactly what says which tags to drop.
+ */
+export const conversationTags = (tags: TagCache[] = [], sections: SectionCache[] = []) => {
+	const ignored = sections.filter((s) => ignoreSectionTypes.includes(s.type))
+	return tags.filter(
+		(t) =>
+			!ignored.some(
+				(s) => s.position.start.offset <= t.position.start.offset && t.position.end.offset <= s.position.end.offset
+			)
+	)
+}
+
 export const buildRunEnv = async (app: App, settings: PluginSettings): Promise<RunEnv> => {
 	const activeFile = app.workspace.getActiveFile()
 	if (!activeFile) {
@@ -76,14 +102,6 @@ export const buildRunEnv = async (app: App, settings: PluginSettings): Promise<R
 	if (!fileMeta) {
 		throw new Error(t('Waiting for metadata to be ready. Please try again.'))
 	}
-
-	const ignoreSections = fileMeta.sections?.filter((s) => ignoreSectionTypes.includes(s.type)) || []
-	const filteredTags = (fileMeta.tags || []).filter(
-		(t) =>
-			!ignoreSections.some(
-				(s) => s.position.start.offset <= t.position.start.offset && t.position.end.offset <= s.position.end.offset
-			)
-	)
 
 	const options = {
 		newChatTags: settings.newChatTags,
@@ -119,8 +137,8 @@ export const buildRunEnv = async (app: App, settings: PluginSettings): Promise<R
 		vault,
 		fileText,
 		filePath,
-		tags: filteredTags,
-		sections: fileMeta.sections?.filter((s) => !ignoreSectionTypes.includes(s.type)) || [],
+		tags: conversationTags(fileMeta.tags, fileMeta.sections),
+		sections: conversationSections(fileMeta.sections),
 		links: fileMeta.links,
 		embeds: fileMeta.embeds,
 		options,
@@ -154,7 +172,8 @@ const resolveLinkedContent = async (env: RunEnv, linkText: string) => {
 	}
 }
 
-const extractTaggedBlocks = (env: RunEnv, startOffset: number, endOffset: number) => {
+/** Exported for the unit tests; `extractConversation` is its only caller in the plugin. */
+export const extractTaggedBlocks = (env: RunEnv, startOffset: number, endOffset: number) => {
 	const {
 		tags,
 		sections,
@@ -292,7 +311,8 @@ const filterEmbeds = (env: RunEnv, contentRange: [number, number]) =>
 		(embed) => contentRange[0] <= embed.position.start.offset && embed.position.end.offset <= contentRange[1]
 	)
 
-const extractConversation = async (env: RunEnv, startOffset: number, endOffset: number) => {
+/** Exported for the unit tests; `generate` is its only caller in the plugin. */
+export const extractConversation = async (env: RunEnv, startOffset: number, endOffset: number) => {
 	const {
 		tags: tagsInMeta,
 		options: { newChatTags }

@@ -8,6 +8,7 @@
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
 		"lint": "eslint .",
+		"test": "vitest run",
 		"format": "prettier --write src/",
 		"smoke": "node esbuild.smoke.mjs"
 	},
@@ -35,6 +36,7 @@
 		"prettier": "^3.3.3",
 		"tslib": "^2.4.0",
 		"typescript": "^5.5.2",
-		"typescript-eslint": "^8.68.0"
+		"typescript-eslint": "^8.68.0",
+		"vitest": "^4.1.11"
 	}
 }

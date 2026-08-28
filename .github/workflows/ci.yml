@@ -36,3 +36,8 @@ jobs:
 
       - name: Lint
         run: npm run lint
+
+      # The parser unit tests. The provider smoke harness is not here: it needs a
+      # running Obsidian and real API keys, and lives in docs/provider-testing.md.
+      - name: Test
+        run: npm test
