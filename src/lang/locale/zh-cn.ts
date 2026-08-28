@@ -38,6 +38,7 @@ export default {
 	// providers
 	'API key is required': '请配置对应的 API key',
 	'API secret is required': '请配置对应的 API secret',
+	'Endpoint is required': '请填写 Endpoint',
 	'Model is required': '请配置对应的模型',
 	'API URL is required': '请配置对应的 API URL',
 	'API key may be incorrect. Please check your API key.': 'API key 可能不正确，请检查您的 API key。',
@@ -78,6 +79,7 @@ export default {
 
 	// main.ts
 	'Removed commands': '已移除命令',
+	'Named assistants that had no tag': '已为没有标签的 AI 助手命名',
 	'Added commands': '已添加命令',
 	'No active generation to cancel': '没有正在进行的生成可取消',
 	'Generation already cancelled': '生成已经取消',
@@ -104,11 +106,13 @@ export default {
 	'API key (required)': 'API Key (必填)',
 	'Default:': '默认:',
 	'Refer to the technical documentation': '参考技术文档',
+	'Keyword for tag must not be empty': '标签关键词不能为空',
 	'Keyword for tag must not contain #': '标签关键字不能包含 #',
 	'Keyword for tag must not contain space': '标签关键字不能包含空格',
 	'Keyword for tag must be unique': '标签关键字必须唯一',
 	Model: '模型',
 	'Supported features': '支持功能',
+	'Could not read the model list. Enter the model name.': '无法获取模型列表，请手动填写模型名称。',
 	'Select the model to use': '选择要使用的模型',
 	'Please input API key first': '请先输入 API key',
 	'Please enter a number': '请输入一个数字',

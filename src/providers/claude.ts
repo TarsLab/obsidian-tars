@@ -4,6 +4,7 @@ import { t } from 'src/lang/helper'
 import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
 import {
 	arrayBufferToBase64,
+	bodyParams,
 	CALLOUT_BLOCK_END,
 	CALLOUT_BLOCK_START,
 	getCapabilityEmoji,
@@ -78,7 +79,9 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 			budget_tokens = 1600
 		} = options
 		let baseURL = originalBaseURL
+		const remains = bodyParams(parameters, optionsExcludingParams)
 		if (!apiKey) throw new Error(t('API key is required'))
+		if (!model) throw new Error(t('Model is required'))
 
 		// Remove /v1/messages from baseURL if present, as Anthropic SDK will add it automatically
 		if (baseURL.endsWith('/v1/messages/')) {
@@ -127,7 +130,13 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 					type: 'enabled',
 					budget_tokens
 				}
-			})
+			}),
+			// "Override input parameters" reached this vendor and went nowhere: every
+			// key beyond the four Claude declares as its own settings was dropped
+			// without a word. Last, as in every other vendor — the setting is called
+			// override, and `bodyParams` has already removed anything that names one
+			// of this provider's own settings.
+			...remains
 		}
 
 		const stream = await client.messages.create(requestParams, {
@@ -175,26 +184,12 @@ const sendRequestFunc = (settings: ClaudeOptions): SendRequest =>
 		}
 	}
 
-const models = [
-	'claude-sonnet-4-6',
-	'claude-opus-4-6',
-	'claude-sonnet-4-5',
-	'claude-opus-4-5',
-	'claude-haiku-4-5',
-	'claude-sonnet-4-0',
-	'claude-opus-4-0',
-	'claude-3-7-sonnet-latest',
-	'claude-3-5-sonnet-latest',
-	'claude-3-opus-latest',
-	'claude-3-5-haiku-latest'
-]
-
 export const claudeVendor: Vendor = {
 	name: 'Claude',
 	defaultOptions: {
 		apiKey: '',
 		baseURL: 'https://api.anthropic.com',
-		model: models[0],
+		model: '',
 		max_tokens: 8192,
 		enableWebSearch: false,
 		enableThinking: false,
@@ -202,7 +197,7 @@ export const claudeVendor: Vendor = {
 		parameters: {}
 	} as ClaudeOptions,
 	sendRequestFunc,
-	models,
+	models: [],
 	websiteToObtainKey: 'https://console.anthropic.com',
 	capabilities: ['Text Generation', 'Web Search', 'Reasoning', 'Image Vision', 'PDF Vision']
 }

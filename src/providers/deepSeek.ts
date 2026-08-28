@@ -1,7 +1,7 @@
 import OpenAI from 'openai'
 import { t } from 'src/lang/helper'
 import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
-import { CALLOUT_BLOCK_END, CALLOUT_BLOCK_START } from './utils'
+import { CALLOUT_BLOCK_END, CALLOUT_BLOCK_START, bodyParams, stripStainlessHeaders } from './utils'
 
 type DeepSeekDelta = OpenAI.ChatCompletionChunk.Choice.Delta & {
 	reasoning_content?: string
@@ -11,13 +11,16 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, _resolveEmbedAsBinary: ResolveEmbedAsBinary) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
-		const { apiKey, baseURL, model, ...remains } = options
+		const { apiKey, baseURL, model } = options
+		const remains = bodyParams(parameters, optionsExcludingParams)
 		if (!apiKey) throw new Error(t('API key is required'))
+		if (!model) throw new Error(t('Model is required'))
 
 		const client = new OpenAI({
 			apiKey,
 			baseURL,
-			dangerouslyAllowBrowser: true
+			dangerouslyAllowBrowser: true,
+			defaultHeaders: stripStainlessHeaders
 		})
 
 		const stream = await client.chat.completions.create(
@@ -48,18 +51,16 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 		}
 	}
 
-const models = ['deepseek-chat', 'deepseek-reasoner']
-
 export const deepSeekVendor: Vendor = {
 	name: 'DeepSeek',
 	defaultOptions: {
 		apiKey: '',
 		baseURL: 'https://api.deepseek.com',
-		model: models[0],
+		model: '',
 		parameters: {}
 	},
 	sendRequestFunc,
-	models,
+	models: [],
 	websiteToObtainKey: 'https://platform.deepseek.com',
 	capabilities: ['Text Generation', 'Reasoning']
 }

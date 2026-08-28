@@ -1,7 +1,13 @@
 import OpenAI from 'openai'
 import { t } from 'src/lang/helper'
 import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
-import { CALLOUT_BLOCK_END, CALLOUT_BLOCK_START, convertEmbedToImageUrl } from './utils'
+import {
+	CALLOUT_BLOCK_END,
+	CALLOUT_BLOCK_START,
+	bodyParams,
+	convertEmbedToImageUrl,
+	stripStainlessHeaders
+} from './utils'
 
 type DeepSeekDelta = OpenAI.ChatCompletionChunk.Choice.Delta & {
 	reasoning_content?: string
@@ -11,14 +17,17 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, resolveEmbedAsBinary: ResolveEmbedAsBinary) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
-		const { apiKey, baseURL, model, ...remains } = options
+		const { apiKey, baseURL, model } = options
+		const remains = bodyParams(parameters, optionsExcludingParams)
 		if (!apiKey) throw new Error(t('API key is required'))
+		if (!model) throw new Error(t('Model is required'))
 
 		const formattedMessages = await Promise.all(messages.map((msg) => formatMsg(msg, resolveEmbedAsBinary)))
 		const client = new OpenAI({
 			apiKey,
 			baseURL,
-			dangerouslyAllowBrowser: true
+			dangerouslyAllowBrowser: true,
+			defaultHeaders: stripStainlessHeaders
 		})
 
 		const stream = await client.chat.completions.create(

@@ -1,13 +1,16 @@
-import { Content, GoogleGenerativeAI } from '@google/generative-ai'
+import { Content, GoogleGenerativeAI, ModelParams } from '@google/generative-ai'
 import { t } from 'src/lang/helper'
 import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
+import { bodyParams } from './utils'
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, _resolveEmbedAsBinary: ResolveEmbedAsBinary) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
 		const { apiKey, baseURL: baseUrl, model } = options
+		const remains = bodyParams(parameters, optionsExcludingParams)
 		if (!apiKey) throw new Error(t('API key is required'))
+		if (!model) throw new Error(t('Model is required'))
 
 		const [system_msg, messagesWithoutSys, lastMsg] =
 			messages[0].role === 'system'
@@ -19,8 +22,27 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 			parts: [{ text: m.content }]
 		}))
 
+		// Gemini takes no flat request body: the generation knobs live under
+		// `generationConfig`, and only safetySettings, tools, toolConfig and
+		// cachedContent sit beside them. "Override input parameters" used to reach
+		// this vendor and go nowhere, so route each key where the SDK reads it —
+		// spreading a temperature at the top level would be ignored just as
+		// silently. The cast is the price of letting a user hand-write JSON, which
+		// is what that setting is for.
+		const { safetySettings, tools, toolConfig, cachedContent, ...generationConfig } = remains
 		const genAI = new GoogleGenerativeAI(apiKey)
-		const genModel = genAI.getGenerativeModel({ model, systemInstruction }, { baseUrl })
+		const genModel = genAI.getGenerativeModel(
+			{
+				model,
+				systemInstruction,
+				...(safetySettings !== undefined && { safetySettings }),
+				...(tools !== undefined && { tools }),
+				...(toolConfig !== undefined && { toolConfig }),
+				...(cachedContent !== undefined && { cachedContent }),
+				...(Object.keys(generationConfig).length > 0 && { generationConfig })
+			} as ModelParams,
+			{ baseUrl }
+		)
 		const chat = genModel.startChat({ history })
 
 		const result = await chat.sendMessageStream(lastMsg.content, { signal: controller.signal })
@@ -36,7 +58,7 @@ export const geminiVendor: Vendor = {
 	defaultOptions: {
 		apiKey: '',
 		baseURL: 'https://generativelanguage.googleapis.com',
-		model: 'gemini-1.5-flash',
+		model: '',
 		parameters: {}
 	},
 	sendRequestFunc,

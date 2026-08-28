@@ -2,6 +2,7 @@ import * as jose from 'jose'
 import OpenAI from 'openai'
 import { t } from 'src/lang/helper'
 import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
+import { bodyParams, streamWithThinking, stripStainlessHeaders } from './utils'
 
 interface Token {
 	id: string
@@ -19,8 +20,10 @@ const sendRequestFunc = (settings: ZhipuOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, _resolveEmbedAsBinary: ResolveEmbedAsBinary) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
-		const { apiKey, baseURL, model, token: currentToken, tokenExpireInMinutes, enableWebSearch, ...remains } = options
+		const { apiKey, baseURL, model, token: currentToken, tokenExpireInMinutes, enableWebSearch } = options
+		const remains = bodyParams(parameters, optionsExcludingParams)
 		if (!apiKey) throw new Error(t('API key is required'))
+		if (!model) throw new Error(t('Model is required'))
 		console.debug('zhipu options', { baseURL, apiKey, model, currentToken, tokenExpireInMinutes, enableWebSearch })
 
 		const { token } = await validOrCreate(currentToken, apiKey, tokenExpireInMinutes)
@@ -29,7 +32,8 @@ const sendRequestFunc = (settings: ZhipuOptions): SendRequest =>
 		const client = new OpenAI({
 			apiKey: token.id,
 			baseURL,
-			dangerouslyAllowBrowser: true
+			dangerouslyAllowBrowser: true,
+			defaultHeaders: stripStainlessHeaders
 		})
 
 		const tools = (enableWebSearch
@@ -56,11 +60,10 @@ const sendRequestFunc = (settings: ZhipuOptions): SendRequest =>
 			}
 		)
 
-		for await (const part of stream) {
-			const text = part.choices[0]?.delta?.content
-			if (!text) continue
-			yield text
-		}
+		// GLM-4.5 and 4.6 stream their thinking in `reasoning_content`; GLM-Z1 marks
+		// it with `<think>` tags inside `content`. Both reach the note as a callout
+		// (issue #116).
+		yield* streamWithThinking(stream)
 	}
 
 const createToken = async (apiKeySecret: string, expireInMinutes: number) => {
@@ -105,20 +108,18 @@ const validOrCreate = async (currentToken: Token | undefined, apiKeySecret: stri
 	}
 }
 
-const models = ['glm-4-plus', 'glm-4-air', 'glm-4-airx', 'glm-4-long', 'glm-4-flash', 'glm-4-flashx']
-
 export const zhipuVendor: Vendor = {
 	name: 'Zhipu',
 	defaultOptions: {
 		apiKey: '',
 		baseURL: 'https://open.bigmodel.cn/api/paas/v4/',
-		model: models[0],
+		model: '',
 		tokenExpireInMinutes: 60 * 24,
 		enableWebSearch: false,
 		parameters: {}
 	} as ZhipuOptions,
 	sendRequestFunc,
-	models,
+	models: [],
 	websiteToObtainKey: 'https://open.bigmodel.cn/',
-	capabilities: ['Text Generation', 'Web Search']
+	capabilities: ['Text Generation', 'Web Search', 'Reasoning']
 }

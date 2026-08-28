@@ -2,6 +2,7 @@ import axios from 'axios'
 import { Notice, Platform, requestUrl } from 'obsidian'
 import { t } from 'src/lang/helper'
 import { BaseOptions, Message, Optional, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
+import { bodyParams } from './utils'
 
 interface TokenResponse {
 	access_token: string
@@ -80,7 +81,8 @@ const sendRequestFunc = (settings: QianFanOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, _resolveEmbedAsBinary: ResolveEmbedAsBinary) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
-		const { apiKey, apiSecret, baseURL, model, token: currentToken, ...remains } = options
+		const { apiKey, apiSecret, baseURL, model, token: currentToken } = options
+		const remains = bodyParams(parameters, optionsExcludingParams)
 		if (!apiKey) throw new Error(t('API key is required'))
 		if (!apiSecret) throw new Error(t('API secret is required'))
 		if (!model) throw new Error(t('Model is required'))
@@ -143,17 +145,11 @@ const sendRequestFunc = (settings: QianFanOptions): SendRequest =>
 		}
 	}
 
-const models = [
-	'ernie-4.0-8k-latest',
-	'ernie-4.0-turbo-8k',
-	'ernie-3.5-128k',
-	'ernie_speed',
-	'ernie-speed-128k',
-	'gemma_7b_it',
-	'yi_34b_chat',
-	'mixtral_8x7b_instruct',
-	'llama_2_70b'
-]
+// Baidu retired the third-party models this endpoint once hosted — gemma_7b_it,
+// yi_34b_chat, mixtral_8x7b_instruct and llama_2_70b among them. A retired name
+// left in the list is a request that can only fail; anyone still holding one keeps
+// it in their settings and can re-enter it under "Override input parameters".
+const models = ['ernie-4.0-8k-latest', 'ernie-4.0-turbo-8k', 'ernie-3.5-128k', 'ernie_speed', 'ernie-speed-128k']
 
 export const qianFanVendor: Vendor = {
 	name: 'QianFan',

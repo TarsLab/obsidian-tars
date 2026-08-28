@@ -63,9 +63,20 @@ obsidian dev:console level=error
 obsidian dev:debug off
 ```
 
+This document covers the settings UI. For providers — CORS, streaming, and the
+network paths that make a working provider look broken — see
+[Testing providers against real networks](provider-testing.md).
+
 ## Traps
 
 Each of these produced a wrong conclusion at least once.
+
+### `obsidian eval` has no top-level await
+
+Wrap anything asynchronous in `(async () => { ... })()`. The CLI awaits the
+promise you return, so the value comes back normally, but a bare `await` is a
+syntax error. `require` works, absolute paths included — `require('obsidian')`
+does not, since only real plugins are given that module.
 
 ### The settings window is a separate window
 
@@ -78,6 +89,12 @@ const W = app.setting.win // the settings window
 const D = W.document // query this, not `document`
 D.querySelectorAll('.suggestion-item').length
 ```
+
+A modal lands in whichever window opened it, and `obsidian eval` is the main
+window. Click the real control and the vendor picker appears in
+`app.setting.win`; call `promptForNewProvider()` from eval and the same picker
+appears in `document` instead. That difference is an artefact of the test, not
+of the plugin, so query both before concluding a modal failed to open.
 
 `app.setting.containerEl.isConnected` is `false` even while settings is open;
 it is not a liveness check. `app.setting.activeTab.containerEl.isConnected`
@@ -102,6 +119,24 @@ is in `obsidian.d.ts`:
 
 Treat them as test-only. `src/settingTab.ts` reaches for `closePage()` in one
 place, behind a narrow structural type, because there is no alternative.
+
+Going the other way is worse. `app.setting.openPage()` wants a page object, and
+one is only built when a row is activated — the rendered list holds
+`{type, key, def, settingEl}`, no page — so a row's `settingEl.click()` is the
+only handle there is. That is what `openProviderPage()` uses to land on a newly
+added provider.
+
+### A tab's `containerEl` is detached while a sub-page is open
+
+Open a provider's page and the tab's own `containerEl.isConnected` becomes
+`false` — `app.setting.getCurrentPageEl()` is a different element by then. So
+`deferredUpdate()`, which guards on exactly that, is **silently dropped for
+anything issued from inside a provider page**. `tagDef` only appears to work
+because its update fires as the page is being left.
+
+Anything that has to change a row while its page is open must rewrite the row —
+`setting.clear()`, then add the components again — rather than ask for a
+re-render. `modelFetchDef` does this when a provider's model list cannot be read.
 
 ### `update()` rebuilds the open page too
 
@@ -158,17 +193,19 @@ const row = (name) => rows().find((e) => e.querySelector('.setting-item-name').t
 const names = () => Array.from(C().querySelectorAll('.setting-item-name')).map((e) => e.textContent)
 ```
 
-| #   | Check                                                                | Passes when                                                                                     |
-| --- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| 1   | Add a provider: `+` in the list header, pick a vendor                | count grows, it appears in the list, `pageStack` stays `0`                                      |
-| 2   | Missing API key                                                      | providers with an empty key show a warning; Ollama, which needs none, does not                  |
-| 3   | Rename a tag, then `closePage()`                                     | typing does not tear down the page; the list entry shows the new tag                            |
-| 4   | Invalid tags: a name already in use, `#` in the name, a space, empty | all four rejected, stored tag unchanged                                                         |
-| 5   | Remove, from inside the provider's page                              | count drops, `pageStack` returns to `0`, the entry is gone                                      |
-| 6   | Reset buttons: base URL, the three message tags, answer delay        | field, stored value **and** any number rendered beside a slider all return to the default       |
-| 7   | Default system message toggle                                        | switches the textarea's `disabled` state both ways                                              |
-| 8   | Section structure                                                    | four headings (AI assistants, Message tags, System message, Advanced), no heading printed twice |
-| 9   | `obsidian dev:errors`                                                | empty                                                                                           |
+| #   | Check                                                                                         | Passes when                                                                                                                                                                     |
+| --- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Add a provider: `+` in the list header, pick a vendor                                         | count grows and `pageStack` becomes `1` — the new provider's own page, tag field included; the tag is non-empty and unique, so a second provider of one vendor is `Vendor2`     |
+| 2   | Missing API key                                                                               | providers with an empty key show a warning; Ollama, which needs none, does not                                                                                                  |
+| 3   | Rename a tag, then `closePage()`                                                              | typing does not tear down the page; the list entry shows the new tag                                                                                                            |
+| 4   | Invalid tags: a name already in use, `#` in the name, a space, empty                          | all four rejected, stored tag unchanged                                                                                                                                         |
+| 5   | Clear the tag field and click away                                                            | a notice says the tag may not be empty, the field snaps back to the stored tag, and the stored tag never changed                                                                |
+| 6   | Remove, from inside the provider's page                                                       | count drops, `pageStack` returns to `0`, the entry is gone                                                                                                                      |
+| 7   | Reset buttons: base URL, the three message tags, answer delay                                 | field, stored value **and** any number rendered beside a slider all return to the default                                                                                       |
+| 8   | Model row on a provider whose list cannot be read (an unverified SiliconFlow account will do) | the button is replaced in place by a text field carrying the current model, the description gains a ⚠️, typing saves, and leaving the page and returning brings the button back |
+| 9   | Default system message toggle                                                                 | switches the textarea's `disabled` state both ways                                                                                                                              |
+| 10  | Section structure                                                                             | four headings (AI assistants, Message tags, System message, Advanced), no heading printed twice                                                                                 |
+| 11  | `obsidian dev:errors`                                                                         | empty                                                                                                                                                                           |
 
 Check 6 is worth doing by eye as well: a reset that writes to a component's
 underlying element instead of calling the component's `setValue()` moves the

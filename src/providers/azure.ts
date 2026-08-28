@@ -1,7 +1,7 @@
 import { AzureOpenAI } from 'openai'
 import { t } from 'src/lang/helper'
 import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
-import { CALLOUT_BLOCK_END, CALLOUT_BLOCK_START } from './utils'
+import { CALLOUT_BLOCK_END, CALLOUT_BLOCK_START, bodyParams, stripStainlessHeaders } from './utils'
 
 interface AzureOptions extends BaseOptions {
 	endpoint: string
@@ -12,10 +12,24 @@ const sendRequestFunc = (settings: AzureOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, _resolveEmbedAsBinary: ResolveEmbedAsBinary) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters } // 这样的设计，让parameters 可以覆盖掉前面的设置 optionsExcludingParams
-		const { apiKey, model, endpoint, apiVersion, ...remains } = options
+		const { apiKey, model, endpoint, apiVersion } = options
+		const remains = bodyParams(parameters, optionsExcludingParams)
 		if (!apiKey) throw new Error(t('API key is required'))
+		if (!model) throw new Error(t('Model is required'))
+		// Left empty, the endpoint reaches the SDK, which falls back to
+		// `process.env.AZURE_OPENAI_ENDPOINT` without checking that `process`
+		// exists. On mobile there is none, so its "Must provide one of…" message
+		// arrives as `process is not defined` instead.
+		if (!endpoint) throw new Error(t('Endpoint is required'))
 
-		const client = new AzureOpenAI({ endpoint, apiKey, apiVersion, deployment: model, dangerouslyAllowBrowser: true })
+		const client = new AzureOpenAI({
+			endpoint,
+			apiKey,
+			apiVersion,
+			deployment: model,
+			dangerouslyAllowBrowser: true,
+			defaultHeaders: stripStainlessHeaders
+		})
 
 		// 添加系统提示，要求模型在每次输出前加入 <think>，解决 Azure DeepSeek-R1 不推理的问题
 		messages = [
@@ -68,20 +82,22 @@ const sendRequestFunc = (settings: AzureOptions): SendRequest =>
 		}
 	}
 
-const models = ['o3-mini', 'deepseek-r1', 'phi-4', 'o1', 'o1-mini', 'gpt-4o', 'gpt-4o-mini']
-
 export const azureVendor: Vendor = {
 	name: 'Azure',
 	defaultOptions: {
 		apiKey: '',
 		baseURL: '',
-		model: models[0],
+		model: '',
 		endpoint: '',
 		apiVersion: '',
 		parameters: {}
 	} as AzureOptions,
 	sendRequestFunc,
-	models,
+	// Azure addresses a deployment, not a model: the name is whatever it was given
+	// in the portal, so no list can be offered — neither a curated one nor a
+	// fetched one, since listing deployments needs a management credential rather
+	// than the inference key.
+	models: [],
 	websiteToObtainKey: 'https://portal.azure.com',
 	capabilities: ['Text Generation', 'Reasoning']
 }

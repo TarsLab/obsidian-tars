@@ -1,13 +1,14 @@
 import { EmbedCache } from 'obsidian'
 import { t } from 'src/lang/helper'
 import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
-import { arrayBufferToBase64, getMimeTypeFromFilename } from './utils'
+import { arrayBufferToBase64, bodyParams, getMimeTypeFromFilename } from './utils'
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, resolveEmbedAsBinary: ResolveEmbedAsBinary) {
 		const { parameters, ...optionsExcludingParams } = settings
 		const options = { ...optionsExcludingParams, ...parameters }
-		const { apiKey, baseURL, model, ...remains } = options
+		const { apiKey, baseURL, model } = options
+		const remains = bodyParams(parameters, optionsExcludingParams)
 		if (!apiKey) throw new Error(t('API key is required'))
 		if (!model) throw new Error(t('Model is required'))
 
@@ -27,6 +28,16 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 			body: JSON.stringify(data),
 			signal: controller.signal
 		})
+
+		// A rejection arrives as a plain JSON body, and every line of it fails the
+		// `data: ` test below — so the loop drained a 401 without yielding a single
+		// character and without raising anything, and the editor went on to report
+		// that the text had been generated. Nothing downstream can tell that apart
+		// from a model with nothing to say, so it has to be caught here.
+		if (!response.ok) {
+			const body = (await response.text()).trim()
+			throw new Error(`${response.status} ${response.statusText}${body ? ' ' + body.slice(0, 300) : ''}`)
+		}
 
 		const reader = response.body?.getReader()
 		if (!reader) {

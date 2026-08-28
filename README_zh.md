@@ -7,7 +7,7 @@
 
 # 简介
 
-Tars 是一个 Obsidian 插件，基于标签建议进行文本生成，支持 Claude、OpenAI、Gemini、🔥DeepSeek、🔥SiliconFlow、🔥OpenRouter、Ollama、Kimi、豆包、阿里千问、智谱、百度千帆等。Tars 这个名字来源于电影《星际穿越》中的机器人 Tars（塔斯）。插件支持桌面端和移动端。
+Tars 是一个 Obsidian 插件，基于标签建议进行文本生成，支持 Claude、OpenAI、Gemini、🔥DeepSeek、🔥SiliconFlow、🔥OpenRouter、🔥MiniMax、🔥LongCat、Ollama、Kimi、豆包、阿里千问、智谱、百度千帆等。Tars 这个名字来源于电影《星际穿越》中的机器人 Tars（塔斯）。插件支持桌面端和移动端。
 
 ## 🌟 3.1 多模态
 
@@ -56,6 +56,8 @@ Tars 是一个 Obsidian 插件，基于标签建议进行文本生成，支持 C
 - [Doubao 豆包](https://www.volcengine.com/product/doubao)
 - [Gemini](https://gemini.google.com)
 - [Kimi](https://www.moonshot.cn)
+- [LongCat 龙猫](https://longcat.chat/platform/)
+- [MiniMax 海螺](https://platform.minimaxi.com/)
 - [Ollama](https://www.ollama.com)
 - [OpenAI](https://platform.openai.com/api-keys)
 - [OpenRouter](https://openrouter.ai)
@@ -69,11 +71,13 @@ Tars 是一个 Obsidian 插件，基于标签建议进行文本生成，支持 C
 
 ### 助手特色
 
-- Azure: 支持 o1，deepseek-r1，gpt-4o 等等
-- 🔥DeepSeek：推理模型 deepseek-reasoner 的思维链以 callout 格式输出
+- Azure：模型一栏填的是你在 Azure 门户给部署起的名字，不是模型 id
+- 🔥DeepSeek：推理模型的思维链以 callout 格式输出
 - Doubao: 支持应用（bot）API，[支持 deepseek 联网插件和知识库插件](https://github.com/TarsLab/obsidian-tars/issues/68)
+- 🔥LongCat 龙猫：推理内容以 callout 格式输出
+- 🔥MiniMax 海螺：推理内容以 callout 格式输出
 - 🔥SiliconFlow：支持 DeepSeek V3/R1 等等众多模型
-- Zhipu：网络搜索选项
+- 🔥Zhipu 智谱：网络搜索选项，GLM-4.5 / 4.6 / Z1 的推理内容以 callout 格式输出
 
 ## 如何使用
 
@@ -149,7 +153,11 @@ graph LR
 
 ### 设置页面没有想要的模型？
 
-可以在设置中的“覆盖输入参数”进行配置，输入 JSON 格式，例如 `{"model":"你想要的model"}`。
+大部分服务商的模型列表是调用官方接口取回来的，不是插件里写死的——服务商不再公开的旧模型，列表里不会有。
+
+可以在“覆盖输入参数”里填 JSON，例如 `{"model":"你想要的model"}`，它的优先级高于选择器里选的模型。
+
+如果列表根本拉不到——账号还没实名认证、中转站没实现这个接口——这一行会变成普通输入框，直接手动填模型名即可。
 
 ### 如何查看开发者控制台？
 
@@ -196,6 +204,11 @@ npm run lint
 设置页由 Obsidian 依据 `getSettingDefinitions()` 渲染，构建和 lint 都无法验证它是否真的可用。
 参见[在运行中的 Obsidian 上手工测试](docs/manual-testing.md)：如何用 Obsidian CLI 驱动一个真实实例，
 以及发布前应当跑一遍的检查清单。
+
+服务商出问题的原因往往不在代码里：Obsidian 从 `app://obsidian.md` 跨域调用每一个 API，
+而"被 CORS 拦下"和"主机根本连不上"报的是同一个错误，不刻意区分就分不开。
+参见[在真实网络下测试服务商](docs/provider-testing.md)，以及 `npm run smoke`——
+真正下判断的那套探针跑在 Obsidian 内部。
 
 ## 赞赏
 

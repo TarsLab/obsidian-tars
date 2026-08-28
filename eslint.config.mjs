@@ -5,7 +5,7 @@ import globals from 'globals'
 import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
-	{ ignores: ['version-bump.mjs', 'esbuild.config.mjs', 'eslint.config.mjs', 'main.js'] },
+	{ ignores: ['version-bump.mjs', 'esbuild.config.mjs', 'esbuild.smoke.mjs', 'eslint.config.mjs', 'main.js', 'build/**'] },
 	pluginJs.configs.recommended,
 	...tseslint.configs.recommended,
 	...obsidianmd.configs.recommended,

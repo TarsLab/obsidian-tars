@@ -8,6 +8,8 @@ import { geminiVendor } from './providers/gemini'
 import { gptImageVendor } from './providers/gptImage'
 import { grokVendor } from './providers/grok'
 import { kimiVendor } from './providers/kimi'
+import { longCatVendor } from './providers/longcat'
+import { miniMaxVendor } from './providers/minimax'
 import { ollamaVendor } from './providers/ollama'
 import { openAIVendor } from './providers/openAI'
 import { openRouterVendor } from './providers/openRouter'
@@ -17,6 +19,44 @@ import { siliconFlowVendor } from './providers/siliconflow'
 import { zhipuVendor } from './providers/zhipu'
 
 export const APP_FOLDER = 'Tars'
+
+/**
+ * A tag none of `taken` is already using, numbered when the plain name is.
+ *
+ * Numbering rather than spacing because a tag may not contain a space, and
+ * case-insensitively because that is how the tag field's own uniqueness check
+ * compares. Lives here rather than in the settings tab so that the repair on
+ * load names a provider exactly as adding one would have.
+ */
+export const unusedTag = (vendorName: string, taken: Iterable<string>) => {
+	const used = new Set([...taken].map((tag) => tag.toLowerCase()))
+	let tag = vendorName
+	for (let n = 2; used.has(tag.toLowerCase()); n++) tag = vendorName + n
+	return tag
+}
+
+/**
+ * Gives a tag to any provider saved without one, and reports what it named.
+ *
+ * A provider with no tag cannot be triggered at all — there is no way to type an
+ * empty tag into a note — but it is not inert either: it registers a command
+ * palette entry reading "# : ", and shows in the settings list as a row with no
+ * name. Adding a second provider of a vendor already in the list stored exactly
+ * that, from the mobile-adaptation release until it was fixed, so vaults still
+ * carry them and nothing would ever have cleared them.
+ */
+export const nameUntaggedProviders = (providers: ProviderSettings[]) => {
+	const named: string[] = []
+	for (const provider of providers) {
+		if (provider.tag.trim()) continue
+		provider.tag = unusedTag(
+			provider.vendor,
+			providers.map((e) => e.tag)
+		)
+		named.push(provider.tag)
+	}
+	return named
+}
 
 export interface EditorStatus {
 	isTextInserting: boolean
@@ -85,6 +125,8 @@ export const availableVendors: Vendor[] = [
 	gptImageVendor,
 	grokVendor,
 	kimiVendor,
+	longCatVendor,
+	miniMaxVendor,
 	ollamaVendor,
 	openRouterVendor,
 	qianFanVendor,

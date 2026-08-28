@@ -15,14 +15,27 @@ import TarsPlugin from './main'
 import { SelectModelModal, SelectVendorModal } from './modal'
 import { BaseOptions, Optional, ProviderSettings, Vendor } from './providers'
 import { ClaudeOptions, claudeVendor } from './providers/claude'
+import { deepSeekVendor } from './providers/deepSeek'
+import { doubaoVendor } from './providers/doubao'
 import { GptImageOptions, gptImageVendor } from './providers/gptImage'
+import { geminiVendor } from './providers/gemini'
 import { grokVendor } from './providers/grok'
 import { kimiVendor } from './providers/kimi'
+import { longCatVendor } from './providers/longcat'
+import { miniMaxVendor } from './providers/minimax'
+import { openAIVendor } from './providers/openAI'
 import { ollamaVendor } from './providers/ollama'
 import { openRouterVendor } from './providers/openRouter'
+import { qwenVendor } from './providers/qwen'
 import { siliconFlowVendor } from './providers/siliconflow'
 import { getCapabilityEmoji } from './providers/utils'
-import { availableVendors, DEFAULT_SETTINGS } from './settings'
+import { zhipuVendor } from './providers/zhipu'
+import { availableVendors, DEFAULT_SETTINGS, unusedTag } from './settings'
+
+/** The parts of a rendered settings tab that obsidian.d.ts does not describe. */
+interface SettingTabInternals {
+	renderedItems?: { type?: string; children?: { settingEl?: HTMLElement }[] }[]
+}
 
 export class TarsSettingTab extends PluginSettingTab {
 	plugin: TarsPlugin
@@ -76,19 +89,19 @@ export class TarsSettingTab extends PluginSettingTab {
 	/** Opens the vendor picker and appends the chosen provider. */
 	promptForNewProvider = () => {
 		const onChoose = async (vendor: Vendor) => {
-			const defaultTag = vendor.name
-			const isTagDuplicate = this.plugin.settings.providers.map((e) => e.tag).includes(defaultTag)
-			const newTag = isTagDuplicate ? '' : defaultTag
-
 			const deepCopiedOptions = JSON.parse(JSON.stringify(vendor.defaultOptions))
 			this.plugin.settings.providers.push({
-				tag: newTag,
+				tag: unusedTag(
+					vendor.name,
+					this.plugin.settings.providers.map((e) => e.tag)
+				),
 				vendor: vendor.name,
 				options: deepCopiedOptions
 			})
 			// Initially, vendor and tag might be the same, but vendor is read-only to mark vendor type, while tag can be modified by users
 			await this.plugin.saveSettings()
 			this.update()
+			this.openProviderPage(this.plugin.settings.providers.length - 1)
 		}
 		new SelectVendorModal(this.app, availableVendors, onChoose).open()
 	}
@@ -114,6 +127,26 @@ export class TarsSettingTab extends PluginSettingTab {
 	closeProviderPage = () => {
 		const setting = (this.app as App & { setting?: { closePage?: () => void } }).setting
 		setting?.closePage?.()
+	}
+
+	/**
+	 * Open a provider's sub-page, the way clicking its row does.
+	 *
+	 * A provider that was just added does nothing until it has an API key, and its
+	 * tag is a generated one that the user will usually want to replace, so staying
+	 * on the list leaves both fields a click away. Land on the page instead, where
+	 * they are in front of them.
+	 *
+	 * The settings modal's openPage() wants a page object, and one only exists
+	 * once a row has been activated, so the row is the only handle there is.
+	 * Neither renderedItems nor that wiring is in obsidian.d.ts, hence the
+	 * structural type and the optional calls: if a future release changes either,
+	 * the provider is still added and the user opens it themselves.
+	 */
+	openProviderPage = (index: number) => {
+		const rendered = (this as SettingTabInternals).renderedItems
+		const list = rendered?.find((item) => item.type === 'list')
+		list?.children?.[index]?.settingEl?.click()
 	}
 
 	/** One provider rendered as a navigable sub-page. */
@@ -384,6 +417,9 @@ export class TarsSettingTab extends PluginSettingTab {
 					.setValue(settings.tag)
 					.onChange(async (value) => {
 						const trimmed = value.trim()
+						// Not reported here. Selecting the whole tag and typing a new one
+						// passes through empty on the way, and a notice per keystroke is
+						// noise. The blur handler below has the last word.
 						if (trimmed.length === 0) return
 						if (!validateTag(trimmed)) return
 						const otherTags = this.plugin.settings.providers
@@ -398,6 +434,17 @@ export class TarsSettingTab extends PluginSettingTab {
 						tagChanged = true
 						await this.plugin.saveSettings()
 					})
+
+				// A cleared field looked like it had taken effect. onChange refuses an
+				// empty tag in silence, so the box read empty while the tag it was
+				// showing stayed stored and stayed triggering the assistant — nothing
+				// said which one was real. Say so on the way out, and put back what is
+				// actually in effect.
+				text.inputEl.addEventListener('blur', () => {
+					if (text.getValue().trim().length > 0) return
+					new Notice(t('Keyword for tag must not be empty'))
+					text.setValue(settings.tag)
+				})
 			})
 
 			return () => {
@@ -410,12 +457,38 @@ export class TarsSettingTab extends PluginSettingTab {
 
 	modelFetchDef = (
 		settings: ProviderSettings,
-		modelConfig: { url: string; requiresApiKey: boolean },
+		modelConfig: ModelFetchConfig,
 		desc: string
 	): SettingDefinitionRender => ({
 		name: t('Model'),
 		desc,
 		render: (setting) => {
+			/**
+			 * A button that cannot open is a dead end, and the provider behind it may
+			 * be perfectly usable — SiliconFlow answers 403 here until an account is
+			 * identity-verified and answers questions regardless. Hand the row over to
+			 * a text field so the model stays settable.
+			 *
+			 * Rewriting this row rather than re-rendering the tab, for two reasons: a
+			 * failed read describes the network a moment ago and has no business being
+			 * remembered, and `deferredUpdate()` is dropped while a provider page is
+			 * open — the tab's own containerEl is detached there. Leaving the page and
+			 * returning restores the button, which is the retry.
+			 */
+			const fallBackToTextField = () => {
+				setting.clear()
+				setting.setDesc('⚠️ ' + t('Could not read the model list. Enter the model name.') + ' ' + desc)
+				setting.addText((text) =>
+					text
+						.setPlaceholder(t('Model'))
+						.setValue(settings.options.model)
+						.onChange(async (value) => {
+							settings.options.model = value.trim()
+							await this.plugin.saveSettings()
+						})
+				)
+			}
+
 			setting.addButton((btn) => {
 				btn
 					.setButtonText(settings.options.model ? settings.options.model : t('Select the model to use'))
@@ -427,7 +500,8 @@ export class TarsSettingTab extends PluginSettingTab {
 						}
 						try {
 							const models = await fetchModels(
-								modelConfig.url,
+								modelConfig,
+								settings.options.baseURL,
 								modelConfig.requiresApiKey ? settings.options.apiKey : undefined
 							)
 							const onChoose = async (selectedModel: string) => {
@@ -449,6 +523,7 @@ export class TarsSettingTab extends PluginSettingTab {
 							} else {
 								new Notice('🔴 ' + String(error))
 							}
+							fallBackToTextField()
 						}
 					})
 			})
@@ -914,6 +989,10 @@ const getSummary = (tag: string, defaultTag: string) =>
 	tag === defaultTag ? defaultTag : tag + ' (' + defaultTag + ')'
 
 const validateTag = (tag: string) => {
+	if (tag.length === 0) {
+		new Notice(t('Keyword for tag must not be empty'))
+		return false
+	}
 	if (tag.includes('#')) {
 		new Notice(t('Keyword for tag must not contain #'))
 		return false
@@ -945,20 +1024,88 @@ const isValidUrl = (url: string) => {
 	}
 }
 
-const fetchModels = async (url: string, apiKey?: string): Promise<string[]> => {
+/**
+ * How to ask one provider what models it has.
+ *
+ * Exported alongside `fetchModels` and `MODEL_FETCH_CONFIGS` so that the smoke
+ * harness probes the configuration the settings tab actually uses. A harness that
+ * keeps its own copy of these URLs stops testing them the moment one is edited.
+ *
+ * `url` may be derived from the provider's own base URL, because a provider
+ * reached through a relay does not list its models at the vendor's address —
+ * this vault reaches Gemini through one, and a hardcoded URL would ask the wrong
+ * host. `parse` exists because not everyone answers in OpenAI's shape.
+ */
+export interface ModelFetchConfig {
+	url: string | ((baseURL: string) => string)
+	requiresApiKey: boolean
+	/** Defaults to a bearer token. */
+	authHeader?: string
+	/** Anything the endpoint demands beyond authentication, such as an API version. */
+	headers?: Record<string, string>
+	/** Defaults to OpenAI's `{ data: [{ id }] }`. */
+	parse?: (json: unknown) => string[]
+}
+
+export const fetchModels = async (config: ModelFetchConfig, baseURL: string, apiKey?: string): Promise<string[]> => {
+	const url = typeof config.url === 'function' ? config.url(baseURL) : config.url
+	const authHeader = config.authHeader ?? 'Authorization'
+	const authValue = config.authHeader ? apiKey : `Bearer ${apiKey}`
 	const response = await requestUrl({
 		url,
 		headers: {
-			...(apiKey && { Authorization: `Bearer ${apiKey}` }),
+			...(apiKey && { [authHeader]: authValue as string }),
+			...config.headers,
 			'Content-Type': 'application/json'
 		}
 	})
-	const result = response.json
-	return result.data.map((model: { id: string }) => model.id)
+	if (config.parse) return config.parse(response.json)
+	const result = response.json as { data: { id: string }[] }
+	return result.data.map((model) => model.id)
 }
 
 // Model fetching configurations for different vendors
-const MODEL_FETCH_CONFIGS = {
+export const MODEL_FETCH_CONFIGS = {
+	[claudeVendor.name]: {
+		// The Anthropic SDK appends its own path to the base URL, so what is stored
+		// in the settings may be a bare host or may already carry /v1/messages —
+		// this vault's relay stores the latter. Strip whichever tail is present
+		// before asking for the sibling /v1/models.
+		url: (baseURL: string) =>
+			baseURL
+				.replace(/\/+$/, '')
+				.replace(/(\/v1)?\/messages$/, '')
+				.replace(/\/v1$/, '') + '/v1/models',
+		requiresApiKey: true,
+		authHeader: 'x-api-key',
+		headers: { 'anthropic-version': '2023-06-01' }
+	},
+	[deepSeekVendor.name]: {
+		url: (baseURL: string) => baseURL.replace(/\/+$/, '') + '/models',
+		requiresApiKey: true
+	},
+	[qwenVendor.name]: {
+		url: (baseURL: string) => baseURL.replace(/\/+$/, '') + '/models',
+		requiresApiKey: true
+	},
+	[openAIVendor.name]: {
+		url: (baseURL: string) => baseURL.replace(/\/+$/, '') + '/models',
+		requiresApiKey: true
+	},
+	[doubaoVendor.name]: {
+		// Doubao's base URL is the completions endpoint itself, not a prefix.
+		url: (baseURL: string) => baseURL.replace(/\/+$/, '').replace(/\/chat\/completions$/, '') + '/models',
+		requiresApiKey: true
+	},
+	[ollamaVendor.name]: {
+		// Ollama has an OpenAI-compatible /v1/models, but /api/tags is what its own
+		// documentation points at and it is the list of models actually pulled onto
+		// the machine, which is the only list worth offering.
+		url: (baseURL: string) => baseURL.replace(/\/+$/, '') + '/api/tags',
+		requiresApiKey: false,
+		parse: (json: unknown) =>
+			(json as { models?: { name?: string }[] }).models?.map((model) => model.name ?? '').filter(Boolean) ?? []
+	},
 	[siliconFlowVendor.name]: {
 		url: 'https://api.siliconflow.cn/v1/models?type=text&sub_type=chat',
 		requiresApiKey: true
@@ -973,6 +1120,35 @@ const MODEL_FETCH_CONFIGS = {
 	},
 	[grokVendor.name]: {
 		url: 'https://api.x.ai/v1/models',
+		requiresApiKey: true
+	},
+	[geminiVendor.name]: {
+		// Google answers `{ models: [{ name: "models/…" }] }` rather than OpenAI's
+		// shape, and authenticates with its own header. The list mixes in Veo video
+		// and image models, and `supportedGenerationMethods` does not separate them
+		// — every entry claims generateContent, Veo included — so the names are all
+		// there is to go on. Anything missed is still reachable through
+		// "Override input parameters".
+		url: (baseURL: string) => `${baseURL.replace(/\/+$/, '')}/v1beta/models`,
+		requiresApiKey: true,
+		authHeader: 'x-goog-api-key',
+		parse: (json: unknown) =>
+			(json as { models?: { name?: string }[] }).models
+				?.map((model) => (model.name ?? '').replace(/^models\//, ''))
+				.filter((id) => id && !/^veo-|image/.test(id)) ?? []
+	},
+	[longCatVendor.name]: {
+		url: 'https://api.longcat.chat/openai/v1/models',
+		requiresApiKey: true
+	},
+	[miniMaxVendor.name]: {
+		url: 'https://api.minimaxi.com/v1/models',
+		requiresApiKey: true
+	},
+	[zhipuVendor.name]: {
+		// The raw API key works here as a bearer token; the JWT that chat requests
+		// need is not required to list models.
+		url: 'https://open.bigmodel.cn/api/paas/v4/models',
 		requiresApiKey: true
 	}
 } as const

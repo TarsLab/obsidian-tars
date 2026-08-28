@@ -7,7 +7,7 @@
 
 # Tars
 
-Tars is an Obsidian plugin that supports text generation based on tag suggestions, using services like Claude, OpenAI, Gemini, 🔥DeepSeek, 🔥SiliconFlow, 🔥OpenRouter, Ollama, Kimi, Doubao, Qwen, Zhipu, QianFan & more. The name Tars comes from the robot Tars in the movie "Interstellar". The plugin supports both desktop and mobile devices.
+Tars is an Obsidian plugin that supports text generation based on tag suggestions, using services like Claude, OpenAI, Gemini, 🔥DeepSeek, 🔥SiliconFlow, 🔥OpenRouter, 🔥MiniMax, 🔥LongCat, Ollama, Kimi, Doubao, Qwen, Zhipu, QianFan & more. The name Tars comes from the robot Tars in the movie "Interstellar". The plugin supports both desktop and mobile devices.
 
 ## 🌟 3.1 Multimodal
 
@@ -56,6 +56,8 @@ Tars is an Obsidian plugin that supports text generation based on tag suggestion
 - [Doubao](https://www.volcengine.com/product/doubao)
 - [Gemini](https://gemini.google.com)
 - [Kimi](https://www.moonshot.cn)
+- [LongCat](https://longcat.chat/platform/)
+- [MiniMax](https://platform.minimaxi.com/)
 - [Ollama](https://www.ollama.com)
 - [OpenAI](https://platform.openai.com/api-keys)
 - [OpenRouter](https://openrouter.ai)
@@ -69,11 +71,13 @@ If the AI provider you want is not in the list above, you can propose a specific
 
 ### Assistant features
 
-- Azure: Supports o1, deepseek-r1, gpt-4o, etc.
-- 🔥DeepSeek: The reasoning model deepseek-reasoner's CoT is output in callout format
+- Azure: the model field holds the deployment name you chose in the portal, not a model id
+- 🔥DeepSeek: the reasoning model's CoT is output in callout format
 - Doubao: Supports bot API, [Supports DeepSeek web search plugin and knowledge base plugin](https://github.com/TarsLab/obsidian-tars/issues/68)
+- 🔥LongCat: Reasoning output in callout format
+- 🔥MiniMax: Reasoning output in callout format
 - 🔥SiliconFlow: Supports many models such as DeepSeek V3/R1
-- Zhipu: Web search option
+- 🔥Zhipu: Web search option, and reasoning output in callout format for GLM-4.5 / 4.6 / Z1
 
 ## How to use
 
@@ -149,7 +153,11 @@ There are several ways:
 
 ### Can't find the model you want in the settings?
 
-You can configure it in the "Override input parameters" section in the settings by entering JSON format, such as `{"model":"your-desired-model"}`.
+Most providers are asked for their own model list, so the choices come from the API rather than from a list baked into the plugin — a model the provider no longer advertises will not be among them.
+
+Set it under "Override input parameters" as JSON, such as `{"model":"your-desired-model"}`, which takes precedence over the model chosen in the picker.
+
+If the list cannot be read at all — an account still awaiting verification, a relay that does not implement it — the row turns into a plain text field and the model can be typed in directly.
 
 ### How to view the developer console?
 
@@ -198,3 +206,10 @@ neither the build nor the linter can tell you whether it works. See
 [Manual testing against a running Obsidian](docs/manual-testing.md) for
 driving a live instance with the Obsidian CLI, plus a checklist to run before
 a release.
+
+Providers fail for reasons that live outside the code — Obsidian calls every API
+cross-origin from `app://obsidian.md`, and a CORS rejection is indistinguishable
+from an unreachable host unless you test for it deliberately. See
+[Testing providers against real networks](docs/provider-testing.md) for the two
+harnesses that tell them apart, and `npm run smoke` for the one that runs inside
+Obsidian.
