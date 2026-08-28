@@ -30,7 +30,7 @@ import { qwenVendor } from './providers/qwen'
 import { siliconFlowVendor } from './providers/siliconflow'
 import { getCapabilityEmoji } from './providers/utils'
 import { zhipuVendor } from './providers/zhipu'
-import { availableVendors, DEFAULT_SETTINGS } from './settings'
+import { availableVendors, DEFAULT_SETTINGS, unusedTag } from './settings'
 
 /** The parts of a rendered settings tab that obsidian.d.ts does not describe. */
 interface SettingTabInternals {
@@ -91,7 +91,10 @@ export class TarsSettingTab extends PluginSettingTab {
 		const onChoose = async (vendor: Vendor) => {
 			const deepCopiedOptions = JSON.parse(JSON.stringify(vendor.defaultOptions))
 			this.plugin.settings.providers.push({
-				tag: this.unusedTag(vendor.name),
+				tag: unusedTag(
+					vendor.name,
+					this.plugin.settings.providers.map((e) => e.tag)
+				),
 				vendor: vendor.name,
 				options: deepCopiedOptions
 			})
@@ -101,23 +104,6 @@ export class TarsSettingTab extends PluginSettingTab {
 			this.openProviderPage(this.plugin.settings.providers.length - 1)
 		}
 		new SelectVendorModal(this.app, availableVendors, onChoose).open()
-	}
-
-	/**
-	 * A tag for a new provider that no other provider is already using.
-	 *
-	 * The tag is what triggers the assistant, so a provider without one cannot be
-	 * used at all — and it is not inert while it waits to be named: an empty tag
-	 * registers a command palette entry reading "# :". A second provider of the
-	 * same vendor used to be saved with exactly that and left for the user to
-	 * notice, so number it instead. Numbering rather than spacing because a tag
-	 * may not contain a space.
-	 */
-	unusedTag = (vendorName: string) => {
-		const taken = new Set(this.plugin.settings.providers.map((e) => e.tag.toLowerCase()))
-		let tag = vendorName
-		for (let n = 2; taken.has(tag.toLowerCase()); n++) tag = vendorName + n
-		return tag
 	}
 
 	/**
@@ -431,6 +417,9 @@ export class TarsSettingTab extends PluginSettingTab {
 					.setValue(settings.tag)
 					.onChange(async (value) => {
 						const trimmed = value.trim()
+						// Not reported here. Selecting the whole tag and typing a new one
+						// passes through empty on the way, and a notice per keystroke is
+						// noise. The blur handler below has the last word.
 						if (trimmed.length === 0) return
 						if (!validateTag(trimmed)) return
 						const otherTags = this.plugin.settings.providers
@@ -445,6 +434,17 @@ export class TarsSettingTab extends PluginSettingTab {
 						tagChanged = true
 						await this.plugin.saveSettings()
 					})
+
+				// A cleared field looked like it had taken effect. onChange refuses an
+				// empty tag in silence, so the box read empty while the tag it was
+				// showing stayed stored and stayed triggering the assistant — nothing
+				// said which one was real. Say so on the way out, and put back what is
+				// actually in effect.
+				text.inputEl.addEventListener('blur', () => {
+					if (text.getValue().trim().length > 0) return
+					new Notice(t('Keyword for tag must not be empty'))
+					text.setValue(settings.tag)
+				})
 			})
 
 			return () => {
@@ -989,6 +989,10 @@ const getSummary = (tag: string, defaultTag: string) =>
 	tag === defaultTag ? defaultTag : tag + ' (' + defaultTag + ')'
 
 const validateTag = (tag: string) => {
+	if (tag.length === 0) {
+		new Notice(t('Keyword for tag must not be empty'))
+		return false
+	}
 	if (tag.includes('#')) {
 		new Notice(t('Keyword for tag must not contain #'))
 		return false

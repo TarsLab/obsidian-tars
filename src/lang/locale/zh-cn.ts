@@ -79,6 +79,7 @@ export default {
 
 	// main.ts
 	'Removed commands': '已移除命令',
+	'Named assistants that had no tag': '已为没有标签的 AI 助手命名',
 	'Added commands': '已添加命令',
 	'No active generation to cancel': '没有正在进行的生成可取消',
 	'Generation already cancelled': '生成已经取消',
@@ -105,6 +106,7 @@ export default {
 	'API key (required)': 'API Key (必填)',
 	'Default:': '默认:',
 	'Refer to the technical documentation': '参考技术文档',
+	'Keyword for tag must not be empty': '标签关键词不能为空',
 	'Keyword for tag must not contain #': '标签关键字不能包含 #',
 	'Keyword for tag must not contain space': '标签关键字不能包含空格',
 	'Keyword for tag must be unique': '标签关键字必须唯一',

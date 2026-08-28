@@ -80,6 +80,7 @@ export default {
 
 	// main.ts
 	'Removed commands': 'Removed commands',
+	'Named assistants that had no tag': 'Named assistants that had no tag',
 	'Added commands': 'Added commands',
 	'No active generation to cancel': 'No active generation to cancel',
 	'Generation already cancelled': 'Generation already cancelled',
@@ -109,6 +110,7 @@ export default {
 	'API key (required)': 'API key (required)',
 	'Default:': 'Default:',
 	'Refer to the technical documentation': 'Refer to the technical documentation',
+	'Keyword for tag must not be empty': 'Keyword for tag must not be empty',
 	'Keyword for tag must not contain #': 'Keyword for tag must not contain #',
 	'Keyword for tag must not contain space': 'Keyword for tag must not contain space',
 	'Keyword for tag must be unique': 'Keyword for tag must be unique',

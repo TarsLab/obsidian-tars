@@ -14,7 +14,7 @@ import { RequestController } from './editor'
 import { t } from './lang/helper'
 import { getTitleFromCmdId, loadTemplateFileCommand, promptTemplateCmd, templateToCmdId } from './prompt'
 import { TarsSettingTab } from './settingTab'
-import { DEFAULT_SETTINGS, PluginSettings } from './settings'
+import { DEFAULT_SETTINGS, nameUntaggedProviders, PluginSettings } from './settings'
 import { StatusBarManager } from './statusBarManager'
 import { getMaxTriggerLineLength, TagEditorSuggest, TagEntry } from './suggest'
 
@@ -190,6 +190,16 @@ export default class TarsPlugin extends Plugin {
 
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData())
+
+		// Before buildTagCommands, so a provider that was saved without a tag never
+		// gets as far as registering the "# : " entry it used to leave in the
+		// command palette. Saved back rather than repaired in memory each time,
+		// because a name the user can see is a name they can change.
+		const named = nameUntaggedProviders(this.settings.providers)
+		if (named.length > 0) {
+			await this.saveSettings()
+			new Notice(`${t('Named assistants that had no tag')}: ${named.join(', ')}`)
+		}
 	}
 
 	async saveSettings() {
