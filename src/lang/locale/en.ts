@@ -131,6 +131,7 @@ export default {
 	'API version': 'API version',
 	'Select assistant': 'Select assistant',
 
+	Conversation: 'Conversation',
 	'Confirm before regeneration': 'Confirm before regeneration',
 	'Confirm before replacing existing assistant responses when using assistant commands':
 		'Confirm before replacing existing assistant responses when using assistant commands',
@@ -148,6 +149,8 @@ export default {
 		'Automatically add a system message when none exists in the conversation',
 	'Default system message': 'Default system message',
 	Advanced: 'Advanced',
+	'Command toggles, tag suggest, answer delay and other less common options.':
+		'Command toggles, tag suggest, answer delay and other less common options.',
 	'Delay before answer (Seconds)': 'Delay before answer (Seconds)',
 	'If you encounter errors with missing user messages when executing assistant commands on selected text, it may be due to the need for more time to parse the messages. Please slightly increase the delay time.':
 		'If you encounter errors with missing user messages when executing assistant commands on selected text, it may be due to the need for more time to parse the messages. Please slightly increase the delay time.',

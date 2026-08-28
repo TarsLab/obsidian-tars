@@ -77,11 +77,24 @@ export class TarsSettingTab extends PluginSettingTab {
 				heading: t('System message'),
 				items: this.systemMessageDefs()
 			},
-			this.confirmRegenerateDef(),
-			this.internalLinksDef(),
 			{
+				// Both only take effect when an assistant command runs: one decides
+				// whether replacing a reply asks first, the other what the messages
+				// contain. Left headingless they shared a card with the Advanced
+				// link, which read as though it belonged to them.
 				type: 'group',
-				heading: t('Advanced'),
+				heading: t('Conversation'),
+				items: [this.confirmRegenerateDef(), this.internalLinksDef()]
+			},
+			{
+				// A page rather than a group: these five are low-frequency and
+				// description-heavy, and none of them re-renders the tab, so the
+				// sub-page quirks the provider pages work around don't apply here.
+				// The desc names the command toggles, which are otherwise a level
+				// deeper than a user hunting for a missing command would look.
+				type: 'page',
+				name: t('Advanced'),
+				desc: t('Command toggles, tag suggest, answer delay and other less common options.'),
 				items: this.advancedDefs()
 			}
 		]

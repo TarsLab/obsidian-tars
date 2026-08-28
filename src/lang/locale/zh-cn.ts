@@ -127,6 +127,7 @@ export default {
 	'API version': 'API 版本',
 	'Select assistant': '选择助手',
 
+	Conversation: '对话',
 	'Confirm before regeneration': '重新生成前是否需要确认',
 	'Confirm before replacing existing assistant responses when using assistant commands':
 		'在使用助手标签命令时，替换旧的助手消息，是否需要弹窗确认',
@@ -145,6 +146,7 @@ export default {
 		'当对话中没有系统消息时，自动添加自定义的默认的系统消息',
 	'Default system message': '默认系统消息',
 	Advanced: '高级',
+	'Command toggles, tag suggest, answer delay and other less common options.': '命令开关、标签建议、回答延迟等低频选项。',
 	'Delay before answer (Seconds)': '回答前的延迟（秒）',
 	'If you encounter errors with missing user messages when executing assistant commands on selected text, it may be due to the need for more time to parse the messages. Please slightly increase the delay time.':
 		'在选中文本执行助手命令的时候，如果遇到缺少用户消息的错误，可能是需要更多时间来解析消息，请稍微增加延迟',
