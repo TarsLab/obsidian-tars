@@ -102,7 +102,7 @@ cp build/tars-smoke/{main.js,manifest.json} "$VAULT/.obsidian/plugins/tars-smoke
 obsidian eval code='(async()=>{await app.plugins.loadManifests();await app.plugins.enablePlugin("tars-smoke")})()'
 ```
 
-Four entry points:
+Five entry points:
 
 **`cors()`** — classifies every endpoint using the table above. Costs nothing
 and touches no keys: the preflight runs before authentication, so a deliberately
@@ -118,6 +118,17 @@ real credit on real keys**, since it reads the Tars plugin's own settings.
 
 ```bash
 obsidian eval code='(async()=>app.plugins.plugins["tars-smoke"].chat({only:"Kimi"}))()'
+```
+
+The default question costs the least and answers in one token, but it provokes no
+thinking — so the callout path, which is what most provider changes touch, goes
+unexercised unless `prompt` asks for it. `errChars` widens the error column,
+which is fifty characters by default and never enough to see why a provider said 400.
+
+```bash
+obsidian eval code='(async()=>app.plugins.plugins["tars-smoke"].chat({
+  only:"Kimi", model:"kimi-k3", sample:200, errChars:400,
+  prompt:"A bat and ball cost 1.10 … Think it through."}))()'
 ```
 
 **`models()`** — asks every configured provider for its own model list, through
@@ -160,6 +171,19 @@ image can be asked for without editing the vault. Note that those are _settings_
 and `bodyParams` filters them back out of the request body — to prove an
 override reaches the API, put it in the provider's `parameters` instead and give
 it a value the API will reject.
+
+**`sse()`** — replays a chat stream that arrives in awkward pieces, through the
+decoder that ships and through the loop it replaced. Costs nothing and touches no
+network. A provider only splits a frame when the packets happen to land that way,
+so the bug it pins fails intermittently, mid-answer, and looks like the model
+stopping early — which is exactly the kind of thing a live run cannot be relied
+on to reproduce.
+
+```bash
+obsidian eval code='(async()=>app.plugins.plugins["tars-smoke"].sse())()'
+# shipped decoder : "Hello world"  ✓
+# previous loop   : THREW Unterminated string in JSON at position 35
+```
 
 Run `chat()` before a change and after it, and diff. A provider that stops
 streaming, starts returning empty, or loses its reasoning callout shows up as a

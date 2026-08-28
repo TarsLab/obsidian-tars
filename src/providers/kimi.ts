@@ -1,7 +1,14 @@
 import axios from 'axios'
 import { t } from 'src/lang/helper'
 import { BaseOptions, Message, ResolveEmbedAsBinary, SendRequest, Vendor } from '.'
-import { CALLOUT_BLOCK_END, CALLOUT_BLOCK_START, bodyParams, convertEmbedToImageUrl } from './utils'
+import {
+	CALLOUT_BLOCK_END,
+	CALLOUT_BLOCK_START,
+	ThinkingDelta,
+	bodyParams,
+	chatCompletionChunks,
+	convertEmbedToImageUrl
+} from './utils'
 
 const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 	async function* (messages: Message[], controller: AbortController, resolveEmbedAsBinary: ResolveEmbedAsBinary) {
@@ -19,7 +26,7 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 			stream: true,
 			...remains
 		}
-		const response = await axios.post(baseURL, data, {
+		const response = await axios.post<ReadableStream<Uint8Array>>(baseURL, data, {
 			headers: {
 				Authorization: `Bearer ${apiKey}`,
 				'Content-Type': 'application/json'
@@ -30,42 +37,19 @@ const sendRequestFunc = (settings: BaseOptions): SendRequest =>
 			signal: controller.signal
 		})
 
-		const reader = response.data.pipeThrough(new TextDecoderStream()).getReader()
-
-		let reading = true
 		let startReasoning = false
-		while (reading) {
-			const { done, value } = await reader.read()
-			if (done) {
-				reading = false
-				break
-			}
+		for await (const part of chatCompletionChunks(response.data)) {
+			const delta = part.choices[0]?.delta as ThinkingDelta | undefined
+			if (!delta) continue
+			const reasonContent = delta.reasoning_content
 
-			const parts = value.split('\n')
-
-			for (const part of parts) {
-				if (part.includes('data: [DONE]')) {
-					reading = false
-					break
-				}
-
-				const trimmedPart = part.replace(/^data: /, '').trim()
-				if (trimmedPart) {
-					const data = JSON.parse(trimmedPart)
-					if (data.choices && data.choices[0].delta) {
-						const delta = data.choices[0].delta
-						const reasonContent = delta.reasoning_content
-
-						if (reasonContent) {
-							const prefix = !startReasoning ? ((startReasoning = true), CALLOUT_BLOCK_START) : ''
-							yield prefix + reasonContent.replace(/\n/g, '\n> ') // Each line of the callout needs to have '>' at the beginning
-						} else {
-							const prefix = startReasoning ? ((startReasoning = false), CALLOUT_BLOCK_END) : ''
-							if (delta.content) {
-								yield prefix + delta.content
-							}
-						}
-					}
+			if (reasonContent) {
+				const prefix = !startReasoning ? ((startReasoning = true), CALLOUT_BLOCK_START) : ''
+				yield prefix + reasonContent.replace(/\n/g, '\n> ') // Each line of the callout needs to have '>' at the beginning
+			} else {
+				const prefix = startReasoning ? ((startReasoning = false), CALLOUT_BLOCK_END) : ''
+				if (delta.content) {
+					yield prefix + delta.content
 				}
 			}
 		}

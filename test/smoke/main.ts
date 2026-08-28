@@ -1,7 +1,7 @@
 import OpenAI from 'openai'
 import { Plugin, requestUrl } from 'obsidian'
 import { Message, ProviderSettings } from '../../src/providers'
-import { stripStainlessHeaders } from '../../src/providers/utils'
+import { chatCompletionChunks, stripStainlessHeaders } from '../../src/providers/utils'
 import { availableVendors } from '../../src/settings'
 import { fetchModels, MODEL_FETCH_CONFIGS, ModelFetchConfig } from '../../src/settingTab'
 
@@ -278,6 +278,7 @@ export default class SmokePlugin extends Plugin {
 			sample?: number
 			maxChars?: number
 			errChars?: number
+			prompt?: string
 		} = {}
 	): Promise<string> {
 		const timeoutMs = opts.timeoutMs ?? 45_000
@@ -290,7 +291,10 @@ export default class SmokePlugin extends Plugin {
 		const providers: ProviderSettings[] = tars.settings?.providers ?? []
 		if (!providers.length) return 'No providers configured.'
 
-		const messages: Message[] = [{ role: 'user', content: 'What is 1+1? Reply with the digit only.' }]
+		// The default costs the least and answers in one token, but it provokes no
+		// thinking at all — so the callout path, which is what most provider changes
+		// touch, goes unexercised unless a prompt asks for it.
+		const messages: Message[] = [{ role: 'user', content: opts.prompt ?? 'What is 1+1? Reply with the digit only.' }]
 		const lines = [
 			pad('TAG', 14) + pad('VENDOR', 12) + pad('FIRST', 9) + pad('TOTAL', 9) + pad('CHARS', 7) + 'RESULT',
 			'-'.repeat(92)
@@ -520,5 +524,66 @@ export default class SmokePlugin extends Plugin {
 			if (out) lines.push(`  yielded ${JSON.stringify(out)}`)
 		}
 		return lines.length ? lines.join('\n') : 'No image-generation provider matched.'
+	}
+	/**
+	 * Replays an SSE body that arrives in awkward pieces, through the decoder that
+	 * ships and through the loop kimi and grok used before it.
+	 *
+	 * Costs nothing and touches no network: the point is the framing, and framing
+	 * is reproducible. A real provider only splits a frame when the packets happen
+	 * to land that way, which is why this went unnoticed — it fails intermittently,
+	 * mid-answer, and looks like the model stopping early.
+	 */
+	async sse(): Promise<string> {
+		// "Hello world" in two frames, the first split mid-JSON, with the protocol
+		// lines a chat stream really carries in between.
+		const wire = [
+			'data: {"choices":[{"delta":{"content":"He',
+			'llo"}}]}\n\n: keep-alive\n\ndata: {"choices"',
+			':[{"delta":{"content":" world"}}]}\n\nevent: ping\n\ndata: [DONE]\n\n'
+		]
+		const body = () =>
+			new ReadableStream<Uint8Array>({
+				start(ctrl) {
+					for (const part of wire) ctrl.enqueue(new TextEncoder().encode(part))
+					ctrl.close()
+				}
+			})
+
+		const lines: string[] = []
+
+		try {
+			let out = ''
+			for await (const chunk of chatCompletionChunks(body())) out += chunk.choices[0]?.delta?.content ?? ''
+			lines.push(
+				`shipped decoder : ${JSON.stringify(out)}${out === 'Hello world' ? '  ✓' : '  ✗ expected "Hello world"'}`
+			)
+		} catch (e) {
+			lines.push(`shipped decoder : THREW ${(e as Error).message}  ✗`)
+		}
+
+		try {
+			// The old loop, verbatim in shape: split each decoded read on newlines and
+			// parse every non-empty piece, with no buffer across reads and no try.
+			let out = ''
+			const reader = body().pipeThrough(new TextDecoderStream()).getReader()
+			for (;;) {
+				const { done, value } = await reader.read()
+				if (done) break
+				for (const part of value.split('\n')) {
+					if (part.includes('data: [DONE]')) break
+					const trimmed = part.replace(/^data: /, '').trim()
+					if (trimmed) {
+						const data = JSON.parse(trimmed) as OpenAI.ChatCompletionChunk
+						out += data.choices?.[0]?.delta?.content ?? ''
+					}
+				}
+			}
+			lines.push(`previous loop   : ${JSON.stringify(out)}`)
+		} catch (e) {
+			lines.push(`previous loop   : THREW ${(e as Error).message}`)
+		}
+
+		return lines.join('\n')
 	}
 }

@@ -240,8 +240,63 @@ export const getCapabilityEmoji = (capability: Capability): string => {
 	}
 }
 
-type ThinkingDelta = OpenAI.ChatCompletionChunk.Choice.Delta & {
+export type ThinkingDelta = OpenAI.ChatCompletionChunk.Choice.Delta & {
 	reasoning_content?: string
+}
+
+/**
+ * Decodes a server-sent-event body into chat completion chunks.
+ *
+ * A frame is not guaranteed to arrive whole. Read the stream the obvious way —
+ * split each decoded chunk on newlines and parse the pieces — and the first
+ * `data:` line that straddles two network reads reaches `JSON.parse` in halves,
+ * which throws out of the generator and ends the answer mid-sentence. Nothing
+ * upstream retries, and the note simply stops. Buffering across reads is the
+ * whole fix; everything else here follows from it.
+ *
+ * Lines that are not `data:` are skipped rather than parsed, because keep-alive
+ * comments and `event:` lines are part of the protocol and were being fed to
+ * `JSON.parse` too.
+ *
+ * `TextDecoder` rather than `TextDecoderStream`: the streaming form only reached
+ * Safari 16.4, and no provider may be desktop-only.
+ */
+export async function* chatCompletionChunks(
+	body: ReadableStream<Uint8Array>
+): AsyncGenerator<OpenAI.ChatCompletionChunk, void, unknown> {
+	const reader = body.getReader()
+	const decoder = new TextDecoder()
+	let buffer = ''
+
+	try {
+		while (true) {
+			const { done, value } = await reader.read()
+			if (done) break
+			buffer += decoder.decode(value, { stream: true })
+
+			while (true) {
+				const lineEnd = buffer.indexOf('\n')
+				if (lineEnd === -1) break
+				const line = buffer.slice(0, lineEnd).trim()
+				buffer = buffer.slice(lineEnd + 1)
+
+				if (!line.startsWith('data:')) continue
+				const payload = line.slice('data:'.length).trim()
+				if (payload === '[DONE]') return
+
+				try {
+					yield JSON.parse(payload) as OpenAI.ChatCompletionChunk
+				} catch {
+					// One frame this malformed is not worth ending an answer over.
+					console.debug('skipping unparsable SSE frame', payload)
+				}
+			}
+		}
+	} finally {
+		// The consumer can walk away early — the smoke harness does, at maxChars —
+		// and the body stays open until somebody says otherwise.
+		await reader.cancel().catch(() => undefined)
+	}
 }
 
 /**
