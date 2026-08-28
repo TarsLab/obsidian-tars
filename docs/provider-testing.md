@@ -311,3 +311,20 @@ lists:
 addresses a deployment whose name its owner chose, and listing deployments needs
 a management credential rather than the inference key; the other two keep a
 curated list.
+
+### Since that baseline — 2026-08-28
+
+**SiliconFlow's 403 was account state, and it cleared without a code change.**
+Once the account finished identity verification the same key returned 64 models
+and answered with its reasoning callout intact:
+
+```
+reason  SiliconFlow  ok   64      deepseek-ai/DeepSeek-V4-Flash, meituan-longcat/LongCat-2.0, …
+reason  SiliconFlow  1665ms  223  ok +reasoning-callout
+```
+
+Worth keeping in mind when reading either table: a row can fail for a reason that
+lives in an account rather than in the code, and nothing in the output
+distinguishes the two. `403` and `401` in particular say the request arrived and
+was understood — which is already proof the transport works, and therefore
+evidence about CORS and the network even when it looks like a failure.
