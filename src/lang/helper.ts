@@ -11,7 +11,10 @@ const localeMap: { [k: string]: Partial<typeof en> } = { en, 'zh-TW': zhTW, zh: 
 const lang = getLanguage()
 const locale = localeMap[lang]
 
-export function t(str: keyof typeof en): string {
+/** Every string the plugin can show. Anything holding one for later is typed by it. */
+export type LocaleKey = keyof typeof en
+
+export function t(str: LocaleKey): string {
 	if (!locale) {
 		console.error('Error: locale not found', lang)
 	}

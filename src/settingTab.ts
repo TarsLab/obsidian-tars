@@ -13,8 +13,9 @@ import { exportCmdId } from './commands/export'
 import { t } from './lang/helper'
 import TarsPlugin from './main'
 import { SelectModelModal, SelectVendorModal } from './modal'
-import { BaseOptions, Optional, ProviderSettings, Vendor } from './providers'
+import { BaseOptions, Capability, Optional, ProviderSettings, Vendor } from './providers'
 import { ClaudeOptions, claudeVendor } from './providers/claude'
+import { applyProtocol, customVendor, CustomOptions, Protocol, PROTOCOLS, protocolVendor } from './providers/custom'
 import { deepSeekVendor } from './providers/deepSeek'
 import { doubaoVendor } from './providers/doubao'
 import { GptImageOptions, gptImageVendor } from './providers/gptImage'
@@ -156,7 +157,15 @@ export class TarsSettingTab extends PluginSettingTab {
 		return {
 			type: 'page',
 			name: getSummary(settings.tag, vendor.name),
-			desc: vendor.capabilities.map((cap) => `${getCapabilityEmoji(cap)} ${t(cap)}`).join('    '),
+			// The description, where there is one, says what the provider is; the
+			// capabilities say what it can do. A custom provider needs both, since
+			// its own page is where the reader finds out what "Custom" meant.
+			desc: [
+				vendor.description && t(vendor.description),
+				capabilityLine(protocolVendor(vendor, settings.options).capabilities)
+			]
+				.filter(Boolean)
+				.join(' · '),
 			displayValue: () => settings.options.model || '',
 			status: () => (vendor.name !== ollamaVendor.name && !settings.options.apiKey ? 'warning' : null),
 			items: this.providerDefs(index, settings, vendor)
@@ -452,6 +461,36 @@ export class TarsSettingTab extends PluginSettingTab {
 				tagChanged = false
 				this.deferredUpdate()
 			}
+		}
+	})
+
+	/**
+	 * Which of the three protocols a custom endpoint speaks.
+	 *
+	 * Re-renders through `update()` rather than the deferred path the tag row
+	 * uses, because the answer decides which rows exist at all — Claude brings
+	 * max_tokens and thinking, the model list comes from a different endpoint,
+	 * web search appears or does not — and `deferredUpdate()` is dropped while a
+	 * provider page is open. `update()` rebuilds an open page without closing it;
+	 * what it must not interrupt is a text field mid-keystroke, and a dropdown
+	 * has already been let go of by the time this runs.
+	 */
+	protocolDef = (options: CustomOptions): SettingDefinitionRender => ({
+		name: t('Protocol'),
+		desc: t(
+			'This assistant is whatever endpoint you point it at. Pick the protocol its documentation describes: the model list, the settings below and the request format all follow from it.'
+		),
+		render: (setting) => {
+			setting.addDropdown((dropdown) =>
+				dropdown
+					.addOptions(Object.fromEntries(PROTOCOLS.map((protocol) => [protocol, protocol])))
+					.setValue(options.protocol)
+					.onChange(async (value) => {
+						applyProtocol(options, value as Protocol)
+						await this.plugin.saveSettings()
+						this.update()
+					})
+			)
 		}
 	})
 
@@ -904,18 +943,23 @@ export class TarsSettingTab extends PluginSettingTab {
 
 	/** Every setting for one provider, in render order. */
 	providerDefs = (index: number, settings: ProviderSettings, vendor: Vendor): SettingDefinitionRender[] => {
-		const capabilities =
-			t('Supported features') +
-			' : ' +
-			vendor.capabilities.map((cap) => `${getCapabilityEmoji(cap)} ${t(cap)}`).join('    ')
+		// What the endpoint speaks, which for a custom provider is not its vendor.
+		// Everything below that depends on the shape of the API rather than on who
+		// is selling it — the capabilities, the model list endpoint, Claude's own
+		// settings, the base URL to fall back to — reads this instead.
+		const spoken = protocolVendor(vendor, settings.options)
+		const capabilities = t('Supported features') + ' : ' + capabilityLine(spoken.capabilities)
 
 		const defs: SettingDefinitionRender[] = [this.tagDef(settings, index, vendor.name)]
 
-		const modelConfig = MODEL_FETCH_CONFIGS[vendor.name as keyof typeof MODEL_FETCH_CONFIGS]
+		// Before the model row, which is the first thing the answer changes.
+		if (vendor.name === customVendor.name) defs.push(this.protocolDef(settings.options as CustomOptions))
+
+		const modelConfig = MODEL_FETCH_CONFIGS[spoken.name as keyof typeof MODEL_FETCH_CONFIGS]
 		if (modelConfig) {
 			defs.push(this.modelFetchDef(settings, modelConfig, capabilities))
-		} else if (vendor.models.length > 0) {
-			defs.push(this.modelDropDownDef(settings.options, vendor.models, capabilities))
+		} else if (spoken.models.length > 0) {
+			defs.push(this.modelDropDownDef(settings.options, spoken.models, capabilities))
 		} else {
 			defs.push(this.modelTextDef(settings.options, capabilities))
 		}
@@ -933,11 +977,11 @@ export class TarsSettingTab extends PluginSettingTab {
 			defs.push(this.apiSecretDef(settings.options as BaseOptions & Pick<Optional, 'apiSecret'>))
 		}
 
-		if (vendor.capabilities.includes('Web Search')) {
+		if (spoken.capabilities.includes('Web Search')) {
 			defs.push(this.webSearchDef(settings.options))
 		}
 
-		if (vendor.name === claudeVendor.name) {
+		if (spoken.name === claudeVendor.name) {
 			defs.push(...this.claudeDefs(settings.options as ClaudeOptions))
 		}
 
@@ -945,7 +989,7 @@ export class TarsSettingTab extends PluginSettingTab {
 			defs.push(...this.gptImageDefs(settings.options as GptImageOptions))
 		}
 
-		defs.push(this.baseURLDef(settings.options, vendor.defaultOptions.baseURL))
+		defs.push(this.baseURLDef(settings.options, spoken.defaultOptions.baseURL))
 
 		if ('endpoint' in settings.options) {
 			defs.push(this.endpointDef(settings.options as BaseOptions & Pick<Optional, 'endpoint'>))
@@ -987,6 +1031,9 @@ export class TarsSettingTab extends PluginSettingTab {
 
 const getSummary = (tag: string, defaultTag: string) =>
 	tag === defaultTag ? defaultTag : tag + ' (' + defaultTag + ')'
+
+const capabilityLine = (capabilities: Capability[]) =>
+	capabilities.map((cap) => `${getCapabilityEmoji(cap)} ${t(cap)}`).join('    ')
 
 const validateTag = (tag: string) => {
 	if (tag.length === 0) {

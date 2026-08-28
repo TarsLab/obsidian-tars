@@ -2,6 +2,7 @@ import { PromptTemplate } from './prompt'
 import { ProviderSettings, Vendor } from './providers'
 import { azureVendor } from './providers/azure'
 import { claudeVendor } from './providers/claude'
+import { customVendor } from './providers/custom'
 import { deepSeekVendor } from './providers/deepSeek'
 import { doubaoVendor } from './providers/doubao'
 import { geminiVendor } from './providers/gemini'
@@ -115,8 +116,11 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 }
 
 export const availableVendors: Vendor[] = [
-	openAIVendor,
-	// The following are arranged in alphabetical order
+	// First, and the only one out of order: it is the entry for a provider that
+	// is not in this list, and it is no use to someone who has already scrolled
+	// past where theirs would have been.
+	customVendor,
+	// The rest in alphabetical order, OpenAI among them rather than ahead of them
 	azureVendor,
 	claudeVendor,
 	deepSeekVendor,
@@ -128,6 +132,7 @@ export const availableVendors: Vendor[] = [
 	longCatVendor,
 	miniMaxVendor,
 	ollamaVendor,
+	openAIVendor,
 	openRouterVendor,
 	qianFanVendor,
 	qwenVendor,

@@ -218,6 +218,13 @@ Translate the following content into English：{{s}}
 
 `,
 
+	// Custom provider
+	'Your own endpoint: anything speaking the OpenAI, Claude or Gemini protocol':
+		'Your own endpoint: anything speaking the OpenAI, Claude or Gemini protocol',
+	Protocol: 'Protocol',
+	'This assistant is whatever endpoint you point it at. Pick the protocol its documentation describes: the model list, the settings below and the request format all follow from it.':
+		'This assistant is whatever endpoint you point it at. Pick the protocol its documentation describes: the model list, the settings below and the request format all follow from it.',
+
 	// Claude thinking settings
 	Thinking: 'Thinking',
 	'When enabled, Claude will show its reasoning process before giving the final answer.':

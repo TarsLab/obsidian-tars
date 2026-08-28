@@ -205,7 +205,16 @@ const names = () => Array.from(C().querySelectorAll('.setting-item-name')).map((
 | 8   | Model row on a provider whose list cannot be read (an unverified SiliconFlow account will do) | the button is replaced in place by a text field carrying the current model, the description gains a ⚠️, typing saves, and leaving the page and returning brings the button back |
 | 9   | Default system message toggle                                                                 | switches the textarea's `disabled` state both ways                                                                                                                              |
 | 10  | Section structure                                                                             | four headings (AI assistants, Message tags, System message, Advanced), no heading printed twice                                                                                 |
-| 11  | `obsidian dev:errors`                                                                         | empty                                                                                                                                                                           |
+| 11  | Vendor picker: open it                                                                        | `Custom` is the first row and carries a description under its name; every other vendor follows it in alphabetical order, OpenAI among them                                      |
+| 12  | Custom provider: add one, then switch its protocol between the three                          | the page rebuilds in place — `pageStack` stays `1` — and the rows follow: Claude adds web search, thinking, budget tokens and max tokens; OpenAI and Gemini have none of them   |
+| 13  | Custom provider: base URL across a protocol switch                                            | a URL still at a protocol's default moves to the new one; a URL you typed is left alone                                                                                         |
+| 14  | Custom provider: the model row                                                                | the list is fetched from the endpoint the chosen protocol defines, not from the vendor named `Custom`                                                                           |
+| 15  | `obsidian dev:errors`                                                                         | empty                                                                                                                                                                           |
+
+Checks 12–14 are the ones the declarative settings API makes easy to get wrong:
+the protocol dropdown is the only place in the tab that calls `update()` from an
+`onChange`, because it has to add and remove rows rather than rewrite one. See
+the trap above about `update()` rebuilding the open page.
 
 Check 6 is worth doing by eye as well: a reset that writes to a component's
 underlying element instead of calling the component's `setValue()` moves the

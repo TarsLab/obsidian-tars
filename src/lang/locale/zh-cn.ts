@@ -215,6 +215,13 @@ export default {
 
 `,
 
+	// Custom provider
+	'Your own endpoint: anything speaking the OpenAI, Claude or Gemini protocol':
+		'你自己的地址：任何使用 OpenAI / Claude / Gemini 协议的服务',
+	Protocol: '协议',
+	'This assistant is whatever endpoint you point it at. Pick the protocol its documentation describes: the model list, the settings below and the request format all follow from it.':
+		'这个助手就是你指给它的那个地址。按服务商文档选择协议——模型列表、下面的设置项、请求格式都由它决定。',
+
 	// Claude thinking settings
 	Thinking: '思考',
 	'When enabled, Claude will show its reasoning process before giving the final answer.':

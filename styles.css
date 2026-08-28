@@ -14,6 +14,13 @@ summary.tars-setting-h4 {
 	font-weight: var(--font-extrabold);
 }
 
+.vendor-description {
+	margin-top: var(--size-2-1);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	line-height: var(--line-height-tight);
+}
+
 .capability-tags-container {
 	margin-top: var(--size-2-3);
 	display: flex;

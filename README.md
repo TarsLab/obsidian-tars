@@ -67,7 +67,7 @@ Tars is an Obsidian plugin that supports text generation based on tag suggestion
 - [X.ai Grok](https://x.ai)
 - [Zhipu](https://open.bigmodel.cn/)
 
-If the AI provider you want is not in the list above, you can propose a specific plan in the issue.
+Anything else goes through **Custom**, the first entry in the provider list: choose the protocol the endpoint speaks (OpenAI, Claude or Gemini), and fill in the base URL, API key and model. A relay, a self-hosted gateway, a provider that arrived after the last release — none of them needs a new release, because the protocol is already implemented. See [Adding a provider that is not in the list](#adding-a-provider-that-is-not-in-the-list).
 
 ### Assistant features
 
@@ -150,6 +150,20 @@ There are several ways:
 - Select tags from the command palette
 - Type `#` + tag + space
 - Directly type the complete tag (without #)
+
+### Adding a provider that is not in the list
+
+Add a **Custom** provider and fill in:
+
+| Setting  | What to put there                                                          |
+| -------- | -------------------------------------------------------------------------- |
+| Tag      | what you will type to trigger it — this is also the name shown in the list |
+| Protocol | OpenAI, Claude or Gemini, whichever the endpoint's documentation describes |
+| Model    | picked from the list if the endpoint publishes one, typed in otherwise     |
+| Base URL | copied from that documentation; check it is complete                       |
+| API key  | as issued                                                                  |
+
+The protocol decides the rest: the model list is fetched from the endpoint that protocol defines, Claude brings its own max_tokens and thinking settings, and web search appears only where the protocol supports it. Changing the protocol later moves the base URL along with it, unless you have typed one of your own.
 
 ### Can't find the model you want in the settings?
 

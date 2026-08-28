@@ -1,4 +1,5 @@
 import { EmbedCache } from 'obsidian'
+import type { LocaleKey } from 'src/lang/helper'
 
 export type MsgRole = 'user' | 'assistant' | 'system'
 
@@ -38,6 +39,14 @@ export type Capability =
 
 export interface Vendor {
 	readonly name: string
+	/**
+	 * What this vendor is, for the one whose name does not already say it.
+	 *
+	 * A locale key rather than a string, because a vendor is built at module load
+	 * and the settings tab is rendered much later: holding the key defers the
+	 * lookup to the render, where every other string in the tab is translated.
+	 */
+	readonly description?: LocaleKey
 	readonly defaultOptions: BaseOptions
 	readonly sendRequestFunc: (options: BaseOptions) => SendRequest
 	readonly models: string[]

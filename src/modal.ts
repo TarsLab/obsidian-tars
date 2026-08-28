@@ -80,6 +80,13 @@ export class SelectVendorModal extends FuzzySuggestModal<Vendor> {
 		// Add the remaining text after the last match
 		div.createSpan({ text: title.slice(lastIndex) })
 
+		// Every other row is a name the reader already recognises. "Custom" is not
+		// one, and a row that only says "Custom ✍️ Text Generation" does not tell
+		// someone hunting for their own provider that this is the row for them.
+		if (template.item.description) {
+			el.createDiv({ text: t(template.item.description), cls: 'vendor-description' })
+		}
+
 		const tagsContainer = el.createDiv({ cls: 'capability-tags-container' })
 
 		template.item.capabilities.forEach((capability) => {

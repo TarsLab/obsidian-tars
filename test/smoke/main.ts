@@ -1,6 +1,7 @@
 import OpenAI from 'openai'
 import { Plugin, requestUrl } from 'obsidian'
 import { Message, ProviderSettings } from '../../src/providers'
+import { protocolVendor } from '../../src/providers/custom'
 import { chatCompletionChunks, stripStainlessHeaders } from '../../src/providers/utils'
 import { availableVendors } from '../../src/settings'
 import { fetchModels, MODEL_FETCH_CONFIGS, ModelFetchConfig } from '../../src/settingTab'
@@ -408,9 +409,14 @@ export default class SmokePlugin extends Plugin {
 
 		for (const p of providers) {
 			if (only && !p.tag.toLowerCase().includes(only.toLowerCase())) continue
+			// Keyed by the protocol a provider speaks rather than by its vendor, so a
+			// custom provider is asked for its models at the endpoint its protocol
+			// defines instead of being reported as having none.
+			const listed = availableVendors.find((v) => v.name === p.vendor)
+			const spoken = listed ? protocolVendor(listed, p.options).name : p.vendor
 			const config: ModelFetchConfig | undefined = (
 				MODEL_FETCH_CONFIGS as Record<string, ModelFetchConfig | undefined>
-			)[p.vendor]
+			)[spoken]
 			if (!config) {
 				lines.push(pad(p.tag, 14) + pad(p.vendor, 12) + 'no list endpoint configured — the model is typed in by hand')
 				continue
